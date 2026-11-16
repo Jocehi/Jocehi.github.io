@@ -5,19 +5,85 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jocehi</title>
 <style>
-body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #fafafa; color: #111; }
-main { text-align: center; padding: 2rem; }
-h1 { font-size: 3rem; margin: 0 0 .5rem; letter-spacing: .05em; }
-p { color: #555; margin: .5rem 0 1.5rem; }
-a { color: #0969da; text-decoration: none; }
-a:hover { text-decoration: underline; }
+body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; background: #fafafa; color: #111; }
+.wrap { max-width: 880px; margin: 0 auto; padding: 2.5rem 1.5rem 3rem; }
+header { text-align: center; margin-bottom: 2rem; }
+header img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background: #fff; border: 1px solid #eee; }
+h1 { font-size: 2.6rem; margin: 1rem 0 .4rem; letter-spacing: .05em; }
+.sub { color: #555; margin: 0; }
+nav { text-align: center; margin-bottom: 2.5rem; }
+nav a { color: #0969da; text-decoration: none; margin: 0 .8rem; font-weight: 600; }
+nav a:hover { text-decoration: underline; }
+section { background: #fff; border: 1px solid #e8e8e8; border-radius: 14px; padding: 1.5rem 1.6rem; margin-bottom: 1.4rem; }
+section h2 { font-size: 1.25rem; margin: 0 0 .2rem; }
+section .meta { color: #888; font-size: .85rem; margin: 0 0 1rem; }
+section ol, section ul { line-height: 1.8; color: #333; margin: 0 0 1rem; padding-left: 1.3rem; }
+section li b { color: #111; }
+.more { color: #0969da; text-decoration: none; font-weight: 600; }
+.more:hover { text-decoration: underline; }
+footer { text-align: center; color: #999; font-size: .85rem; margin-top: 2rem; }
+footer a { color: #0969da; text-decoration: none; }
 </style>
 </head>
 <body>
-<main>
+<div class="wrap">
+<header>
+<img src="avatar.webp" alt="Reze">
 <h1>Jocehi</h1>
-<p>关注世界模型（World Models）与强化学习</p>
-<p><a href="https://github.com/Jocehi">GitHub →</a></p>
-</main>
+<p class="sub">关注世界模型（World Models）与强化学习</p>
+</header>
+<nav>
+<a href="#briefing">每日简报</a>
+<a href="#papers">论文精读</a>
+<a href="#rl">RL 精讲</a>
+</nav>
+
+<section id="briefing">
+<h2>📰 World Model 每日简报</h2>
+<p class="meta">最新一期 · 2026 年 11 月 16 日 · 12 篇论文 · 0 条正式发布</p>
+<ol>
+<li><b>LaST0.5</b>：给世界动作模型装一个“交互专家”，LIBERO 冲到 99.5%（arXiv:2611.14048）</li>
+<li><b>GPWM</b>：用三维粒子运动统一模拟六种物理世界，预测误差平均降 31%（arXiv:2611.08338）</li>
+<li><b>ActWorld-JEPA</b>：把 JEPA 世界模型接到驾驶决策上，NAVSIM 拿下 94.1 PDMS（arXiv:2611.16579）</li>
+<li><b>BirdDreams</b>：透视视频 + 鸟瞰视频一起生成，驾驶世界模型终于分得清“车动”还是“我动”（arXiv:2611.14815）</li>
+<li><b>3D World Simulator</b>：混合粒子-体素动力学，一次预报外观、几何与触觉，50 Hz 跑起来（arXiv:2611.04492）</li>
+<li><b>CoCode-World</b>：多人世界模型终于能“对上号”了，共享 3D 代理来协调双视角（arXiv:2611.15602）</li>
+<li><b>DexForesight</b>：把空间预见“藏进”灵巧策略里，部署时不用深度、不用 rollout 也能涨点（arXiv:2611.11166）</li>
+<li><b>打破驾驶世界模型的“幸存者偏差”</b>：只看安全结局的模型，撞车前还在想“没事”（arXiv:2611.11516）</li>
+<li><b>Rethinking Actions</b>：专家动作是连贯的，世界模型规划也该顺着这个连贯性搜（arXiv:2611.16645）</li>
+<li><b>OnlyAct</b>：别从零学动作了，V-JEPA 2 里本来就藏着动作信息（arXiv:2611.14420）</li>
+<li><b>PhysCapBench</b>：世界模型预训练先过“物理标注”这一关，1500 条视频的评测基准（arXiv:2611.16424）</li>
+<li><b>WanderBench</b>：视频世界模型能“逛”真实动态世界吗？八个模型没一个能记住回访地点（arXiv:2611.12557）</li>
+</ol>
+<a class="more" href="https://muse.ai/s/world-model-xiang-xi-jian-bao-xjw6hz4xaxdxlxaj/0yz1dN9vq2AIDSmZ71OoqXtedu9Gbxvk1cDhRmKTq5g">进入完整简报 →</a>
+</section>
+
+<section id="papers">
+<h2>📄 Interactive World Model 论文精读</h2>
+<p class="meta">最新第 2 篇 · PlaNet · 2026 年 11 月 16 日</p>
+<ul>
+<li><b>PlaNet</b>（Hafner et al., 2019）：从像素中学习潜空间动力学，在潜空间里规划。</li>
+<li>核心是循环状态空间模型 <b>RSSM</b>：确定性循环状态 + 随机潜状态，既能记住历史，又能表达不确定性。</li>
+<li>学会模型后，用 <b>CEM</b> 在潜空间里搜索动作序列，不用每次都和真实环境交互。</li>
+<li>在 DeepMind Control Suite 上，样本效率大幅领先当时的无模型方法。</li>
+<li>本篇精读附原论文图（图 2、图 3、图 9、图 10）。</li>
+</ul>
+<a class="more" href="papers.html">进入完整精读 →</a>
+</section>
+
+<section id="rl">
+<h2>🧠 RL 算法每日精讲</h2>
+<p class="meta">最新第 2 课 · 动态规划：策略迭代与值迭代 · 2026 年 11 月 16 日</p>
+<ul>
+<li><b>策略迭代</b>：策略评估和策略改进交替进行，一步步收敛到最优策略。</li>
+<li><b>值迭代</b>：直接对 Bellman 最优方程做迭代，值函数收敛后一次导出最优策略。</li>
+<li>本课含 7 步流程图、4 张公式卡、12 步 LaTeX 推导、可运行的策略/值迭代代码。</li>
+<li>3 道练习题带参考答案，验证结果：V*(0)=1.81；γ=0.5 时 −1.62；陷阱移到 9 时不变；每步奖励改 0 时 5.90。</li>
+</ul>
+<a class="more" href="rl.html">进入完整课程 →</a>
+</section>
+
+<footer>内容每天早上自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
 </body>
 </html>
