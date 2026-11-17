@@ -3,87 +3,75 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jocehi</title>
-<style>
-body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; background: #fafafa; color: #111; }
-.wrap { max-width: 880px; margin: 0 auto; padding: 2.5rem 1.5rem 3rem; }
-header { text-align: center; margin-bottom: 2rem; }
-header img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background: #fff; border: 1px solid #eee; }
-h1 { font-size: 2.6rem; margin: 1rem 0 .4rem; letter-spacing: .05em; }
-.sub { color: #555; margin: 0; }
-nav { text-align: center; margin-bottom: 2.5rem; }
-nav a { color: #0969da; text-decoration: none; margin: 0 .8rem; font-weight: 600; }
-nav a:hover { text-decoration: underline; }
-section { background: #fff; border: 1px solid #e8e8e8; border-radius: 14px; padding: 1.5rem 1.6rem; margin-bottom: 1.4rem; }
-section h2 { font-size: 1.25rem; margin: 0 0 .2rem; }
-section .meta { color: #888; font-size: .85rem; margin: 0 0 1rem; }
-section ol, section ul { line-height: 1.8; color: #333; margin: 0 0 1rem; padding-left: 1.3rem; }
-section li b { color: #111; }
-.more { color: #0969da; text-decoration: none; font-weight: 600; }
-.more:hover { text-decoration: underline; }
-footer { text-align: center; color: #999; font-size: .85rem; margin-top: 2rem; }
-footer a { color: #0969da; text-decoration: none; }
-</style>
+<title>Jocehi · 世界模型与强化学习</title>
+<link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<div class="wrap">
-<header>
-<img src="avatar.webp" alt="Reze">
-<h1>Jocehi</h1>
-<p class="sub">关注世界模型（World Models）与强化学习</p>
+<canvas id="sakura"></canvas>
+
+<!-- 第一屏：只放头像、名字、领域介绍，居中 -->
+<header class="hero-full" id="hero">
+  <div class="hero-inner">
+    <img class="avatar" src="avatar.webp" alt="Reze · Jocehi 的头像">
+    <h1>Jocehi</h1>
+    <p class="typewriter" data-typewriter='["关注世界模型与强化学习", "在隐空间里想象，在想象中学行为", "每天一篇论文精读 · 每天一课 RL · 每天一份简报"]'>关注世界模型与强化学习</p>
+    <p class="hero-en">World Models · Reinforcement Learning</p>
+  </div>
+  <a class="scroll-hint" href="#contents" aria-label="往下滚动查看内容">
+    <span>往下看</span>
+    <span class="arrow">↓</span>
+  </a>
 </header>
-<nav>
-<a href="#briefing">每日简报</a>
-<a href="#papers">论文精读</a>
-<a href="#rl">RL 精讲</a>
-</nav>
 
-<section id="briefing">
-<h2>📰 World Model 每日简报</h2>
-<p class="meta">最新一期 · 2026 年 11 月 17 日 · 11 篇论文 · 1 条正式发布</p>
-<ol>
-<li><b>华为云 CloudRobo-WM1.2</b>：首款昇腾原生具身世界模型发布并宣布开源，RoboTwin 2.0 与 LiberoPro 2.0 双榜第一</li>
-<li><b>驾驶世界模型只动相机、不动场景</b>：场景响应最多只有真实视频的三分之一（arXiv:2611.15260）</li>
-<li><b>WeatherDreamer</b>：从 18 个全球观测系统学地球世界模型，12 小时预报优于 NOAA GEFS（arXiv:2611.18393）</li>
-<li><b>WATO</b>：联合世界动作模型做可微轨迹优化，7 个视觉控制任务成功率 79.9%→91.7%（arXiv:2611.17626）</li>
-<li><b>HyLI</b>：参数化动作空间的潜想象，样本效率 2.4 倍、决策快 67 倍（arXiv:2611.15744）</li>
-<li><b>未来预测分数里有多少是真预测？</b>V-JEPA 2.1 的预测器只贡献 +0.291，V-JEPA 2 仅 +0.03（arXiv:2611.15082）</li>
-<li><b>A²WM</b>：动作仿射世界模型在线精修策略，每步只多 3.8 毫秒（arXiv:2611.15011）</li>
-<li><b>冻结视觉世界模型也能学会更好的目标代价</b>：DotWall 成功率 54%→98%（arXiv:2611.17529）</li>
-<li><b>想象越深，障碍物信息丢得越多</b>：后验–先验鸿沟让规划器对危险“一无所知”（arXiv:2611.14955）</li>
-<li><b>BAMOS</b>：主动搜物先管好“目标信念”，检测越不准越关键（arXiv:2611.15689）</li>
-<li><b>LASR</b>：一个离线指标，检验世界模型的潜变量里有没有动作信息（arXiv:2611.17775）</li>
-<li><b>Bind-WAM</b>：只在“拿不准”时才想象未来，语言–物体绑定不确定性说了算（arXiv:2611.15368）</li>
-</ol>
-<a class="more" href="https://muse.ai/s/world-model-xiang-xi-jian-bao-xjw6hz4xaxdxlxaj/0yz1dN9vq2AIDSmZ71OoqXtedu9Gbxvk1cDhRmKTq5g">进入完整简报 →</a>
-</section>
+<!-- 往下滚动：三个空间的内容框 -->
+<main class="wrap" id="contents">
+  <nav class="topnav reveal"><b>Jocehi</b><a href="index.html">首页</a><a href="papers.html">论文精读</a><a href="rl.html">RL 精讲</a><a href="briefing.html">每日简报</a><a class="home" href="#hero">↑ 回到顶部</a></nav>
 
-<section id="papers">
-<h2>📄 Interactive World Model 论文精读</h2>
-<p class="meta">最新第 3 篇 · Dreamer · 2026 年 11 月 17 日</p>
-<ul>
-<li><b>Dreamer</b>（Hafner et al., 2020）：在隐空间里想象中学行为，不再每步在线规划。</li>
-<li>沿用 PlaNet 的 <b>RSSM</b> 世界模型，用 λ-return 与解析价值梯度在想象轨迹上训练 actor-critic。</li>
-<li>20 个视觉控制任务平均 <b>823.39 分</b>，只用 500 万步，超过 D4PG（786.32 分，1 亿步）与 PlaNet（332.97 分）。</li>
-<li>每 100 万环境步约 3 小时，PlaNet 在线规划要 11 小时；价值模型让短视界想象也能学到长视距行为。</li>
-<li>本篇精读附原论文图（图 1、图 3(b)、图 5、图 2(d) Walker 面板）。</li>
-</ul>
-<a class="more" href="papers.html">进入完整精读 →</a>
-</section>
+  <section class="card latest reveal" id="briefing">
+    <span class="badge">每日更新 · 最新一期</span>
+    <h2>📰 World Model 每日简报</h2>
+    <p class="meta">2026 年 11 月 17 日（周二）· 正式发布 1 条 · 论文 11 条</p>
+    <p><b>华为云 CloudRobo-WM1.2</b>：首款昇腾原生具身世界模型发布并宣布开源，RoboTwin 2.0 与 LiberoPro 2.0 双榜第一。另有 11 篇世界模型相关新论文。</p>
+    <p><a href="briefing/2026-11-17.html">阅读完整简报 →</a></p>
+    <ul class="archive">
+      <li><span class="date">2026-11-17</span><a href="briefing/2026-11-17.html">世界模型日报 · 2026年11月17日</a></li>
+      <li><span class="date">2026-11-16</span><a href="briefing/2026-11-16.html">世界模型日报 · 2026年11月16日</a></li>
+      <li><span class="date">2026-11-15</span><a href="briefing/2026-11-15.html">世界模型日报 · 2026年11月15日</a></li>
+    </ul>
+    <p><a href="briefing.html">全部简报存档 →</a></p>
+  </section>
 
-<section id="rl">
-<h2>🧠 RL 算法每日精讲</h2>
-<p class="meta">最新第 2 课 · 动态规划：策略迭代与值迭代 · 2026 年 11 月 16 日</p>
-<ul>
-<li><b>策略迭代</b>：策略评估和策略改进交替进行，一步步收敛到最优策略。</li>
-<li><b>值迭代</b>：直接对 Bellman 最优方程做迭代，值函数收敛后一次导出最优策略。</li>
-<li>本课含 7 步流程图、4 张公式卡、12 步 LaTeX 推导、可运行的策略/值迭代代码。</li>
-<li>3 道练习题带参考答案，验证结果：V*(0)=1.81；γ=0.5 时 −1.62；陷阱移到 9 时不变；每步奖励改 0 时 5.90。</li>
-</ul>
-<a class="more" href="rl.html">进入完整课程 →</a>
-</section>
+  <section class="card latest reveal" id="papers" style="--d:.08s">
+    <span class="badge">最新一篇</span>
+    <h2>📄 Interactive World Model 论文精读</h2>
+    <p class="meta">第 3 篇 · 2026 年 11 月 17 日 · Dreamer</p>
+    <p><b>Dreamer：在隐空间里想象中学行为</b> — 只要在学到的紧凑隐空间里同时训练动作模型与价值模型，并把价值的解析梯度沿想象轨迹反向传播，就能仅凭像素输入、以远少于无模型方法的数据学会长视距连续控制。</p>
+    <p><a href="papers/dreamer.html">阅读完整精读 →</a></p>
+    <ul class="archive">
+      <li><span class="date">2026-11-17</span><a href="papers/dreamer.html">第 3 篇 · Dreamer：Learning Behaviors by Latent Imagination</a><span class="note"> — Hafner et al., 2020</span></li>
+      <li><span class="date">2026-11-16</span><a href="papers/planet.html">第 2 篇 · PlaNet：Learning Latent Dynamics for Planning from Pixels</a><span class="note"> — Hafner et al., 2019</span></li>
+      <li><span class="date">2026-11-15</span><a href="papers/world-models.html">第 1 篇 · World Models</a><span class="note"> — Ha &amp; Schmidhuber, 2018</span></li>
+    </ul>
+    <p><a href="papers.html">全部论文精读 →</a></p>
+  </section>
 
-<footer>内容每天早上自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
-</div>
+  <section class="card latest reveal" id="rl" style="--d:.16s">
+    <span class="badge">最新一课</span>
+    <h2>🧠 RL 算法每日精讲</h2>
+    <p class="meta">第 2 课 · 2026 年 11 月 16 日 · 动态规划</p>
+    <p><b>动态规划：策略迭代与值迭代</b> — 反复用 Bellman 方程评估并改进策略，直到得到最优策略。含 7 步流程图、4 张公式卡、12 步 LaTeX 推导、可运行的策略迭代 / 值迭代 Python 代码、3 道练习题附参考答案。</p>
+    <p><a href="rl/lesson-2.html">开始学习 →</a></p>
+    <ul class="archive">
+      <li><span class="date">2026-11-16</span><a href="rl/lesson-2.html">第 2 课 · 动态规划：策略迭代与值迭代</a></li>
+      <li><span class="date">2026-11-15</span><a href="rl/lesson-1.html">第 1 课 · MDP 与 Bellman 方程</a></li>
+      <li><span class="date">即将更新</span><span class="note">第 3 课 · 蒙特卡洛方法（尚未发布）</span></li>
+    </ul>
+    <p><a href="rl.html">全部课程 →</a></p>
+  </section>
+
+  <footer>Jocehi · 关注世界模型与强化学习 · 每天早上 8:00 更新</footer>
+</main>
+
+<script src="assets/effects.js"></script>
 </body>
 </html>

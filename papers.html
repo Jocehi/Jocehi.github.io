@@ -3,41 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dreamer · Jocehi 的论文精读</title>
-<style>
-body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; background: #fafafa; color: #111; }
-.wrap { max-width: 820px; margin: 0 auto; padding: 2.5rem 1.5rem 3rem; }
-a.back { color: #0969da; text-decoration: none; }
-h1 { font-size: 1.8rem; margin: 1.2rem 0 .3rem; }
-.meta { color: #888; font-size: .9rem; margin: 0 0 1.5rem; }
-h2 { font-size: 1.2rem; margin: 1.8rem 0 .6rem; }
-p, li { line-height: 1.85; color: #333; }
-ul { padding-left: 1.3rem; }
-.note { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 1rem 1.2rem; color: #555; margin-top: 2rem; }
-</style>
+<title>论文精读 · Jocehi 的论文精读</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(','right':'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
 </head>
 <body>
+<canvas id="sakura"></canvas>
 <div class="wrap">
-<a class="back" href="index.html">← 回到 Jocehi 的主页</a>
-<h1>Dreamer：在隐空间里想象中学行为</h1>
-<p class="meta">Interactive World Model 论文精读 · 第 3 篇 · 2026 年 11 月 17 日<br>原论文：Danijar Hafner et al., 2020《Dream to Control: Learning Behaviors by Latent Imagination》（arXiv:1912.01603）</p>
+<nav class="topnav"><b>Jocehi</b><a href="index.html">首页</a><a href="papers.html">论文精读</a><a href="rl.html">RL 精讲</a><a href="briefing.html">每日简报</a><a class="home" href="index.html">← 返回首页</a></nav>
 
-<h2>这篇讲了什么</h2>
-<p>Dreamer 证明：只要在学到的紧凑隐空间里同时训练一个动作模型（actor）和一个价值模型（critic），并把价值的解析梯度沿着想象轨迹反向传播穿过学到的动力学，就能仅凭像素输入、以远少于无模型方法的数据学会长视距连续控制行为。</p>
-
-<h2>核心方法：从规划到学习</h2>
-<p>Dreamer 沿用 PlaNet 的 RSSM 世界模型（循环确定性状态 + 30 维随机隐状态），但把行为的来源从“每步在线 CEM 规划”改成“在想象中训练策略”：从真实经验的状态出发，在隐空间里想象未来轨迹，用 λ-return（对不同步数的价值估计做指数加权平均）训练价值模型，再把价值梯度解析地反向传播穿过想象的状态与动作，更新动作模型。价值模型把想象视界之外的回报折现进来，让短视界的想象也能学到长视距行为。</p>
-
-<h2>为什么比 PlaNet 更好</h2>
-<p>PlaNet 每步都要在线采样优化动作序列，100 万步需 11 小时且没有记忆；Dreamer 把规划结果摊销进参数化策略，执行时一次前向即可，100 万步约 3 小时。价值模型还同时解决了 PlaNet 的短视问题：不学价值的变体随视界缩短性能明显下滑，而 Dreamer 对视界长度鲁棒。</p>
-
-<h2>实验与意义</h2>
-<p>在 20 个 DeepMind Control Suite 视觉控制任务上，Dreamer 平均 823.39 分，只用 500 万环境步；最强的无模型基线 D4PG 是 786.32 分，却用了 1 亿步；同门 PlaNet 同样 500 万步，只有 332.97 分。优势集中在需要长视距信用分配的任务：Acrobot 摆起 365.26 对 3.21、Cartpole 稀疏摆起 812.22 对 0.64、Hopper 跳跃 368.97 对 0.37。反例是 Finger Spin：Dreamer 498.88 分，远低于 D4PG 的 985.70。表征消融还证明：像素重建在多数任务上最好，纯奖励预测不足以学会控制——表征学习与行为学习是正交的。</p>
-
-<h2>图</h2>
-<p>本篇精读附原论文图（图 1 总览、图 3(b) 想象中学习行为、图 5 长期开环预测、图 2(d) Walker 观测面板），包括 RSSM 想象轨迹与价值梯度反向传播示意。</p>
-
-<div class="note">完整图解版（信息流 × 梯度流、实验可视化、思考题与参考答案）在 Muse 侧边栏的「Interactive World Model 论文精读」空间里，每天更新一篇。</div>
+<h1>论文精读</h1>
+<p class="meta">Interactive World Model 系列 · 每天精读一篇经典论文</p>
+<div class="card latest"><span class="badge">最新</span><br><h2><a href="papers/dreamer.html">Dream to Control: Learning Behaviors by Latent Imagination</a></h2><p class="meta">第 3 篇 · 2026 年 11 月 17 日 · Danijar Hafner, Timothy Lillicrap, Jimmy Ba, Mohammad Norouzi，2020 年 · arXiv:1912.01603</p><p>Dreamer 证明：只要在学到的紧凑隐空间里同时训练一个动作模型（actor）和一个价值模型（critic），并把价值的解析梯度沿着想象轨迹反向传播穿过学到的动力学，就能仅凭像素输入、以远少于无模型方法的数据学会长视距连续控制行为。</p></div>
+<div class="card"><h2><a href="papers/planet.html">Learning Latent Dynamics for Planning from Pixels</a></h2><p class="meta">第 2 篇 · 2026 年 11 月 16 日 · Danijar Hafner, Timothy Lillicrap, Ian Fischer, Ruben Villegas, David Ha, Honglak Lee, James Davidson，2019 年 · arXiv:1811.04551</p><p>只从像素中学习一个确定性与随机性兼备的隐空间动力学模型，就能在隐空间里通过快速在线规划解决此前只有无模型方法才能解决的复杂连续控制任务，且样本效率高出两个数量级。</p></div>
+<div class="card"><h2><a href="papers/world-models.html">World Models</a></h2><p class="meta">第 1 篇 · 2026 年 11 月 15 日 · David Ha, Jürgen Schmidhuber，2018 年 · arXiv:1803.10122</p><p>智能体可以先无监督地学会一个压缩并预测环境的生成式世界模型，再让一个极小的控制器站在这个模型的特征之上行动，甚至完全在模型生成的梦境中训练策略并迁移回真实环境。</p></div>
+<footer>Jocehi 的论文精读 · Interactive World Model 系列</footer>
 </div>
+<script src="assets/effects.js"></script>
 </body>
 </html>

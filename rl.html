@@ -3,51 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>第 2 课 · 动态规划 · Jocehi 的 RL 精讲</title>
-<style>
-body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; background: #fafafa; color: #111; }
-.wrap { max-width: 820px; margin: 0 auto; padding: 2.5rem 1.5rem 3rem; }
-a.back { color: #0969da; text-decoration: none; }
-h1 { font-size: 1.8rem; margin: 1.2rem 0 .3rem; }
-.meta { color: #888; font-size: .9rem; margin: 0 0 1.5rem; }
-h2 { font-size: 1.2rem; margin: 1.8rem 0 .6rem; }
-p, li { line-height: 1.85; color: #333; }
-ul { padding-left: 1.3rem; }
-.note { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; padding: 1rem 1.2rem; color: #555; margin-top: 2rem; }
-code { background: #f0f0f0; padding: .1em .35em; border-radius: 4px; font-size: .92em; }
-</style>
+<title>RL 算法每日精讲 · Jocehi</title>
+<link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
+<canvas id="sakura"></canvas>
 <div class="wrap">
-<a class="back" href="index.html">← 回到 Jocehi 的主页</a>
-<h1>第 2 课 · 动态规划：策略迭代与值迭代</h1>
-<p class="meta">RL 算法每日精讲 · 2026 年 11 月 16 日</p>
-
-<h2>本课讲什么</h2>
-<p>在已知模型（状态转移与奖励）的情况下，动态规划用 Bellman 方程直接算出最优策略，不需要和环境反复试错。本课讲两种经典算法：策略迭代与值迭代。</p>
-
-<h2>策略迭代</h2>
-<p>策略评估和策略改进交替进行：先算出当前策略下每个状态的值，再对每个状态选出值最大的动作，得到一个更好的策略；重复这个过程，直到策略不再变化，此时的策略就是最优策略。</p>
-
-<h2>值迭代</h2>
-<p>不维护显式策略，直接对 Bellman 最优方程做迭代：每一轮用“即时奖励 + 折扣后的下一状态最优值”更新值函数；值函数收敛后，对每个状态选一次最优动作，就得到最优策略。</p>
-
-<h2>本课内容</h2>
-<ul>
-<li>7 步流程图、4 张公式卡、12 步 LaTeX 推导</li>
-<li>可运行的策略迭代 / 值迭代 Python 代码</li>
-<li>3 道练习题，附参考答案</li>
+<nav class="topnav"><b>Jocehi</b><a href="index.html">首页</a><a href="papers.html">论文精读</a><a href="rl.html">RL 精讲</a><a href="briefing.html">每日简报</a><a class="home" href="index.html">← 返回首页</a></nav>
+<h1>🧠 RL 算法每日精讲</h1>
+<p class="meta">每天一课，从 MDP 与 Bellman 方程出发，系统学习强化学习算法，每课含公式推导、伪代码、可运行 Python 代码与练习题（含参考答案）。新课每天早上约 08:00 更新。</p>
+<div class="card latest"><span class="badge">最新</span>
+<ul class="archive">
+<li><span class="date">2026-11-16</span><a href="rl/lesson-2.html">第 2 课 · 动态规划：策略迭代与值迭代</a><div class="note">反复用贝尔曼方程评估并改进策略，直到得到最优策略。（Dynamic Programming: Policy &amp; Value Iteration）</div></li>
+<li><span class="date">2026-11-15</span><a href="rl/lesson-1.html">第 1 课 · MDP 与 Bellman 方程</a><div class="note">把未来奖励折现求和，用递推关系把大问题拆成小问题。（MDP &amp; Bellman Equation）</div></li>
+<li><span class="date">即将更新</span><b>第 3 课 · 蒙特卡洛方法（即将更新，尚未发布）</b><div class="note">本课尚未发布，内容将在发布后上线。</div></li>
 </ul>
-
-<h2>练习题参考答案（已用代码验证）</h2>
-<ul>
-<li>最优值 V*(0) = 1.81</li>
-<li>折扣 γ 改为 0.5 时，V*(0) = −1.62</li>
-<li>陷阱移到状态 9 时，最优值不变</li>
-<li>每步奖励改为 0 时，V*(0) = 5.90</li>
-</ul>
-
-<div class="note">完整互动版（动态流程图、公式卡、分步推导、可运行代码、练习题与答案）在 Muse 侧边栏的「RL 算法每日精讲」空间里，每天更新一课。</div>
 </div>
+<p class="small">已发布 2 课，第 3 课发布后将在此更新。</p>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="assets/effects.js"></script>
 </body>
 </html>
