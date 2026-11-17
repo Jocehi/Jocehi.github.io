@@ -31,10 +31,14 @@
       };
     }
     for (var i = 0; i < COUNT; i++) petals.push(makePetal(true));
-    var running = true;
+    // 单一循环 + 按真实帧间隔换算位移：切回页面不会叠加出多条循环、
+    // 高刷屏也不会加速；单帧间隔上限 3 帧，避免切回瞬间花瓣跳落
+    var running = true, rafId = 0, lastTs = 0;
+    function schedule() { if (!rafId) rafId = requestAnimationFrame(tick); }
     document.addEventListener('visibilitychange', function () {
       running = !document.hidden;
-      if (running) requestAnimationFrame(tick);
+      if (running) { lastTs = 0; schedule(); }
+      else if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
     });
     function drawPetal(p) {
       ctx.save();
@@ -49,21 +53,24 @@
       ctx.fill();
       ctx.restore();
     }
-    function tick() {
+    function tick(ts) {
+      rafId = 0;
       if (!running) return;
+      var dt = lastTs ? Math.min((ts - lastTs) / 16.667, 3) : 1;
+      lastTs = ts;
       ctx.clearRect(0, 0, W, H);
       for (var i = 0; i < petals.length; i++) {
         var p = petals[i];
-        p.phase += 0.012;
-        p.y += p.speedY;
-        p.x += Math.sin(p.phase) * p.sway * 0.4;
-        p.rot += p.rotSpeed;
+        p.phase += 0.012 * dt;
+        p.y += p.speedY * dt;
+        p.x += Math.sin(p.phase) * p.sway * 0.4 * dt;
+        p.rot += p.rotSpeed * dt;
         if (p.y > H + 24) petals[i] = makePetal(false);
         drawPetal(p);
       }
-      requestAnimationFrame(tick);
+      schedule();
     }
-    requestAnimationFrame(tick);
+    schedule();
   }
 
   /* ---- 打字机 ---- */

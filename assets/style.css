@@ -52,17 +52,19 @@ li{margin:.3rem 0}
   padding:.25rem .9rem;margin:.2rem;font-size:.88rem;color:#4a5268}
 /* 卡片与列表 */
 .card{background:var(--card);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  border:2px solid #ecd9bd;border-radius:var(--radius);padding:1.4rem 1.5rem;
-  margin-bottom:1.3rem;box-shadow:0 14px 34px rgba(188,148,96,.18)}
+  border:0;border-radius:var(--radius);padding:1.4rem 1.5rem;
+  margin-bottom:1.3rem;box-shadow:0 16px 36px rgba(188,148,96,.20)}
 .card h2{margin-top:0}
 .archive{list-style:none;padding:0;margin:.6rem 0 0}
 .archive li{border-top:1px dashed #e6d5de;padding:.7rem 0}
 .archive li:first-child{border-top:none}
 .archive a{font-weight:600;color:var(--ink)}
-.archive a:hover{color:#c2437c}
+.archive a:hover{color:#6b4420}
+.card p a{color:#8a5a2b;font-weight:700}
+.card p a:hover{color:#6b4420;text-decoration:underline}
 .archive .date{color:var(--faint);font-size:.85rem;margin-right:.5rem;white-space:nowrap}
 .archive .note{color:var(--muted);font-size:.9rem}
-.latest{border:3px solid #eec39a}
+.latest{border:0}
 .latest .badge{display:inline-block;background:linear-gradient(90deg,#f27ba7,#7c6cf0);color:#fff;
   border-radius:999px;padding:.1rem .8rem;font-size:.8rem;font-weight:700;margin-bottom:.5rem}
 /* 论文 / 课程正文 */
@@ -127,35 +129,22 @@ footer{text-align:center;color:var(--faint);font-size:.85rem;margin-top:2.5rem}
   align-items:center;justify-content:center;text-align:center;position:relative;z-index:2;
   padding:2rem 1.25rem 4.5rem;
   background:url('hero-bg.jpg') center 28%/cover no-repeat}
-.hero-full::before{content:"";position:absolute;inset:0;z-index:0;
-  background:linear-gradient(180deg,rgba(255,250,243,.30) 0%,rgba(255,250,243,.10) 45%,rgba(255,250,243,.34) 100%)}
 .hero-full>*{position:relative;z-index:1}
 .hero-inner{will-change:transform,opacity}
-.hero-full .scroll-hint{text-shadow:0 1px 8px rgba(255,255,255,.9)}
 .hero-inner{will-change:transform,opacity}
 .hero-full img.avatar{width:150px;height:150px;border-radius:50%;object-fit:cover;
   border:4px solid #fff;box-shadow:0 14px 36px rgba(242,123,167,.38);background:#fff}
-.hero-full h1{font-family:'Baloo 2','ZCOOL KuaiLe',cursive;font-weight:800;
-  font-size:3.4rem;margin:1rem 0 .3rem;letter-spacing:.06em;text-shadow:none;
-  background:linear-gradient(92deg,#c2275f,#9333ea 55%,#6d28d9);
-  -webkit-background-clip:text;background-clip:text;
-  -webkit-text-fill-color:transparent;color:transparent;
-  filter:drop-shadow(0 2px 10px rgba(255,255,255,1)) drop-shadow(0 0 4px rgba(255,255,255,.95))}
-.hero-full .typewriter{font-family:'ZCOOL KuaiLe','Baloo 2',cursive;font-size:1.4rem;color:#4d3542;
-  text-shadow:0 1px 10px rgba(255,255,255,.95),0 0 3px rgba(255,255,255,.9)}
-.hero-en{font-family:'Baloo 2',cursive;font-weight:700;color:#6b5560;font-size:.92rem;letter-spacing:.22em;text-transform:uppercase;margin:.5rem 0 0;
-  text-shadow:0 1px 8px rgba(255,255,255,.95)}
+.hero-full h1{font-family:'Ma Shan Zheng','Great Vibes',cursive;font-weight:400;
+  font-size:3.6rem;margin:1rem 0 .3rem;letter-spacing:.05em;color:#141414}
+.hero-full .typewriter{font-family:'ZCOOL KuaiLe','Baloo 2',cursive;font-size:1.4rem;color:#3d2b33}
+.hero-en{font-family:'Baloo 2',cursive;font-weight:700;color:#4a3a44;font-size:.92rem;letter-spacing:.22em;text-transform:uppercase;margin:.5rem 0 0}
 /* 往下滚动提示 */
 .scroll-hint{position:absolute;left:50%;bottom:1.6rem;transform:translateX(-50%);
-  display:flex;flex-direction:column;align-items:center;gap:.1rem;color:#a83a63;
-  font-size:.9rem;font-weight:600;text-decoration:none}
-.scroll-hint:hover{text-decoration:none;color:#c2437c}
-.scroll-hint .arrow{display:flex;align-items:center;justify-content:center;
-  width:46px;height:46px;border-radius:50%;
-  background:linear-gradient(135deg,#f27ba7,#b388f5);color:#fff;
-  font-size:1.5rem;font-weight:700;line-height:1;
+  display:flex;align-items:center;justify-content:center;width:46px;height:46px;
+  border-radius:50%;background:linear-gradient(135deg,#f27ba7,#b388f5);
   border:2px solid rgba(255,255,255,.9);box-shadow:0 8px 20px rgba(224,82,138,.4);
-  animation:bob 1.8s ease-in-out infinite}
+  text-decoration:none}
+.scroll-hint .arrow{width:24px;height:24px;animation:bob 1.8s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
 /* ---- 滚动淡入上浮 ---- */
 .reveal{opacity:0;transform:translateY(30px);
