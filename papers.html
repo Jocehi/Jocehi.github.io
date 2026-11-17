@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PlaNet · Jocehi 的论文精读</title>
+<title>Dreamer · Jocehi 的论文精读</title>
 <style>
 body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 0; background: #fafafa; color: #111; }
 .wrap { max-width: 820px; margin: 0 auto; padding: 2.5rem 1.5rem 3rem; }
@@ -19,23 +19,23 @@ ul { padding-left: 1.3rem; }
 <body>
 <div class="wrap">
 <a class="back" href="index.html">← 回到 Jocehi 的主页</a>
-<h1>PlaNet：在潜空间里学会规划</h1>
-<p class="meta">Interactive World Model 论文精读 · 第 2 篇 · 2026 年 11 月 16 日<br>原论文：Danijar Hafner et al., 2019《Learning Latent Dynamics for Planning from Pixels》</p>
+<h1>Dreamer：在隐空间里想象中学行为</h1>
+<p class="meta">Interactive World Model 论文精读 · 第 3 篇 · 2026 年 11 月 17 日<br>原论文：Danijar Hafner et al., 2020《Dream to Control: Learning Behaviors by Latent Imagination》（arXiv:1912.01603）</p>
 
 <h2>这篇讲了什么</h2>
-<p>PlaNet 不直接在像素里做规划，而是先从像素观测中学习一个紧凑的潜空间动力学模型，再在这个潜空间里想象未来、搜索动作。这样规划的每一步都在低维潜空间里完成，不用每次都和真实环境交互，也不用逐像素生成图像。</p>
+<p>Dreamer 证明：只要在学到的紧凑隐空间里同时训练一个动作模型（actor）和一个价值模型（critic），并把价值的解析梯度沿着想象轨迹反向传播穿过学到的动力学，就能仅凭像素输入、以远少于无模型方法的数据学会长视距连续控制行为。</p>
 
-<h2>核心方法：RSSM</h2>
-<p>模型的核心是循环状态空间模型（Recurrent State Space Model, RSSM）。它把状态分成两部分：确定性循环状态记住历史信息，随机潜状态表达未来的不确定性。两者结合，既能做多步预测，又不会在不确定时坍缩成一个平均答案。</p>
+<h2>核心方法：从规划到学习</h2>
+<p>Dreamer 沿用 PlaNet 的 RSSM 世界模型（循环确定性状态 + 30 维随机隐状态），但把行为的来源从“每步在线 CEM 规划”改成“在想象中训练策略”：从真实经验的状态出发，在隐空间里想象未来轨迹，用 λ-return（对不同步数的价值估计做指数加权平均）训练价值模型，再把价值梯度解析地反向传播穿过想象的状态与动作，更新动作模型。价值模型把想象视界之外的回报折现进来，让短视界的想象也能学到长视距行为。</p>
 
-<h2>怎么规划</h2>
-<p>学会模型之后，PlaNet 用交叉熵方法（CEM）在潜空间里搜索动作序列：采样一批候选动作，在模型里想象它们的结果，保留表现好的、再围绕它们重新采样，重复几轮后执行最好的第一步，然后重新规划。</p>
+<h2>为什么比 PlaNet 更好</h2>
+<p>PlaNet 每步都要在线采样优化动作序列，100 万步需 11 小时且没有记忆；Dreamer 把规划结果摊销进参数化策略，执行时一次前向即可，100 万步约 3 小时。价值模型还同时解决了 PlaNet 的短视问题：不学价值的变体随视界缩短性能明显下滑，而 Dreamer 对视界长度鲁棒。</p>
 
 <h2>实验与意义</h2>
-<p>在 DeepMind Control Suite 的任务上，PlaNet 的样本效率大幅领先当时的无模型方法，用远少得多的环境交互就能学会控制。它是后来 Dreamer 系列的直接前身：先在潜空间里学世界模型、再在模型里规划或学习策略，这条路线成了世界模型控制的主流。</p>
+<p>在 20 个 DeepMind Control Suite 视觉控制任务上，Dreamer 平均 823.39 分，只用 500 万环境步；最强的无模型基线 D4PG 是 786.32 分，却用了 1 亿步；同门 PlaNet 同样 500 万步，只有 332.97 分。优势集中在需要长视距信用分配的任务：Acrobot 摆起 365.26 对 3.21、Cartpole 稀疏摆起 812.22 对 0.64、Hopper 跳跃 368.97 对 0.37。反例是 Finger Spin：Dreamer 498.88 分，远低于 D4PG 的 985.70。表征消融还证明：像素重建在多数任务上最好，纯奖励预测不足以学会控制——表征学习与行为学习是正交的。</p>
 
 <h2>图</h2>
-<p>本篇精读附原论文图（图 2、图 3、图 9、图 10），包括 RSSM 结构与潜空间规划示意。</p>
+<p>本篇精读附原论文图（图 1 总览、图 3(b) 想象中学习行为、图 5 长期开环预测、图 2(d) Walker 观测面板），包括 RSSM 想象轨迹与价值梯度反向传播示意。</p>
 
 <div class="note">完整图解版（信息流 × 梯度流、实验可视化、思考题与参考答案）在 Muse 侧边栏的「Interactive World Model 论文精读」空间里，每天更新一篇。</div>
 </div>

@@ -40,33 +40,33 @@ footer a { color: #0969da; text-decoration: none; }
 
 <section id="briefing">
 <h2>📰 World Model 每日简报</h2>
-<p class="meta">最新一期 · 2026 年 11 月 16 日 · 12 篇论文 · 0 条正式发布</p>
+<p class="meta">最新一期 · 2026 年 11 月 17 日 · 11 篇论文 · 1 条正式发布</p>
 <ol>
-<li><b>LaST0.5</b>：给世界动作模型装一个“交互专家”，LIBERO 冲到 99.5%（arXiv:2611.14048）</li>
-<li><b>GPWM</b>：用三维粒子运动统一模拟六种物理世界，预测误差平均降 31%（arXiv:2611.08338）</li>
-<li><b>ActWorld-JEPA</b>：把 JEPA 世界模型接到驾驶决策上，NAVSIM 拿下 94.1 PDMS（arXiv:2611.16579）</li>
-<li><b>BirdDreams</b>：透视视频 + 鸟瞰视频一起生成，驾驶世界模型终于分得清“车动”还是“我动”（arXiv:2611.14815）</li>
-<li><b>3D World Simulator</b>：混合粒子-体素动力学，一次预报外观、几何与触觉，50 Hz 跑起来（arXiv:2611.04492）</li>
-<li><b>CoCode-World</b>：多人世界模型终于能“对上号”了，共享 3D 代理来协调双视角（arXiv:2611.15602）</li>
-<li><b>DexForesight</b>：把空间预见“藏进”灵巧策略里，部署时不用深度、不用 rollout 也能涨点（arXiv:2611.11166）</li>
-<li><b>打破驾驶世界模型的“幸存者偏差”</b>：只看安全结局的模型，撞车前还在想“没事”（arXiv:2611.11516）</li>
-<li><b>Rethinking Actions</b>：专家动作是连贯的，世界模型规划也该顺着这个连贯性搜（arXiv:2611.16645）</li>
-<li><b>OnlyAct</b>：别从零学动作了，V-JEPA 2 里本来就藏着动作信息（arXiv:2611.14420）</li>
-<li><b>PhysCapBench</b>：世界模型预训练先过“物理标注”这一关，1500 条视频的评测基准（arXiv:2611.16424）</li>
-<li><b>WanderBench</b>：视频世界模型能“逛”真实动态世界吗？八个模型没一个能记住回访地点（arXiv:2611.12557）</li>
+<li><b>华为云 CloudRobo-WM1.2</b>：首款昇腾原生具身世界模型发布并宣布开源，RoboTwin 2.0 与 LiberoPro 2.0 双榜第一</li>
+<li><b>驾驶世界模型只动相机、不动场景</b>：场景响应最多只有真实视频的三分之一（arXiv:2611.15260）</li>
+<li><b>WeatherDreamer</b>：从 18 个全球观测系统学地球世界模型，12 小时预报优于 NOAA GEFS（arXiv:2611.18393）</li>
+<li><b>WATO</b>：联合世界动作模型做可微轨迹优化，7 个视觉控制任务成功率 79.9%→91.7%（arXiv:2611.17626）</li>
+<li><b>HyLI</b>：参数化动作空间的潜想象，样本效率 2.4 倍、决策快 67 倍（arXiv:2611.15744）</li>
+<li><b>未来预测分数里有多少是真预测？</b>V-JEPA 2.1 的预测器只贡献 +0.291，V-JEPA 2 仅 +0.03（arXiv:2611.15082）</li>
+<li><b>A²WM</b>：动作仿射世界模型在线精修策略，每步只多 3.8 毫秒（arXiv:2611.15011）</li>
+<li><b>冻结视觉世界模型也能学会更好的目标代价</b>：DotWall 成功率 54%→98%（arXiv:2611.17529）</li>
+<li><b>想象越深，障碍物信息丢得越多</b>：后验–先验鸿沟让规划器对危险“一无所知”（arXiv:2611.14955）</li>
+<li><b>BAMOS</b>：主动搜物先管好“目标信念”，检测越不准越关键（arXiv:2611.15689）</li>
+<li><b>LASR</b>：一个离线指标，检验世界模型的潜变量里有没有动作信息（arXiv:2611.17775）</li>
+<li><b>Bind-WAM</b>：只在“拿不准”时才想象未来，语言–物体绑定不确定性说了算（arXiv:2611.15368）</li>
 </ol>
 <a class="more" href="https://muse.ai/s/world-model-xiang-xi-jian-bao-xjw6hz4xaxdxlxaj/0yz1dN9vq2AIDSmZ71OoqXtedu9Gbxvk1cDhRmKTq5g">进入完整简报 →</a>
 </section>
 
 <section id="papers">
 <h2>📄 Interactive World Model 论文精读</h2>
-<p class="meta">最新第 2 篇 · PlaNet · 2026 年 11 月 16 日</p>
+<p class="meta">最新第 3 篇 · Dreamer · 2026 年 11 月 17 日</p>
 <ul>
-<li><b>PlaNet</b>（Hafner et al., 2019）：从像素中学习潜空间动力学，在潜空间里规划。</li>
-<li>核心是循环状态空间模型 <b>RSSM</b>：确定性循环状态 + 随机潜状态，既能记住历史，又能表达不确定性。</li>
-<li>学会模型后，用 <b>CEM</b> 在潜空间里搜索动作序列，不用每次都和真实环境交互。</li>
-<li>在 DeepMind Control Suite 上，样本效率大幅领先当时的无模型方法。</li>
-<li>本篇精读附原论文图（图 2、图 3、图 9、图 10）。</li>
+<li><b>Dreamer</b>（Hafner et al., 2020）：在隐空间里想象中学行为，不再每步在线规划。</li>
+<li>沿用 PlaNet 的 <b>RSSM</b> 世界模型，用 λ-return 与解析价值梯度在想象轨迹上训练 actor-critic。</li>
+<li>20 个视觉控制任务平均 <b>823.39 分</b>，只用 500 万步，超过 D4PG（786.32 分，1 亿步）与 PlaNet（332.97 分）。</li>
+<li>每 100 万环境步约 3 小时，PlaNet 在线规划要 11 小时；价值模型让短视界想象也能学到长视距行为。</li>
+<li>本篇精读附原论文图（图 1、图 3(b)、图 5、图 2(d) Walker 面板）。</li>
 </ul>
 <a class="more" href="papers.html">进入完整精读 →</a>
 </section>
