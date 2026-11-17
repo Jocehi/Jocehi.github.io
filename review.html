@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日复盘 · Jocehi</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<canvas id="sakura"></canvas>
+<div class="wrap">
+<nav class="topnav"><b>Jocehi</b><a href="index.html">首页</a><a href="papers.html">论文精读</a><a href="rl.html">RL 精讲</a><a href="briefing.html">每日简报</a><a href="review.html">每日复盘</a><a href="diary.html">日记</a><a class="home" href="index.html">← 返回首页</a></nav>
+
+<h1>📝 每日复盘</h1>
+<p class="meta">每天花几分钟写下来：做了什么、做得好的、待改进的、明日的计划。内容只保存在你自己的浏览器里。</p>
+
+<div class="card form-card">
+  <h2 id="formTitle">写今日复盘</h2>
+  <label>日期<input type="date" id="rvDate"></label>
+  <label>今天做了什么<textarea id="rvDid" rows="3" placeholder="今天完成了什么、学到了什么……"></textarea></label>
+  <label>做得好的<textarea id="rvGood" rows="3"></textarea></label>
+  <label>待改进的<textarea id="rvBad" rows="3"></textarea></label>
+  <label>明日计划<textarea id="rvNext" rows="3"></textarea></label>
+  <div class="form-actions">
+    <button class="btn" id="rvSave">保存</button>
+    <button class="btn ghost" id="rvCancel" hidden>取消编辑</button>
+    <button class="btn ghost" id="rvExport">导出备份 (.md)</button>
+  </div>
+  <p class="form-tip" id="rvTip"></p>
+</div>
+
+<h2>往期复盘</h2>
+<div id="rvList"></div>
+<p class="empty" id="rvEmpty">还没有复盘，写下今天的第一条吧。</p>
+
+<footer>Jocehi 的每日复盘 · 只保存在你的浏览器本地</footer>
+</div>
+<script src="assets/effects.js"></script>
+<script src="assets/review.js"></script>
+</body>
+</html>

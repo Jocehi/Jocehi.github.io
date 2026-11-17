@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日记 · Jocehi</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<canvas id="sakura"></canvas>
+<div class="wrap">
+<nav class="topnav"><b>Jocehi</b><a href="index.html">首页</a><a href="papers.html">论文精读</a><a href="rl.html">RL 精讲</a><a href="briefing.html">每日简报</a><a href="review.html">每日复盘</a><a href="diary.html">日记</a><a class="home" href="index.html">← 返回首页</a></nav>
+
+<div class="lock" id="diaryLock">
+  <div class="lock-icon">🔒</div>
+  <h1>日记</h1>
+  <p class="meta">写给自己的话，输入密码才能打开</p>
+  <input type="password" id="diaryPw" placeholder="密码" autocomplete="off">
+  <button class="btn" id="diaryUnlock">打开日记</button>
+  <p class="form-tip" id="diaryErr"></p>
+</div>
+
+<div id="diaryApp" hidden>
+  <h1>🔒 日记</h1>
+  <p class="meta">内容只保存在你自己的浏览器里。换个设备或浏览器是看不到的，记得点导出备份。</p>
+
+  <div class="card form-card">
+    <h2 id="dyFormTitle">写日记</h2>
+    <label>日期<input type="date" id="dyDate"></label>
+    <label>标题（可不填）<input type="text" id="dyTitle" placeholder="今天的一句话……"></label>
+    <label>内容<textarea id="dyBody" rows="8" placeholder="今天发生了什么、想到了什么……"></textarea></label>
+    <div class="form-actions">
+      <button class="btn" id="dySave">保存</button>
+      <button class="btn ghost" id="dyCancel" hidden>取消编辑</button>
+      <button class="btn ghost" id="dyExport">导出备份 (.md)</button>
+      <button class="btn ghost" id="dyLock">🔒 锁定</button>
+    </div>
+    <p class="form-tip" id="dyTip"></p>
+  </div>
+
+  <h2>往期日记</h2>
+  <div id="dyList"></div>
+  <p class="empty" id="dyEmpty">还没有日记，写下今天的第一篇吧。</p>
+</div>
+
+<footer>Jocehi 的日记 · 只保存在你的浏览器本地</footer>
+</div>
+<script src="assets/effects.js"></script>
+<script src="assets/diary.js"></script>
+</body>
+</html>
