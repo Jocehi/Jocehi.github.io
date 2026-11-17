@@ -167,46 +167,48 @@ footer{text-align:center;color:var(--faint);font-size:.85rem;margin-top:2.5rem}
   .hero-full h1{font-size:2.6rem}
 }
 
-/* ---- 音乐播放器：网易云风格底部通栏 ---- */
-.player{position:fixed;left:0;right:0;bottom:0;z-index:60;
-  display:flex;align-items:center;gap:1rem;height:60px;padding:0 1rem;
-  background:#fff;border-top:1px solid #e6e6e6;box-shadow:0 -2px 12px rgba(0,0,0,.05)}
-.player-cover{flex:0 0 auto;width:40px;height:40px;border-radius:4px;background:#ec4141;color:#fff;
-  display:flex;align-items:center;justify-content:center;font-size:1.2rem}
-.player-main{flex:0 0 auto;width:180px;min-width:0}
-.player-title{font-size:.9rem;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.player-artist{font-size:.75rem;color:#999;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.player-controls{flex:0 0 auto;display:flex;align-items:center;gap:.4rem}
-.player-controls button{border:0;background:none;cursor:pointer;color:#333;font-size:1rem;padding:.3rem}
-.player-controls button:hover{color:#ec4141}
-.player-play{width:36px!important;height:36px;border:1px solid #d9d9d9!important;border-radius:50%!important;
-  background:#fff!important;color:#333!important;font-size:.9rem!important;
-  display:flex;align-items:center;justify-content:center}
-.player-play:hover{border-color:#ec4141!important;color:#ec4141!important}
-.player-progress-wrap{flex:1;display:flex;align-items:center;gap:.6rem;min-width:0}
-.player-progress-wrap span{font-size:.75rem;color:#999;flex:0 0 auto}
-.player-progress{flex:1;height:4px;border-radius:99px;background:#e6e6e6;cursor:pointer}
-.player-bar{height:100%;width:0;border-radius:99px;background:#ec4141;position:relative}
-.player-bar::after{content:"";position:absolute;right:-5px;top:50%;transform:translateY(-50%);
-  width:10px;height:10px;border-radius:50%;background:#ec4141}
-#playerVol{flex:0 0 auto;width:80px;accent-color:#ec4141;cursor:pointer}
-.player-close{flex:0 0 auto;border:0;background:none;cursor:pointer;color:#999;font-size:1.2rem;padding:.2rem .3rem}
-.player-close:hover{color:#333}
+/* ---- 卡片图片完整显示：整图居中 + 同图模糊铺底 ---- */
+.card.split .card-img.contain{background-color:#f3e8d5}
+.card.split .card-img.contain::before{content:"";position:absolute;inset:0;background-image:inherit;background-size:cover;background-position:center;filter:blur(20px) brightness(1.06);transform:scale(1.15)}
+.card.split .card-img.contain img{object-fit:contain;z-index:1}
+
+/* ---- 音乐播放器：底部悬浮短条（圆角） ---- */
+.player{position:fixed;left:50%;bottom:1rem;transform:translateX(-50%);z-index:60;
+  display:flex;align-items:center;gap:.7rem;width:min(560px,calc(100vw - 2rem));
+  background:rgba(255,253,248,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border:0;border-radius:18px;padding:.6rem .8rem;
+  box-shadow:0 12px 32px rgba(188,148,96,.28)}
+.player-note{flex:0 0 auto;width:38px;height:38px;border-radius:50%;background:#e0528a;color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:1.15rem}
+.player-main{flex:1;min-width:0}
+.player-title{font-size:.92rem;font-weight:700;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player-progress{height:6px;border-radius:99px;background:#efe3d0;margin:.35rem 0 .2rem;cursor:pointer}
+.player-bar{height:100%;width:0;border-radius:99px;background:#e0528a}
+.player-times{display:flex;justify-content:space-between;font-size:.72rem;color:var(--faint)}
+.player-controls{display:flex;align-items:center;gap:.15rem}
+.player-controls button{border:0;background:none;cursor:pointer;color:#6b5560;font-size:1rem;padding:.3rem}
+.player-controls button:hover{color:#c2437c}
+.player-play{width:38px;height:38px;border-radius:50%!important;
+  background:#e0528a!important;color:#fff!important;
+  font-size:.95rem!important;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 12px rgba(224,82,138,.35)}
+#playerVol{width:64px;accent-color:#e0528a;cursor:pointer}
+.player-close{border:0;background:none;cursor:pointer;color:var(--faint);font-size:1.2rem;padding:.2rem .3rem}
+.player-close:hover{color:var(--ink)}
 .player-fab{position:fixed;right:1rem;bottom:1rem;z-index:60;width:48px;height:48px;border-radius:50%;
-  border:2px solid rgba(255,255,255,.9);background:#ec4141;
-  color:#fff;font-size:1.3rem;cursor:pointer;box-shadow:0 8px 20px rgba(236,65,65,.4)}
+  border:2px solid rgba(255,255,255,.9);background:#e0528a;
+  color:#fff;font-size:1.3rem;cursor:pointer;box-shadow:0 8px 20px rgba(224,82,138,.4)}
 /* 最小化修复：.player 自带 display:flex 会盖掉 hidden 的默认隐藏，必须显式写出来 */
 .player[hidden],.player-fab[hidden]{display:none}
-body.has-player{padding-bottom:4.5rem}
+body.has-player{padding-bottom:6rem}
 .player-fab.playing{animation:fabPulse 1.8s ease-in-out infinite}
-@keyframes fabPulse{0%,100%{box-shadow:0 8px 20px rgba(236,65,65,.4)}50%{box-shadow:0 8px 26px rgba(236,65,65,.75)}}
+@keyframes fabPulse{0%,100%{box-shadow:0 8px 20px rgba(224,82,138,.4)}50%{box-shadow:0 8px 26px rgba(224,82,138,.75)}}
 @media (max-width:640px){
-  .player{gap:.6rem;padding:0 .7rem}
-  .player-main{width:110px}
-  .player-artist{display:none}
+  .player{gap:.5rem;padding:.55rem .6rem}
   #playerVol{display:none}
-  .player-cover{width:34px;height:34px;font-size:1rem}
-  .player-play{width:32px!important;height:32px!important}
+  .player-note{width:32px;height:32px;font-size:1rem}
+  .player-play{width:34px;height:34px}
 }
 
 /* ---- 每日复盘 / 日记 ---- */
