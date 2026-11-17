@@ -17,6 +17,10 @@
 <p class="meta">Monte Carlo Methods · RL 算法每日精讲 · 2026-11-17 · 基础理论 · 入门 · 约 30 分钟</p>
 <p class="meta">前置知识：MDP 与 Bellman 方程</p>
 <div class="thesis">不用模型，用真实回报的平均值估计价值。</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson3-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · Monte Carlo 方法 · 4 分 28 秒</p>
+</div>
 <details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
 <p>动态规划需要已知环境的转移概率与奖励函数，但在许多真实任务中模型未知或难以建模。蒙特卡洛方法要解决的正是在模型未知的情况下，仅通过与环境交互得到的完整回合经验来估计策略的价值并改进策略。它适用于能够反复生成完整回合的情节式任务，例如棋类对弈、纸牌游戏、模拟器中的导航任务或机器人单次抓取试验，回合必须有明确的终止状态。输入是智能体与环境交互产生的轨迹，包括每一步的状态 $s$、动作 $a$ 与奖励 $r$，以及折扣因子 $\gamma$；输出是策略的状态价值 $V^\pi(s)$、动作价值 $Q^\pi(s, a)$ 或改进后的策略 $\pi$。蒙特卡洛方法不依赖单步自举，而是等到回合结束，用从时刻 $t$ 起的实际折扣回报 $G_t$ 作为价值的无偏样本，再对多次采样的 $G_t$ 取平均，从而得到对 $V^\pi(s)$ 或 $Q^\pi(s, a)$ 的估计。</p>
 </div></details>
