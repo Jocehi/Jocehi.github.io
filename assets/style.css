@@ -69,8 +69,8 @@ li{margin:.3rem 0}
   border-radius:999px;padding:.1rem .8rem;font-size:.8rem;font-weight:700;margin-bottom:.5rem}
 /* 首页卡片：左图右文 */
 .card.split{display:flex;padding:0;overflow:hidden}
-.card.split .card-img{flex:0 0 44%;min-height:100%}
-.card.split .card-img img{display:block;width:100%;height:100%;object-fit:cover}
+.card.split .card-img{flex:0 0 40%;position:relative}
+.card.split .card-img img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}
 .card.split .card-body{flex:1;min-width:0;padding:1.4rem 1.5rem}
 /* 论文 / 课程正文 */
 .thesis{background:linear-gradient(90deg,#fff0f5,#f3efff);border-left:4px solid var(--pink);
@@ -174,26 +174,26 @@ footer{text-align:center;color:var(--faint);font-size:.85rem;margin-top:2.5rem}
   border:0;border-radius:18px;padding:.6rem .8rem;
   box-shadow:0 12px 32px rgba(188,148,96,.28)}
 .player-note{flex:0 0 auto;width:38px;height:38px;border-radius:50%;
-  background:linear-gradient(135deg,#f27ba7,#b388f5);color:#fff;
+  background:#e0528a;color:#fff;
   display:flex;align-items:center;justify-content:center;font-size:1.15rem}
 .player-main{flex:1;min-width:0}
 .player-title{font-size:.92rem;font-weight:700;color:var(--ink);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .player-progress{height:6px;border-radius:99px;background:#efe3d0;margin:.35rem 0 .2rem;cursor:pointer}
-.player-bar{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#f27ba7,#b388f5)}
+.player-bar{height:100%;width:0;border-radius:99px;background:#e0528a}
 .player-times{display:flex;justify-content:space-between;font-size:.72rem;color:var(--faint)}
 .player-controls{display:flex;align-items:center;gap:.15rem}
 .player-controls button{border:0;background:none;cursor:pointer;color:#6b5560;font-size:1rem;padding:.3rem}
 .player-controls button:hover{color:#c2437c}
 .player-play{width:38px;height:38px;border-radius:50%!important;
-  background:linear-gradient(135deg,#f27ba7,#b388f5)!important;color:#fff!important;
+  background:#e0528a!important;color:#fff!important;
   font-size:.95rem!important;display:flex;align-items:center;justify-content:center;
   box-shadow:0 4px 12px rgba(224,82,138,.35)}
 #playerVol{width:64px;accent-color:#e0528a;cursor:pointer}
 .player-close{border:0;background:none;cursor:pointer;color:var(--faint);font-size:1.2rem;padding:.2rem .3rem}
 .player-close:hover{color:var(--ink)}
 .player-fab{position:fixed;right:1rem;bottom:1rem;z-index:60;width:48px;height:48px;border-radius:50%;
-  border:2px solid rgba(255,255,255,.9);background:linear-gradient(135deg,#f27ba7,#b388f5);
+  border:2px solid rgba(255,255,255,.9);background:#e0528a;
   color:#fff;font-size:1.3rem;cursor:pointer;box-shadow:0 8px 20px rgba(224,82,138,.4)}
 @media (max-width:640px){
   .player{gap:.5rem;padding:.55rem .6rem}
@@ -201,3 +201,9 @@ footer{text-align:center;color:var(--faint);font-size:.85rem;margin-top:2.5rem}
   .player-note{width:32px;height:32px;font-size:1rem}
   .player-play{width:34px;height:34px}
 }
+
+/* 播放器最小化修复：.player 自带 display:flex 会盖掉 hidden 的默认隐藏，必须显式写出来 */
+.player[hidden],.player-fab[hidden]{display:none}
+body.has-player{padding-bottom:6rem}
+.player-fab.playing{animation:fabPulse 1.8s ease-in-out infinite}
+@keyframes fabPulse{0%,100%{box-shadow:0 8px 20px rgba(224,82,138,.4)}50%{box-shadow:0 8px 26px rgba(224,82,138,.75)}}

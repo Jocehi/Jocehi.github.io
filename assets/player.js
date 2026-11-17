@@ -1,7 +1,9 @@
 /* 首页音乐播放器 — 轻量、无依赖
    加歌方法：在下面的 PLAYLIST 里加一行 {src:'assets/music/文件名', title:'歌名'}，
-   并把音频文件传到 assets/music/ 文件夹。播放器会自动出现上一首/下一首。 */
-(function () {
+   并把音频文件传到 assets/music/ 文件夹。播放器会自动出现上一首/下一首。
+   注意：脚本在播放器标记之前加载，所以必须等 DOM 解析完再初始化，否则
+   getElementById 拿不到 <audio>，播放按钮会是死的。 */
+document.addEventListener('DOMContentLoaded', function () {
   'use strict';
   var PLAYLIST = [
     { src: 'assets/music/track-01.m4a', title: 'OST Playlist · 01' }
@@ -38,6 +40,7 @@
   function setPlayingUI() {
     playBtn.textContent = audio.paused ? '▶' : '❚❚';
     playBtn.setAttribute('aria-label', audio.paused ? '播放' : '暂停');
+    fab.classList.toggle('playing', !audio.paused);
   }
   playBtn.addEventListener('click', function () {
     if (audio.paused) audio.play().catch(function () {});
@@ -60,7 +63,7 @@
   vol.addEventListener('input', function () { audio.volume = parseFloat(vol.value); });
   audio.volume = parseFloat(vol.value);
   closeBtn.addEventListener('click', function () {
-    audio.pause();
+    /* 最小化：只收起播放条，音乐继续放，右下角留一个音符按钮点回来 */
     player.hidden = true;
     fab.hidden = false;
   });
@@ -69,4 +72,4 @@
     fab.hidden = true;
   });
   load(0, false);
-})();
+});
