@@ -177,7 +177,7 @@ def step(s, a):
     return ns, 0.0, False
 
 def gen_episode(pi):
-    """按策略 π 采样一条完整回合：MC 必须等回合结束才有 G_t。"""
+    """按策略 $π$ 采样一条完整回合：MC 必须等回合结束才有 $G_t$。"""
     s, traj = (0, 0), []
     for _ in range(100):  # 防死循环：最长 100 步截断
         a = np.random.choice(4, p=pi[s])
@@ -189,21 +189,21 @@ def gen_episode(pi):
     return traj
 
 def first_visit_mc(pi, episodes=2000):
-    """首次访问 MC 预测：只用每回合第一次出现的 G_t 更新，无偏。"""
+    """首次访问 MC 预测：只用每回合第一次出现的 $G_t$ 更新，无偏。"""
     V = np.zeros((N, N))
     returns = {(r, c): [] for r in range(N) for c in range(N)}
     for _ in range(episodes):
         traj, G, seen = gen_episode(pi), 0.0, set()
-        for s, a, r in reversed(traj):  # 倒序递推 G = γG + r
+        for s, a, r in reversed(traj):  # 倒序递推 $G = γG + r$
             G = GAMMA * G + r
             if s not in seen:  # 首次访问才更新，避免同一回合重复计数
                 seen.add(s)
                 returns[s].append(G)
-                V[s] = np.mean(returns[s])  # 大数定律：均值收敛到 V^π(s)
+                V[s] = np.mean(returns[s])  # 大数定律：均值收敛到 $V^π(s)$
     return V
 
 def mc_control(episodes=EPISODES):
-    """MC 控制：评估 Q(s,a) 后用 ε-贪心改进策略，探索与利用兼顾。"""
+    """MC 控制：评估 $Q(s,a)$ 后用 $ε$-贪心改进策略，探索与利用兼顾。"""
     Q = np.zeros((N, N, 4))
     returns = {}
     pi = np.full((N, N, 4), 0.25)  # 均匀随机初始策略，保证充分探索
@@ -216,18 +216,18 @@ def mc_control(episodes=EPISODES):
                 returns.setdefault((s, a), []).append(G)
                 Q[s][a] = np.mean(returns[(s, a)])
                 best = np.argmax(Q[s])  # 贪心动作
-                pi[s] = EPS / 4  # 非贪心动作保留 ε/|A| 概率
+                pi[s] = EPS / 4  # 非贪心动作保留 $ε/|A|$ 概率
                 pi[s][best] = 1 - EPS + EPS / 4  # 贪心动作占主导但仍探索
     return Q, pi
 
 if __name__ == "__main__":
     random_pi = np.full((N, N, 4), 0.25)
-    print("随机策略的 V(s)（首次访问 MC）：")
+    print("随机策略的 $V(s)$（首次访问 MC）：")
     print(np.round(first_visit_mc(random_pi), 2))
     Q, pi = mc_control()
     print("最优策略（箭头：0上 1下 2左 3右）：")
     print(np.argmax(pi, axis=2))
-    print("最优 Q 在起点处：", np.round(Q[0, 0], 2))
+    print("最优 $Q$ 在起点处：", np.round(Q[0, 0], 2))
 </code></pre>
 <h2>⑨ 代码讲解</h2>
 <ol>

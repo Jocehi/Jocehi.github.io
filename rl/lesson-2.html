@@ -159,7 +159,7 @@
 <pre class="code"><button class="copybtn">复制代码</button><code>import numpy as np
 # 4x4 GridWorld：目标 15 得 +10，陷阱 6 得 -10，其余每步 -1，确定性转移
 ROWS, COLS, N_S, N_A = 4, 4, 16, 4
-GAMMA, THETA = 0.9, 1e-4  # gamma 为折扣因子，theta 为收敛阈值
+GAMMA, THETA = 0.9, 1e-4  # $\gamma$ 为折扣因子，$\theta$ 为收敛阈值
 TERMINALS = {6, 15}
 ARROWS = np.array(["↑", "→", "↓", "←"])  # 动作：0 上、1 右、2 下、3 左
 
@@ -179,7 +179,7 @@ def q_value(V, s, a):
     return r + GAMMA * V[ns]
 
 def policy_evaluation(policy, V):
-    """策略评估：固定 pi，反复用贝尔曼期望方程更新 V^pi(s) 直至收敛。"""
+    """策略评估：固定 $\pi$，反复用贝尔曼期望方程更新 $V^\pi(s)$ 直至收敛。"""
     while True:
         delta, new_V = 0.0, V.copy()  # 同步更新：先算全部新值再替换，避免新旧混杂
         for s in range(N_S):
@@ -188,11 +188,11 @@ def policy_evaluation(policy, V):
                 new_V[s] = r + GAMMA * V[ns]
                 delta = max(delta, abs(new_V[s] - V[s]))
         V = new_V
-        if delta &lt; THETA:  # 最大变化量小于 theta 即认为已收敛
+        if delta &lt; THETA:  # 最大变化量小于 $\theta$ 即认为已收敛
             return V
 
 def policy_iteration():
-    """策略迭代：评估与改进交替进行，策略不再变化时即为最优策略 pi*。"""
+    """策略迭代：评估与改进交替进行，策略不再变化时即为最优策略 $\pi^*$。"""
     policy, V = np.zeros(N_S, dtype=int), np.zeros(N_S)  # 任意初始化策略与价值
     for i in range(100):
         V = policy_evaluation(policy, V)
@@ -208,7 +208,7 @@ def policy_iteration():
     return policy, V
 
 def value_iteration():
-    """值迭代：直接对最优价值 V*(s) 用贝尔曼最优方程做 max_a 更新。"""
+    """值迭代：直接对最优价值 $V^*(s)$ 用贝尔曼最优方程做 $\max_a$ 更新。"""
     V = np.zeros(N_S)
     for i in range(1000):
         delta, new_V = 0.0, V.copy()
@@ -222,7 +222,7 @@ def value_iteration():
             break
     policy = np.array([int(np.argmax([q_value(V, s, a) for a in range(N_A)]))
                        if s not in TERMINALS else 0 for s in range(N_S)])
-    return policy, V  # 由收敛后的 V(s) 导出贪心策略
+    return policy, V  # 由收敛后的 $V(s)$ 导出贪心策略
 
 def show(title, policy, V):
     """打印价值表与策略表，直观检查最优策略是否绕开陷阱、走向目标。"""
