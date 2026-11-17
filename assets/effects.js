@@ -1,0 +1,167 @@
+/* 樱花飘落 + 打字机效果 — 轻量、无依赖 */
+(function () {
+  'use strict';
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- 樱花 ---- */
+  function sakura() {
+    if (reduceMotion) return;
+    var canvas = document.getElementById('sakura');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var W, H, petals = [], COUNT = 26;
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+    function makePetal(init) {
+      return {
+        x: Math.random() * W,
+        y: init ? Math.random() * H : -20,
+        size: 6 + Math.random() * 8,
+        speedY: 0.5 + Math.random() * 1.1,
+        sway: Math.random() * 1.2 + 0.4,
+        phase: Math.random() * Math.PI * 2,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.02,
+        hue: 335 + Math.random() * 15,
+        alpha: 0.45 + Math.random() * 0.4
+      };
+    }
+    for (var i = 0; i < COUNT; i++) petals.push(makePetal(true));
+    var running = true;
+    document.addEventListener('visibilitychange', function () {
+      running = !document.hidden;
+      if (running) requestAnimationFrame(tick);
+    });
+    function drawPetal(p) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = 'hsla(' + p.hue + ', 85%, 78%, ' + p.alpha + ')';
+      ctx.beginPath();
+      // 花瓣：两瓣弧线拼成的近似形状
+      ctx.moveTo(0, -p.size / 2);
+      ctx.bezierCurveTo(p.size / 2, -p.size / 2, p.size / 2, p.size / 2, 0, p.size / 2);
+      ctx.bezierCurveTo(-p.size / 2, p.size / 2, -p.size / 2, -p.size / 2, 0, -p.size / 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    function tick() {
+      if (!running) return;
+      ctx.clearRect(0, 0, W, H);
+      for (var i = 0; i < petals.length; i++) {
+        var p = petals[i];
+        p.phase += 0.012;
+        p.y += p.speedY;
+        p.x += Math.sin(p.phase) * p.sway * 0.4;
+        p.rot += p.rotSpeed;
+        if (p.y > H + 24) petals[i] = makePetal(false);
+        drawPetal(p);
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* ---- 打字机 ---- */
+  function typewriter() {
+    var el = document.querySelector('[data-typewriter]');
+    if (!el) return;
+    var lines = [];
+    try { lines = JSON.parse(el.getAttribute('data-typewriter')); } catch (e) { lines = [el.textContent]; }
+    if (!lines.length) return;
+    if (reduceMotion) { el.textContent = lines[0]; return; }
+    var caret = document.createElement('span');
+    caret.className = 'caret';
+    var text = document.createElement('span');
+    el.textContent = '';
+    el.appendChild(text);
+    el.appendChild(caret);
+    var li = 0, ci = 0, deleting = false;
+    function step() {
+      var line = lines[li];
+      if (!deleting) {
+        ci++;
+        text.textContent = line.slice(0, ci);
+        if (ci >= line.length) { deleting = true; setTimeout(step, 2200); return; }
+        setTimeout(step, 55 + Math.random() * 60);
+      } else {
+        ci -= 5;
+        if (ci <= 0) {
+          ci = 0; text.textContent = '';
+          deleting = false; li = (li + 1) % lines.length;
+          setTimeout(step, 450); return;
+        }
+        text.textContent = line.slice(0, ci);
+        setTimeout(step, 22);
+      }
+    }
+    setTimeout(step, 500);
+  }
+
+  /* ---- 代码复制按钮 ---- */
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('.copybtn');
+    if (!btn) return;
+    var pre = btn.parentElement;
+    var code = pre.querySelector('code');
+    var txt = code ? code.textContent : pre.textContent;
+    function done(ok) {
+      btn.textContent = ok ? '已复制 ✓' : '复制失败';
+      setTimeout(function () { btn.textContent = '复制代码'; }, 1600);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function () { done(true); }, function () { done(false); });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      try { done(document.execCommand('copy')); } catch (err) { done(false); }
+      document.body.removeChild(ta);
+    }
+  });
+
+  sakura();
+  typewriter();
+})();
+
+  /* ---- 滚动淡入上浮 + 第一屏轻微视差 ---- */
+  (function () {
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var reveals = document.querySelectorAll('.reveal');
+    if (!reveals.length) return;
+    if (reduceMotion || !('IntersectionObserver' in window)) {
+      reveals.forEach(function (el) { el.classList.add('visible'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    reveals.forEach(function (el) { io.observe(el); });
+
+    // 第一屏轻微视差：下滑时 hero 内容缓慢上移并淡出
+    var heroInner = document.querySelector('.hero-inner');
+    var hero = document.querySelector('.hero-full');
+    if (heroInner && hero) {
+      var ticking = false;
+      window.addEventListener('scroll', function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () {
+          var y = window.scrollY || 0;
+          if (y < window.innerHeight) {
+            heroInner.style.transform = 'translateY(' + (y * 0.22) + 'px)';
+            heroInner.style.opacity = String(Math.max(0, 1 - y / (window.innerHeight * 0.85)));
+          }
+          ticking = false;
+        });
+      }, { passive: true });
+    }
+  })();
