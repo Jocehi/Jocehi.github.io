@@ -4,23 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>论文精读 · Jocehi 的论文精读</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/space-papers.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(','right':'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
 </head>
 <body>
-<canvas id="sakura"></canvas>
 <div class="wrap">
 <nav class="topnav"><b>Jocehi</b><a href="index.html">首页</a><a href="papers.html">论文精读</a><a href="rl.html">RL 精讲</a><a href="briefing.html">每日简报</a><a class="home" href="index.html">← 返回首页</a></nav>
-
+<header class="space-header"><p class="eyebrow">每日精读 · INTERACTIVE WORLD MODELS</p><nav class="day-pills"><a href="papers/world-models.html">Day 1 · World Models</a><a href="papers/planet.html">Day 2 · PlaNet</a><a class="active" href="papers/dreamer.html">Day 3 · Dreamer</a></nav></header>
+<div class="layout"><main class="article">
 <h1>论文精读</h1>
 <p class="meta">Interactive World Model 系列 · 每天精读一篇经典论文</p>
-<div class="card latest"><span class="badge">最新</span><br><h2><a href="papers/dreamer.html">Dream to Control: Learning Behaviors by Latent Imagination</a></h2><p class="meta">第 3 篇 · 2026 年 11 月 17 日 · Danijar Hafner, Timothy Lillicrap, Jimmy Ba, Mohammad Norouzi，2020 年 · arXiv:1912.01603</p><p>Dreamer 证明：只要在学到的紧凑隐空间里同时训练一个动作模型（actor）和一个价值模型（critic），并把价值的解析梯度沿着想象轨迹反向传播穿过学到的动力学，就能仅凭像素输入、以远少于无模型方法的数据学会长视距连续控制行为。</p></div>
-<div class="card"><h2><a href="papers/planet.html">Learning Latent Dynamics for Planning from Pixels</a></h2><p class="meta">第 2 篇 · 2026 年 11 月 16 日 · Danijar Hafner, Timothy Lillicrap, Ian Fischer, Ruben Villegas, David Ha, Honglak Lee, James Davidson，2019 年 · arXiv:1811.04551</p><p>只从像素中学习一个确定性与随机性兼备的隐空间动力学模型，就能在隐空间里通过快速在线规划解决此前只有无模型方法才能解决的复杂连续控制任务，且样本效率高出两个数量级。</p></div>
-<div class="card"><h2><a href="papers/world-models.html">World Models</a></h2><p class="meta">第 1 篇 · 2026 年 11 月 15 日 · David Ha, Jürgen Schmidhuber，2018 年 · arXiv:1803.10122</p><p>智能体可以先无监督地学会一个压缩并预测环境的生成式世界模型，再让一个极小的控制器站在这个模型的特征之上行动，甚至完全在模型生成的梦境中训练策略并迁移回真实环境。</p></div>
+<div class="paper-card"><span class="badge">最新</span><h2><a href="papers/dreamer.html">Dream to Control: Learning Behaviors by Latent Imagination</a></h2><p class="meta">第 3 篇 · 2026 年 11 月 17 日 · Danijar Hafner, Timothy Lillicrap, Jimmy Ba, Mohammad Norouzi，2020 年 · arXiv:1912.01603</p><p>Dreamer 证明：只要在学到的紧凑隐空间里同时训练一个动作模型（actor）和一个价值模型（critic），并把价值的解析梯度沿着想象轨迹反向传播穿过学到的动力学，就能仅凭像素输入、以远少于无模型方法的数据学会长视距连续控制行为。</p></div>
+<div class="paper-card"><h2><a href="papers/planet.html">Learning Latent Dynamics for Planning from Pixels</a></h2><p class="meta">第 2 篇 · 2026 年 11 月 16 日 · Danijar Hafner, Timothy Lillicrap, Ian Fischer, Ruben Villegas, David Ha, Honglak Lee, James Davidson，2019 年 · arXiv:1811.04551</p><p>只从像素中学习一个确定性与随机性兼备的隐空间动力学模型，就能在隐空间里通过快速在线规划解决此前只有无模型方法才能解决的复杂连续控制任务，且样本效率高出两个数量级。</p></div>
+<div class="paper-card"><h2><a href="papers/world-models.html">World Models</a></h2><p class="meta">第 1 篇 · 2026 年 11 月 15 日 · David Ha, Jürgen Schmidhuber，2018 年 · arXiv:1803.10122</p><p>智能体可以先无监督地学会一个压缩并预测环境的生成式世界模型，再让一个极小的控制器站在这个模型的特征之上行动，甚至完全在模型生成的梦境中训练策略并迁移回真实环境。</p></div>
 <footer>Jocehi 的论文精读 · Interactive World Model 系列</footer>
+</main><aside class="sidebar"><h3>全部精读</h3><ol><li><a href="papers/world-models.html"><span class="daynum">Day 1</span>World Models</a></li><li><a href="papers/planet.html"><span class="daynum">Day 2</span>Learning Latent Dynamics for Planning from Pixels</a></li><li><a class="active" href="papers/dreamer.html"><span class="daynum">Day 3</span>Dream to Control: Learning Behaviors by Latent Imagination</a></li></ol></aside></div>
 </div>
-<script src="assets/effects.js"></script>
 </body>
 </html>
