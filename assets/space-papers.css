@@ -1,0 +1,187 @@
+/* ============================================================
+   论文精读 · 空间样式复刻
+   对应 Muse 空间 interactive-world-model-lun-wen-jing-du 的呈现样式。
+   仅供 papers/*.html 与 papers.html 使用，不影响首页。
+   ============================================================ */
+:root{
+  --bg:#faf9f6;
+  --surface:#fffefa;
+  --text:#1c1a17;
+  --dim:#6f6a61;
+  --border:#e3ded2;
+  --accent:#c2410c;
+  --accent2:#0f766e;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:"Source Serif 4","Songti SC","Noto Serif SC",Georgia,serif;
+  font-size:16px;
+  line-height:1.75;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:64rem;margin:0 auto;padding:0 1.25rem 4rem}
+#sakura{display:none}
+
+/* ---- 顶栏 ---- */
+.topnav{display:flex;align-items:baseline;gap:1.1rem;flex-wrap:wrap;
+  padding:1rem 0;border-bottom:1px solid var(--border);font-size:.92rem}
+.topnav b{font-size:1.05rem;color:var(--text)}
+.topnav a{color:var(--dim)}
+.topnav a:hover{color:var(--accent);text-decoration:none}
+.topnav .home{margin-left:auto}
+
+/* ---- 空间页眉：眉题 + 日 pills + 2px 底边 ---- */
+.space-header{border-bottom:2px solid var(--text);padding:1.3rem 0 1rem;margin-bottom:1.6rem}
+.eyebrow{color:var(--accent);font-size:.8rem;font-weight:700;letter-spacing:.14em;
+  margin:0 0 .7rem}
+.day-pills{display:flex;gap:.5rem;flex-wrap:wrap}
+.day-pills a{display:inline-block;padding:.32rem .95rem;border:1px solid var(--border);
+  border-radius:999px;font-size:.86rem;color:var(--text);background:var(--surface)}
+.day-pills a:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+.day-pills a.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+
+/* ---- 正文 + 右栏 1fr + 240px ---- */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:2.5rem;align-items:start}
+.article{min-width:0;counter-reset:sec}
+.sidebar{position:sticky;top:1rem}
+.sidebar h3{font-size:.82rem;letter-spacing:.1em;color:var(--dim);
+  border-bottom:1px solid var(--border);padding-bottom:.5rem;margin:0 0 .4rem}
+.sidebar ol{list-style:none;padding:0;margin:0}
+.sidebar li{margin:.65rem 0;line-height:1.5}
+.sidebar a{color:var(--text);font-size:.92rem}
+.sidebar a:hover{color:var(--accent);text-decoration:none}
+.sidebar a.active{color:var(--accent);font-weight:700}
+.sidebar .daynum{color:var(--accent);font-weight:700;margin-right:.45rem}
+
+/* ---- 文章头：meta / h1 / 作者 / 操作行 / 核心论点 ---- */
+.article .meta{color:var(--dim);font-size:.9rem;line-height:1.7;margin:.4rem 0}
+.article h1{font-size:2.25rem;line-height:1.25;font-weight:700;margin:.6rem 0 .4rem}
+.actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:1.05rem 0}
+.actions button{font-family:inherit;font-size:.9rem;border-radius:8px;
+  padding:.45rem 1rem;cursor:pointer;line-height:1.4}
+.btn-done{background:var(--accent2);color:#fff;border:1px solid var(--accent2)}
+.btn-done.done{background:var(--surface);color:var(--accent2)}
+.btn-bookmark{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn-bookmark.on{border-color:var(--accent);color:var(--accent);font-weight:700}
+.actions a{font-size:.9rem}
+.thesis{font-size:1.25rem;font-weight:600;line-height:1.6;margin:1.3rem 0}
+.thesis .thesis-label{display:block;color:var(--accent);font-size:.82rem;
+  font-weight:700;letter-spacing:.1em;margin-bottom:.4rem}
+
+/* ---- 摘要折叠 ---- */
+details.abstract{border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--surface);padding:.85rem 1.05rem;margin:1.1rem 0}
+details.abstract summary{cursor:pointer;font-weight:700;list-style:none;user-select:none}
+details.abstract summary::-webkit-details-marker{display:none}
+details.abstract summary::after{content:" +";color:var(--dim)}
+details.abstract[open ] summary::after{content:" \2212"}
+details.abstract p{font-size:.93rem;line-height:1.85;margin:.7rem 0 0}
+
+/* ---- 信息流：5 步静态阶梯 ---- */
+.flow5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.55rem;margin:1.3rem 0}
+.flow5 .fstep{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:.7rem .65rem;position:relative}
+.flow5 .fstep .n{color:var(--accent);font-weight:700;font-size:.8rem}
+.flow5 .fstep h5{margin:.25rem 0 .15rem;font-size:.93rem;line-height:1.45}
+.flow5 .fstep p{margin:0;font-size:.82rem;line-height:1.55;color:var(--dim)}
+.flow5 .fstep:not(:last-child)::after{content:"\2192";position:absolute;
+  right:-.62rem;top:50%;transform:translateY(-50%);color:var(--dim);z-index:1}
+
+/* ---- 编号小节：h2 带强调色序号，2px 顶边；正文行距 1.9 ---- */
+.article h2{font-size:1.25rem;font-weight:600;line-height:1.5;
+  margin-top:2.5rem;padding-top:1.25rem;border-top:2px solid var(--text)}
+.article h2.sec-num{counter-increment:sec}
+.article h2.sec-num::before{content:counter(sec,decimal-leading-zero) ". ";
+  color:var(--accent)}
+.article p{line-height:1.9}
+.article .meta,.article .actions,.article .thesis{line-height:1.6}
+.article ul{list-style:none;padding:0;margin:.8rem 0}
+.article ul li{border-left:2px solid var(--border);padding-left:1rem;margin:.55rem 0}
+.article ol{margin:.8rem 0;padding-left:1.35rem}
+.article ol li{margin:.4rem 0}
+.article ol li::marker{color:var(--accent)}
+.katex{font-size:1.02em}
+
+/* ---- 图：带边框卡片 + 13px 灰图注 ---- */
+figure{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:.8rem;margin:1.4rem 0}
+figure img{width:100%;height:auto;border-radius:6px;display:block}
+figcaption{font-size:13px;color:var(--dim);margin-top:.6rem;line-height:1.6}
+
+/* ---- 结果图表：强调色高亮条，余者暗色 ---- */
+.bar-row{display:flex;align-items:center;gap:.75rem;margin:.45rem 0;font-size:.92rem}
+.bar-row .lbl{flex:0 0 170px;line-height:1.4}
+.bar-row .bar{height:12px;border-radius:999px;background:#d8d2c4}
+.bar-row.hl .bar{background:var(--accent)}
+.bar-row.hl .lbl{font-weight:700}
+.bar-row .val{flex:0 0 74px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+h3{font-size:1.05rem;margin:1.3rem 0 .5rem}
+
+/* ---- 数据表 ---- */
+table.data{width:100%;border-collapse:collapse;font-size:.92rem;margin:1rem 0;
+  background:var(--surface)}
+table.data th,table.data td{border:1px solid var(--border);
+  padding:.5rem .7rem;text-align:left;vertical-align:top}
+table.data th{background:var(--bg)}
+
+/* ---- 关键术语 ---- */
+dl.kv{display:grid;grid-template-columns:210px minmax(0,1fr);gap:.45rem 1.1rem;margin:1rem 0}
+dl.kv dt{font-weight:700;line-height:1.6}
+dl.kv dd{margin:0;line-height:1.8}
+
+/* ---- 思考题：折叠答案 ---- */
+details.qa{border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--surface);padding:.85rem 1.05rem;margin:.85rem 0}
+details.qa summary{cursor:pointer;font-weight:700;color:var(--accent2);
+  list-style:none;user-select:none}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::after{content:" +"}
+details.qa[open ] summary::after{content:" \2212"}
+.qa-q{margin:.9rem 0 .2rem;font-weight:600;line-height:1.8}
+.ans{background:var(--bg);border-radius:8px;padding:.9rem 1.05rem;margin:.7rem 0}
+.ans p{margin:0}
+
+/* ---- 笔记编辑器 ---- */
+.notes{margin-top:2.5rem;border-top:2px solid var(--text);padding-top:1.25rem}
+.notes h2{border-top:0;margin-top:0;padding-top:0}
+.notes textarea{width:100%;min-height:130px;font-family:inherit;font-size:.95rem;
+  line-height:1.7;padding:.8rem;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--surface);color:var(--text);resize:vertical}
+.notes button{background:var(--accent2);color:#fff;border:0;border-radius:8px;
+  padding:.5rem 1.15rem;font-family:inherit;font-size:.92rem;cursor:pointer;margin-top:.55rem}
+.notes .saved{color:var(--dim);font-size:.85rem;margin-left:.6rem}
+
+/* ---- 归档列表页（papers.html） ---- */
+.paper-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:1.15rem 1.25rem;margin:1rem 0}
+.paper-card h2{border-top:0;margin:0 0 .3rem;padding-top:0;font-size:1.3rem}
+.paper-card h2 a{color:var(--text)}
+.paper-card h2 a:hover{color:var(--accent)}
+.paper-card .meta{margin:.2rem 0 .55rem}
+.paper-card p{line-height:1.8;margin:.4rem 0}
+.badge{display:inline-block;background:var(--accent);color:#fff;font-size:.75rem;
+  font-weight:700;border-radius:999px;padding:.15rem .6rem;margin-bottom:.5rem}
+
+/* ---- 分页 / 页脚 ---- */
+.pager{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  margin:2.5rem 0 1rem;padding-top:1.25rem;border-top:1px solid var(--border)}
+.pager a{font-weight:600}
+footer{color:var(--dim);font-size:.85rem;text-align:center;padding:1.5rem 0 0}
+
+/* ---- 窄屏：右栏置顶 ---- */
+@media (max-width:860px){
+  .layout{display:flex;flex-direction:column;gap:1.5rem}
+  .sidebar{order:-1;position:static;width:100%}
+  .article h1{font-size:1.875rem}
+  .flow5{grid-template-columns:1fr}
+  .flow5 .fstep:not(:last-child)::after{content:"\2193";right:50%;top:auto;
+    bottom:-.85rem;transform:translateX(50%)}
+  dl.kv{grid-template-columns:1fr}
+  .bar-row .lbl{flex-basis:110px}
+}
