@@ -208,3 +208,25 @@ body.has-player{padding-bottom:4.5rem}
   .player-cover{width:34px;height:34px;font-size:1rem}
   .player-play{width:32px!important;height:32px!important}
 }
+
+/* ---- 每日复盘 / 日记 ---- */
+.form-card label{display:block;font-weight:700;margin:.7rem 0 .2rem}
+.form-card input[type="date"],.form-card input[type="text"],.form-card input[type="password"],.form-card textarea{width:100%;box-sizing:border-box;border:1px solid #e5d9c8;border-radius:10px;padding:.55rem .7rem;font:inherit;background:#fffdf8;color:var(--ink)}
+.form-card textarea{resize:vertical}
+.form-actions{display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap}
+.btn{border:0;border-radius:999px;padding:.55rem 1.3rem;background:#e0528a;color:#fff;font-size:.95rem;cursor:pointer}
+.btn:hover{background:#c2437c}
+.btn.ghost{background:#fff;border:1px solid #e5d9c8;color:var(--ink)}
+.form-tip{color:#c2437c;font-size:.85rem;min-height:1.2em;margin:.5rem 0 0}
+.entry{margin-top:1rem}
+.entry-head{display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.entry-head button{border:0;background:none;color:#8a5a2b;cursor:pointer;font-size:.85rem;padding:.2rem .4rem}
+.entry-head button:hover{color:#c2437c}
+.entry-sec h3{font-size:.9rem;color:#8a5a2b;margin:1rem 0 .3rem}
+.entry-sec p{margin:0}
+.entry-body{margin:.6rem 0 0;white-space:pre-wrap}
+.empty{color:var(--faint)}
+.lock{max-width:420px;margin:3rem auto;text-align:center}
+.lock-icon{font-size:3rem}
+.lock h1{margin:.5rem 0}
+.lock input[type="password"]{width:100%;box-sizing:border-box;border:1px solid #e5d9c8;border-radius:10px;padding:.6rem .8rem;font:inherit;text-align:center;margin:.8rem 0}
