@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 1 课 · MDP 与 Bellman 方程 · Jocehi 的 RL 精讲</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(','right':'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
+</head>
+<body>
+<canvas id="sakura"></canvas>
+<div class="wrap">
+<nav class="topnav"><b>Jocehi</b><a href="../index.html">首页</a><a href="../papers.html">论文精读</a><a href="../rl.html">RL 精讲</a><a href="../briefing.html">每日简报</a><a class="home" href="../index.html">← 返回首页</a></nav>
+<h1>第 1 课 · MDP 与 Bellman 方程</h1>
+<p class="meta">MDP &amp; Bellman Equation · RL 算法每日精讲 · 2026-11-15 · 基础理论 · 入门 · 约 30 分钟</p>
+<p class="meta">前置知识：概率、期望的基本概念</p>
+<div class="thesis">把未来奖励折现求和，用递推关系把大问题拆成小问题。</div>
+<h2>① 问题设定</h2>
+<p>本课解决序贯决策问题：智能体处在会随动作变化的环境中，每一步观察状态 $s$、选择动作 $a$、得到奖励 $r$ 并转移到新状态 $s'$，目标不是单步奖励最大，而是从当前起未来所有奖励的折现期望最大。典型场景有网格导航与机器人避障、棋牌与电子游戏、库存补货、资源调度、推荐与对话系统——共同点是「现在的选择改变未来的状态与机会」，不能把每一步当作独立样本。不同于监督学习有标注答案，也不同于多臂老虎机只有一步且无状态，MDP 需要同时建模状态、动作、转移和奖励。输入是 MDP 五元组 $(\mathcal{S}, \mathcal{A}, P, R, \gamma)$，其中 $P$ 描述在 $s$ 做 $a$ 后到 $s'$ 并得 $r$ 的概率，$\gamma$ 控制远期奖励的权重；也可只给可交互的环境，由采样估计 $P$。输出是最优策略 $\pi^*(s)$（每个状态该做什么）及其价值 $V^*(s)$、$Q^*(s, a)$，即在每个状态下长期回报的期望。本课用已知的确定性小网格做规划：先用 Bellman 方程算价值，再贪心得到策略，并用真实轨迹回报验证价值。</p>
+<h2>② 核心思想</h2>
+<ul>
+<li>MDP 用五元组 $(\mathcal{S}, \mathcal{A}, P, R, \gamma)$ 描述序贯决策：状态、动作、转移概率、奖励与折扣因子，目标是最大化期望折现回报。</li>
+<li>马尔可夫性指未来只依赖当前状态 $s$，而与更早历史无关；因此只需以 $s$ 为决策依据，历史可被压缩进状态设计中。</li>
+<li>回报 $G_t$ 是未来奖励的折现和，$\gamma \in [0,1]$ 权衡即时与远期奖励；$\gamma$ 越大越有耐心，$\gamma = 0$ 时只看下一步奖励。</li>
+<li>Bellman 方程把价值写成「一步奖励 + 折现的下一状态价值」的期望，是价值函数的自洽条件，也是所有价值方法的出发点。</li>
+<li>Bellman 最优方程对每个动作取 $\max$，得到最优价值 $V^*$ 与 $Q^*$；价值迭代反复做该备份直至收敛，再贪心提取最优策略。</li>
+<li>价值 $V(s)$ 评价「处在 $s$ 有多好」，动作价值 $Q(s,a)$ 评价「在 $s$ 做 $a$ 有多好」，策略改进就是在每个状态选 $Q$ 最大的动作。</li>
+</ul>
+<h2>③ 与已学方法对比</h2>
+<p>这是第一课，尚无已讲算法，故与最接近的两类方法对比。与多臂老虎机相比：老虎机可看作只有一个状态、无转移的 MDP，只能学「哪个动作即时奖励高」，无法处理走迷宫、避开陷阱这类「当前动作改变未来状态」的问题；MDP 引入状态转移与 Bellman 递推，解决了序贯决策与延迟奖励问题，代价是需要建模或估计 $P(s' \mid s, a)$，且状态数增大时计算与存储随 $|\mathcal{S}|$ 膨胀（维度灾难）。与暴力枚举所有策略相比：策略总数为 $|\mathcal{A}|^{|\mathcal{S}|}$，指数级不可行；Bellman 方程把全局最优拆成一步备份的局部递推，价值迭代每轮代价约 $O(|\mathcal{S}|^2 |\mathcal{A}|)$（确定性环境为 $O(|\mathcal{S}| |\mathcal{A}|)$），用动态规划换来了可计算性，代价是它本质上是规划方法——模型不准或状态连续时需转向采样与函数近似，这正是后续蒙特卡洛、TD 与深度 RL 要解决的问题。</p>
+<h2>④ 学习流程</h2>
+<ol class="flow">
+<li><b>初始化价值</b>输入状态集 $S$、动作集 $A$、转移概率 $P(s', r | s, a)$、折扣因子 $\gamma$ 与阈值 $\theta$，令所有状态的 $V(s)=0$，输出初始价值表。</li>
+<li><b>计算动作价值</b>对每个非终点状态 $s$ 与每个动作 $a$，计算 $Q(s, a)=\sum_{s', r} P(s', r | s, a)[r+\gamma V(s')]$，输出各动作的动作价值。</li>
+<li><b>选最优动作</b>比较同一状态 $s$ 下所有动作的 $Q(s, a)$，令 $V_{new}(s)=\max_a Q(s, a)$，输出该状态的新价值与对应的贪心动作。</li>
+<li><b>更新价值与残差</b>令 $\delta=\max(\delta, |V_{new}(s)-V(s)|)$，再令 $V(s)=V_{new}(s)$，输出更新后的价值 $V(s)$ 与本轮最大变化 $\delta$。</li>
+<li><b>判断是否收敛</b>若 $\delta<\theta$ 则跳出价值迭代，否则令 $\delta=0$ 并返回计算 $Q(s, a)$ 继续下一轮，直至收敛到 $V^*$。</li>
+<li><b>提取最优策略</b>对每个状态 $s$，用收敛后的 $Q(s, a)$ 计算 $\pi^*(s)=\arg\max_a Q(s, a)$，输出最优价值 $V^*$ 与最优策略 $\pi^*$。</li>
+<li><b>沿策略走一局</b>从起点出发，沿最优策略 $\pi^*$ 执行动作并转移到下一状态，直至一局结束，输出完整轨迹与奖励序列。</li>
+<li><b>对比折现回报</b>由轨迹奖励计算真实折现回报 $G$，并与起点价值 $V$ 对比，Bellman 残差应接近 $0$。</li>
+</ol>
+<h2>⑤ 关键公式</h2>
+<div class="formula-card">
+<h4>回报：未来奖励的折现和</h4>
+<div>$$G_t = R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots = \sum_{k=0}^{\infty} \gamma^k R_{t+k+1}$$</div>
+<p>回报 $G_t$ 是从时刻 $t$ 起、未来所有奖励按 $\gamma$ 逐期折现后的总和；它满足递推 $G_t = R_{t+1} + \gamma G_{t+1}$——拆出第一项奖励，剩下的恰好是下一时刻回报的 $\gamma$ 倍。RL 的目标不是让某一步奖励最大，而是让 $G_t$ 的期望最大。</p>
+<ul>
+<li>$G_t$：回报：从时刻 t 起的折现奖励总和</li>
+<li>$R_{t+1}$：时刻 t 执行动作后得到的一步奖励</li>
+<li>$\gamma$：折扣因子，γ∈[0,1]，越接近 1 越看重远期奖励</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>Bellman 期望方程</h4>
+<div>$$V^\pi(s) = \sum_a \pi(a|s) \sum_{s', r} p(s', r|s, a)\big[r + \gamma V^\pi(s')\big]$$</div>
+<p>在策略 $\pi$ 下，状态 $s$ 的价值等于：先按 $\pi(a|s)$ 对动作加权，再对所有可能的 $(s', r)$ 按转移概率加权，每种结果的价值都是「一步奖励 $r$ 加上折现后的下一状态价值 $\gamma V^\pi(s')$」。它把 $V^\pi$ 写成关于自身的一步递推，是价值函数的自洽条件。</p>
+<ul>
+<li>$V^\pi(s)$：策略 π 下状态 s 的价值</li>
+<li>$\pi(a|s)$：在状态 s 选择动作 a 的概率</li>
+<li>$p(s', r|s, a)$：在 s 做 a 后转移到 s' 并得奖励 r 的概率</li>
+<li>$s'$：执行动作后的下一状态</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>Bellman 最优方程</h4>
+<div>$$V^*(s) = \max_a \sum_{s', r} p(s', r|s, a)\big[r + \gamma V^*(s')\big]$$</div>
+<p>最优价值不再按策略对动作加权，而是直接取最好的那个动作：$V^*(s) = \max_\pi V^\pi(s)$。对动作价值同理有 $Q^*(s, a) = \sum_{s', r} p(s', r|s, a)\big[r + \gamma \max_{a'} Q^*(s', a')\big]$。只要解出 $V^*$ 或 $Q^*$，在每个状态贪心选最优动作就得到最优策略。</p>
+<ul>
+<li>$V^*(s)$：最优状态价值：所有策略中能取得的最大价值</li>
+<li>$Q^*(s, a)$：最优动作价值：在 s 做 a、之后按最优策略走的价值</li>
+<li>$\max_a$：对全部动作取最大值，即贪心选择</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>价值迭代更新</h4>
+<div>$$V_{k+1}(s) \leftarrow \max_a \sum_{s', r} p(s', r|s, a)\big[r + \gamma V_k(s')\big]$$</div>
+<p>把 Bellman 最优方程当作更新规则反复执行：第 $k+1$ 轮的价值用第 $k$ 轮的价值做一步备份。由于 $\gamma < 1$ 时该备份是压缩映射，迭代必然收敛到 $V^*$；收敛后由 $\pi^*(s) = \arg\max_a Q^*(s, a)$ 提取最优策略。本课代码里这就是价值迭代函数的核心循环。</p>
+<ul>
+<li>$V_k(s)$：第 k 轮迭代时状态 s 的价值估计</li>
+<li>$\leftarrow$：赋值更新：用右侧算出的新值覆盖旧值</li>
+<li>$\pi^*(s)$：最优策略：在状态 s 应执行的动作</li>
+</ul>
+</div>
+<h2>⑥ 数学推导</h2>
+<ol class="mathnotes">
+<li>
+<p>先把舞台搭好：MDP 由五元组 $(\mathcal{S}, \mathcal{A}, P, R, \gamma)$ 定义——$\mathcal{S}$ 是状态集合，$\mathcal{A}$ 是动作集合，$P(s', r \mid s, a) = \Pr\{S_{t+1} = s', R_{t+1} = r \mid S_t = s, A_t = a\}$ 是转移与奖励概率，$R$ 是奖励函数，$\gamma \in [0, 1]$ 是折扣因子。</p>
+</li>
+<li>
+<p>要最大化的量是回报 $G_t$——从当前起未来奖励的折现和：</p>
+<div>$$G_t = R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots = \sum_{k=0}^{\infty} \gamma^k R_{t+k+1}$$</div>
+<p>它满足递推关系 $G_t = R_{t+1} + \gamma G_{t+1}$，这是 Bellman 方程的来源：任何「从现在起的总收益」都能拆成「一步奖励 + 折现后的剩余收益」。</p>
+</li>
+<li>
+<p>策略 $\pi(a|s)$ 表示在状态 $s$ 选择动作 $a$ 的概率。把回报取期望就得到价值函数：状态价值 $V^\pi(s) = \mathbb{E}_\pi[G_t \mid S_t = s]$，动作价值 $Q^\pi(s, a) = \mathbb{E}_\pi[G_t \mid S_t = s, A_t = a]$，其中 $\mathbb{E}_\pi$ 表示在策略 $\pi$ 与环境转移共同作用下的期望。</p>
+</li>
+<li>
+<p>把递推 $G_t = R_{t+1} + \gamma G_{t+1}$ 代入价值定义取期望，得到 Bellman 期望方程：</p>
+<div>$$V^\pi(s) = \sum_a \pi(a|s) \sum_{s', r} P(s', r \mid s, a)\big[r + \gamma V^\pi(s')\big]$$</div>
+<p>即当前价值等于「一步奖励加折现后的下一状态价值」的期望；对动作价值同理有 $Q^\pi(s, a) = \sum_{s', r} P(s', r \mid s, a)\big[r + \gamma \sum_{a'} \pi(a'|s') Q^\pi(s', a')\big]$。</p>
+</li>
+<li>
+<p>最优价值定义为 $V^*(s) = \max_\pi V^\pi(s)$、$Q^*(s, a) = \max_\pi Q^\pi(s, a)$。把期望方程里「按策略加权平均」换成「取最优动作」，得到 Bellman 最优方程：</p>
+<div>$$V^*(s) = \max_a \sum_{s', r} P(s', r \mid s, a)\big[r + \gamma V^*(s')\big]$$</div>
+<p>以及 $Q^*(s, a) = \sum_{s', r} P(s', r \mid s, a)\big[r + \gamma \max_{a'} Q^*(s', a')\big]$。</p>
+</li>
+<li>
+<p>把最优方程当作更新规则反复执行，就是价值迭代：</p>
+<div>$$V_{k+1}(s) \leftarrow \max_a \sum_{s', r} P(s', r \mid s, a)\big[r + \gamma V_k(s')\big]$$</div>
+<p>反复迭代直至收敛到 $V^*$，再由 $\pi^*(s) = \arg\max_a Q^*(s, a)$ 贪心得到最优策略。</p>
+</li>
+<li>
+<p>小例子：设 $\gamma = 0.9$，某状态 $s$ 走动作 $a$ 得 $r = -0.04$ 后到 $s'$，且 $V(s') = 0.80$，则 $Q(s, a) = -0.04 + 0.9 \times 0.80 = 0.68$；另一动作得 $Q = 0.41$，则 $V^*(s) = \max(0.68, 0.41) = 0.68$。若一条轨迹奖励依次为 $-0.04, -0.04, 1$，则 $G = -0.04 + 0.9 \times (-0.04) + 0.9^2 \times 1 = 0.734$。</p>
+</li>
+<li>
+<p>$\gamma$ 越大越看重远期奖励；$\gamma = 0$ 时只看即时奖励，智能体会变得完全短视。</p>
+</li>
+</ol>
+<h2>⑦ 伪代码</h2>
+<div class="pseudo">
+<h4>值迭代</h4>
+<div class="step"><span class="stepnum">·</span> 输入：状态集 S，动作集 A，转移概率 P(s', r | s, a)，折扣 γ，阈值 θ</div>
+<div class="step"><span class="stepnum">·</span> 输出：最优价值 V* 与最优策略 π*</div>
+<div class="step"><span class="stepnum">1</span> 初始化 V(s) = 0，对所有 s ∈ S；</div>
+<div class="step"><span class="stepnum">2</span> 重复（价值迭代）：</div>
+<div class="step" style="padding-left:1.16rem"><span class="stepnum">2</span> 1 令 delta = 0；</div>
+<div class="step" style="padding-left:1.16rem"><span class="stepnum">2</span> 2 对每个非终点状态 s：</div>
+<div class="step" style="padding-left:1.76rem"><span class="stepnum">·</span> 对每个动作 a 计算 Q(s, a) = Σ_{s', r} P(s', r | s, a)[r + γV(s')]；</div>
+<div class="step" style="padding-left:1.76rem"><span class="stepnum">·</span> 令 V_new(s) = max_a Q(s, a)；</div>
+<div class="step" style="padding-left:1.76rem"><span class="stepnum">·</span> delta = max(delta, |V_new(s) - V(s)|)；V(s) = V_new(s)；</div>
+<div class="step" style="padding-left:1.16rem"><span class="stepnum">2</span> 3 若 delta &lt; θ，跳出循环；</div>
+<div class="step"><span class="stepnum">3</span> 策略提取：对每个状态 s，π*(s) = argmax_a Q(s, a)；</div>
+<div class="step"><span class="stepnum">4</span> （可选验证）从起点沿 π* 走一局，计算真实折现回报 G，与 V(起点) 对比，Bellman 残差应接近 0。</div>
+</div>
+<h2>⑧ Python 代码（可运行）</h2>
+<pre class="code"><button class="copybtn">复制代码</button><code>import numpy as np
+
+# ================= 环境与超参数 =================
+GAMMA = 0.9  # 折扣因子：越接近 1 越看重未来奖励
+THETA = 1e-6  # 收敛阈值：本轮 V 的最大变化小于它就停止
+ROWS, COLS = 4, 4  # 4x4 网格世界
+N_STATES = ROWS * COLS  # 状态数 16，状态编号 = 行*4+列
+N_ACTIONS = 4  # 0:上 1:下 2:左 3:右
+GOAL, PIT = 15, 5  # 终点(3,3)奖励+1，陷阱(1,1)奖励-1
+TERMINAL = {GOAL, PIT}
+STEP_REWARD = -0.04  # 每步小惩罚，鼓励走最短路；改为 0 会出现多余绕路
+ARROWS = ["↑", "↓", "←", "→"]
+
+
+def step(state, action):
+    """确定性转移：返回 (下一状态, 奖励, 是否终止)。"""
+    row, col = divmod(state, COLS)
+    d_row, d_col = [(-1, 0), (1, 0), (0, -1), (0, 1)][action]
+    # 撞墙原地不动：用 clip 限制在网格内，这是最常见的边界处理
+    next_row = min(max(row + d_row, 0), ROWS - 1)
+    next_col = min(max(col + d_col, 0), COLS - 1)
+    next_state = next_row * COLS + next_col
+    if next_state == GOAL:
+        return next_state, 1.0, True
+    if next_state == PIT:
+        return next_state, -1.0, True
+    return next_state, STEP_REWARD, False
+
+
+def value_iteration(gamma=GAMMA, theta=THETA):
+    """价值迭代：反复用 Bellman 最优方程更新 V，直到收敛。"""
+    V = np.zeros(N_STATES)  # V 初始化为 0；终点状态保持 0（奖励已算在转移上）
+    for iteration in range(1, 1001):
+        delta = 0.0  # 本轮 V 的最大变化量，用于判断收敛
+        for s in range(N_STATES):
+            if s in TERMINAL:
+                continue  # 终点无后续决策，不更新
+            # 对每个动作算 Q(s,a)=r+γV(s')，Bellman 最优备份取 max
+            q_values = []
+            for a in range(N_ACTIONS):
+                next_state, reward, done = step(s, a)
+                # done 时未来价值为 0，否则用当前 V 估计；漏掉会高估终点价值
+                q_values.append(reward + gamma * (0.0 if done else V[next_state]))
+            new_v = max(q_values)
+            delta = max(delta, abs(new_v - V[s]))
+            V[s] = new_v  # 原地更新（Gauss-Seidel 式），比同步更新收敛更快
+        if delta &lt; theta:
+            print(f"价值迭代在第 {iteration} 轮收敛，delta={delta:.2e}")
+            break
+    return V
+
+
+def extract_policy(V, gamma=GAMMA):
+    """从最优 V 贪心提取最优策略：π(s)=argmax_a Q(s,a)。"""
+    policy = np.zeros(N_STATES, dtype=int)
+    for s in range(N_STATES):
+        if s in TERMINAL:
+            continue
+        q_values = []
+        for a in range(N_ACTIONS):
+            next_state, reward, done = step(s, a)
+            q_values.append(reward + gamma * (0.0 if done else V[next_state]))
+        policy[s] = int(np.argmax(q_values))  # 平局时取第一个动作
+    return policy
+
+
+def bellman_residual(V, gamma=GAMMA):
+    """检验 Bellman 最优方程残差：|V(s)-max_a[r+γV(s')]|，应接近 0。"""
+    max_res = 0.0
+    for s in range(N_STATES):
+        if s in TERMINAL:
+            continue
+        q_values = []
+        for a in range(N_ACTIONS):
+            next_state, reward, done = step(s, a)
+            q_values.append(reward + gamma * (0.0 if done else V[next_state]))
+        max_res = max(max_res, abs(V[s] - max(q_values)))
+    return max_res
+
+
+def simulate(policy, start=0, max_steps=20, gamma=GAMMA):
+    """沿策略走一局，算真实折现回报 G，与 V[start] 对比验证。"""
+    state, ret, discount = start, 0.0, 1.0
+    path = [state]
+    for _ in range(max_steps):
+        if state in TERMINAL:
+            break
+        action = policy[state]
+        state, reward, done = step(state, action)
+        ret += discount * reward  # G=∑γ^t·r_t，逐项折现累加
+        discount *= gamma  # 用传入的 gamma，保证与价值迭代的折扣一致
+        path.append(state)
+        if done:
+            break
+    return path, ret
+
+
+if __name__ == "__main__":
+    V = value_iteration()
+    policy = extract_policy(V)
+    print("\n最优状态价值 V*（4x4，保留两位小数）：")
+    print(np.round(V.reshape(ROWS, COLS), 2))
+    print("\n最优策略 π*（G=终点，X=陷阱）：")
+    grid = []
+    for s in range(N_STATES):
+        if s == GOAL:
+            grid.append("G")
+        elif s == PIT:
+            grid.append("X")
+        else:
+            grid.append(ARROWS[policy[s]])
+    print(np.array(grid).reshape(ROWS, COLS))
+    print(f"\nBellman 残差最大值：{bellman_residual(V):.2e}（应接近 0）")
+    path, ret = simulate(policy, start=0)
+    print(f"从状态 0 出发路径：{path}")
+    print(f"真实折现回报 G={ret:.3f}，V*(0)={V[0]:.3f}，两者应接近")
+    print(f"靠近终点的 V*(14)={V[14]:.3f}，陷阱旁 V*(4)={V[4]:.3f}，可直观验证价值分布")</code></pre>
+<h2>⑨ 代码讲解</h2>
+<ol>
+<li>环境与转移 step()：$4 \times 4$ 网格用编号 state = 行×4 + 列表示，动作 0-3 为上下左右；用 clip 实现撞墙原地不动，到终点 GOAL 得 $+1$、陷阱 PIT 得 $-1$、其余步奖励 $-0.04$，返回（下一状态, 奖励, 是否终止）。</li>
+<li>价值迭代 value_iteration()：$V$ 初始化为 $0$，反复对每个非终点状态计算 $Q(s,a) = r + \gamma V(s')$ 并取 $\max$ 作为新 $V$；done 时未来价值取 $0$，原地更新可加速收敛，delta 小于 THETA 时停止。</li>
+<li>策略提取 extract_policy()：对已收敛的 $V^*$ 重新计算每个动作的 $Q$，取 $\arg\max$ 得到贪心最优策略 $\pi^*(s)$，这正是「价值决定策略」的关键一步。</li>
+<li>验证 bellman_residual() 与 simulate()：前者计算 $|V(s) - \max_a Q(s,a)|$ 的最大值，收敛后应接近 $0$；后者沿策略真实走一局，累加折现回报 $G = \sum_t \gamma^t r_t$，与 $V^*(\text{起点})$ 对照，理论上两者应接近。</li>
+<li>主程序：依次调用价值迭代、策略提取并打印 $V^*$ 矩阵与箭头策略图，最后输出残差、路径与回报；$V^*(14) = 1.0$ 说明紧邻终点的状态价值最高，陷阱附近价值相对更低。</li>
+</ol>
+<h2>⑩ 超参数</h2>
+<table class="data"><tr><th>参数</th><th>常用取值</th><th>说明</th></tr>
+<tr><td>$\gamma$（gamma，折扣因子）</td><td>0.9（本课）；长时程任务常用 0.99</td><td>控制远期奖励权重；太小会短视、只顾眼前，太大则收敛慢且对远期估计误差更敏感。无限时域任务通常取 $0.9$–$0.99$，有限时域可取 $1$。</td></tr>
+<tr><td>$\theta$（theta，收敛阈值）</td><td>1e-6</td><td>价值迭代停止条件：本轮 $V$ 的最大变化 $\delta < \theta$ 即停止。太小会多算很多轮但精度更高，太大则 $V$ 未收敛、策略可能次优。</td></tr>
+<tr><td>最大迭代次数</td><td>1000</td><td>防止 $\gamma$ 接近 $1$ 或 $\theta$ 过小时无限循环的安全上限；正常应在达到上限前收敛，若触顶说明 $\theta$ 太小或 $\gamma$ 太大。</td></tr>
+<tr><td>STEP_REWARD（每步奖励）</td><td>-0.04</td><td>每步的小惩罚用于鼓励走最短路；为 0 时任意等长绕路价值相同，策略不唯一；绝对值过大则智能体宁愿冒险抄近路甚至撞陷阱。</td></tr>
+<tr><td>终点 / 陷阱奖励</td><td>+1 / -1</td><td>任务目标的数值化表达：终点 +1、陷阱 -1。奖励尺度决定价值尺度与风险偏好，改动它会直接改变最优路径（如是否值得绕远路避开陷阱）。</td></tr>
+</table>
+<h2>⑪ 常见坑</h2>
+<ul>
+<li>终点价值误解：本代码奖励算在转移上，终点 $V$ 恒为 $0$，不要误以为 $V(\text{终点})$ 应为 $1$；若把奖励改成「处在终点得 $+1$」，则终点 $V$ 应为 $1$，两种建模要自洽。</li>
+<li>漏掉 done 时的 $\gamma V(s')$：进入终点后不应再加 $\gamma V(\text{终点})$，否则终点价值会被重复计入；检查代码时确认 done 分支写的是 0.0 而不是 V[next_state]。</li>
+<li>$\gamma$ 选错：$\gamma = 1$ 且存在循环、无终点时价值可能发散或不收敛；$\gamma$ 太小（如 $0.1$）会让智能体只顾眼前，甚至不愿多走一步去拿终点奖励。</li>
+<li>撞墙与越界处理：不用 clip 而用取模运算会把网格「卷」到对面，策略会学到错误的穿越行为；调试时先打印 step(0, 上) 与 step(0, 左) 是否都返回 $0$。</li>
+<li>只看 delta 不看残差：delta 小只说明 $V$ 变化慢，不等于满足 Bellman 方程；收敛后务必运行 bellman_residual()，若残差远大于 $10^{-4}$，说明更新公式或 done 处理有 bug。</li>
+</ul>
+<h2>⑫ 练习题</h2>
+<p><b>练习题 1</b> 【概念题】解释马尔可夫性，并举一个「只看当前状态不够」的反例（如状态中缺少速度、库存历史，或只能看到局部观测），说明应如何扩充状态使其重新满足马尔可夫性；再解释 $\gamma = 0$ 与 $\gamma \to 1$ 时智能体的行为差异。</p>
+<details><summary>练习题 1（点击查看参考答案）</summary><div class="ans">
+<p>马尔可夫性：给定当前状态 $S_t = s$ 与动作 $A_t = a$，下一状态与奖励的分布与更早的历史无关，即转移概率 $P(s', r \mid s, a)$ 只依赖 $(s, a)$。因此决策时只需看当前状态，历史信息都可以丢弃。
+反例：小车的状态只有位置、没有速度时，同一位置可能正冲向墙壁、也可能正远离墙壁，下一步会不会撞墙完全不同——只看位置无法预测未来。扩充状态的办法：把速度并入状态，状态改为（位置，速度），转移就重新只依赖当前状态。同理，库存问题要把在途订单、交货周期并入状态；只能看到局部观测时，可把最近若干步观测或信念状态并入状态。
+$\gamma = 0$ 时 $G_t = R_{t+1}$，智能体只最大化一步奖励，完全短视：本课网格里它不会为了终点的 $+1$ 先连走几步 $-0.04$。$\gamma \to 1$ 时远期奖励几乎不打折，智能体愿意为长远收益忍受短期损失，但价值迭代收敛更慢、对远期估计误差也更敏感。</p>
+</div></details>
+<p><b>练习题 2</b> 【手算/推导题】设 3 状态链 $s_0 \to s_1 \to$ 终点，$s_0 \to s_1$ 奖励 $-1$，$s_1 \to$ 终点奖励 $9$，$\gamma = 0.9$。先手算从 $s_0$ 出发的折现回报 $G$；再设 $V_0(s) = 0$，用 Bellman 最优备份手算一轮 $V_1(s_1)$ 与 $V_1(s_0)$，解释为什么一轮后 $V_1(s_0)$ 仍不是 $7.1$、需要再迭代一轮；并证明由 $G_t = R_{t+1} + \gamma G_{t+1}$ 如何推出 Bellman 期望方程 $V^\pi(s) = \mathbb{E}\big[r + \gamma V^\pi(s')\big]$。</p>
+<details><summary>练习题 2（点击查看参考答案）</summary><div class="ans">
+<p>从 $s_0$ 出发的折现回报：$G = -1 + 0.9 \times 9 = 7.1$。
+一轮 Bellman 最优备份（$V_0 \equiv 0$，终点价值恒为 $0$）：$V_1(s_1) = 9 + 0.9 \times 0 = 9$；$V_1(s_0) = -1 + 0.9 \times V_0(s_1) = -1 + 0 = -1$。
+为什么 $V_1(s_0)$ 还不是 $7.1$：备份用的是上一轮的 $V_0(s_1) = 0$，$s_1$ 处那笔 $9$ 的奖励信息还没有传播回 $s_0$——价值是沿轨迹一轮一格地往回传的。再迭代一轮：$V_2(s_0) = -1 + 0.9 \times V_1(s_1) = -1 + 8.1 = 7.1$，与真实回报一致。这正是价值迭代需要多轮、且收敛轮数与轨迹长度相关的直观原因。
+推导：由 $V^\pi(s) = \mathbb{E}_\pi[G_t \mid S_t = s]$ 与 $G_t = R_{t+1} + \gamma G_{t+1}$，得 $V^\pi(s) = \mathbb{E}_\pi[R_{t+1} + \gamma G_{t+1} \mid S_t = s]$；由马尔可夫性，$\mathbb{E}_\pi[G_{t+1} \mid S_t = s, A_t = a, S_{t+1} = s'] = V^\pi(s')$，再按 $\pi(a|s)$ 与 $P(s', r \mid s, a)$ 展开期望，即得 $V^\pi(s) = \sum_a \pi(a|s) \sum_{s', r} P(s', r \mid s, a)\big[r + \gamma V^\pi(s')\big]$。</p>
+</div></details>
+<p><b>练习题 3</b> 【代码改造题】基于 pythonCode 做对比实验：(a) 把 GAMMA 分别改为 $0.5$、$0.99$，记录 $V^*(0)$、收敛轮数与从 $0$ 出发的最优路径；(b) 把 STEP_REWARD 改为 $0$ 和 $-0.5$，或把 PIT 从 $5$ 移到 $10$，观察策略是否还绕开陷阱、路径是否变长；(c) 进阶：把 step() 改为随机转移——以 $0.8$ 概率执行所选动作、$0.2$ 概率随机执行另一动作，并把 $Q$ 计算改为对所有可能下一状态的期望，重新运行比较 $V^*$ 与确定性版本。写出结论：$\gamma$ 越大、步惩罚越大时策略如何变化，为什么。</p>
+<details><summary>练习题 3（点击查看参考答案）</summary><div class="ans">
+<p>(a) 只改 GAMMA 一行。实测（运行本课代码）：$\gamma = 0.5$ 时 $V^*(0) \approx -0.05$，$\gamma = 0.9$ 时 $V^*(0) \approx 0.43$，$\gamma = 0.99$ 时 $V^*(0) \approx 0.76$，收敛轮数都在 7 轮左右，最优路径不变，都是 $0 \to 4 \to 8 \to 12 \to 13 \to 14 \to 15$（沿左列下行再右转，绕开陷阱）。结论：这个网格里路径由几何决定，$\gamma$ 主要改变价值大小——$\gamma$ 越小，终点的 $+1$ 折回起点时被折得越狠，$V^*(0)$ 甚至会变负。
+(b) STEP_REWARD 改为 $0$：$V^*(0) \approx 0.59$，路径不变，但没有步惩罚时等长绕路价值相同、策略不再唯一。改为 $-0.5$：策略发生质变——最优路径变成 $0 \to 4 \to 5$，主动走进陷阱！因为绕远路去终点的总回报约 $-1.46$，还不如两步进陷阱的 $-0.5 + 0.9 \times (-1) = -1.4$；步惩罚过大时，「尽快结束这一局」压倒了「到达终点」。把 PIT 从 $5$ 移到 $10$：原最优路径不经过 $10$，$V^*(0)$ 与路径都不变。
+(c) 随机转移：把 step() 改成返回所有可能结果（所选动作概率 $0.8$，其余三个动作均分 $0.2$），$Q$ 改为对各结果按概率加权的期望 $Q(s, a) = \sum_{s'} P(s' \mid s, a)\big[r + \gamma V(s')\big]$。实测 $V^*(0)$ 降到约 $0.18$，收敛变慢（约 19 轮），最优策略改为沿上边一行 $0 \to 1 \to 2 \to 3 \to 7 \to 11 \to 15$——主动远离陷阱，因为贴着陷阱走时有概率被「滑」进去。结论：环境越不确定，最优策略越保守，价值也越低。</p>
+</div></details>
+<h2>参考文献</h2>
+<ol>
+<li>Sutton &amp; Barto 2018, Reinforcement Learning: An Introduction, 2nd edition, 第3章 Markov Decision Processes 与第4章 Dynamic Programming</li>
+<li>Bellman 1957, Dynamic Programming, Princeton University Press</li>
+<li>Puterman 1994, Markov Decision Processes: Discrete Stochastic Dynamic Programming, Wiley</li>
+<li>Howard 1960, Dynamic Programming and Markov Processes, MIT Press</li>
+</ol>
+<div class="pager">
+<a href="../rl.html">← 返回 RL 精讲目录</a>
+<a href="lesson-2.html">下一课：动态规划：策略迭代与值迭代 →</a>
+</div>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="../assets/effects.js"></script>
+</body>
+</html>

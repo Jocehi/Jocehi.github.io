@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 2 课 · 动态规划：策略迭代与值迭代 · Jocehi 的 RL 精讲</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(','right':'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
+</head>
+<body>
+<canvas id="sakura"></canvas>
+<div class="wrap">
+<nav class="topnav"><b>Jocehi</b><a href="../index.html">首页</a><a href="../papers.html">论文精读</a><a href="../rl.html">RL 精讲</a><a href="../briefing.html">每日简报</a><a class="home" href="../index.html">← 返回首页</a></nav>
+<h1>第 2 课 · 动态规划：策略迭代与值迭代</h1>
+<p class="meta">Dynamic Programming: Policy &amp; Value Iteration · RL 算法每日精讲 · 2026-11-16 · 基础理论 · 入门 · 约 30 分钟</p>
+<p class="meta">前置知识：MDP 与 Bellman 方程</p>
+<div class="thesis">反复用贝尔曼方程评估并改进策略，直到得到最优策略。</div>
+<h2>① 问题设定</h2>
+<p>本课要解决的问题是，在已知环境模型的前提下，如何求解马尔可夫决策过程的最优策略。已知模型是指转移概率 $P(s'|s,a)$ 与奖励 $R(s,a)$ 均已给出，智能体无需通过与环境反复试错来学习，只需利用模型进行规划计算。适用场景是能够用精确模型描述、且状态集合 $\mathcal{S}$ 与动作集合 $\mathcal{A}$ 有限或可离散化的问题，例如已知规则的棋盘游戏、网格路径规划、库存管理与资源调度等。输入包括状态集合 $\mathcal{S}$、动作集合 $\mathcal{A}$、转移概率 $P(s'|s,a)$、奖励 $R(s,a)$ 与折扣因子 $\gamma$；输出为最优策略 $\pi^*$ 以及对应的最优价值函数 $V^*(s)$，其中 $V^*(s)$ 表示从状态 $s$ 出发按最优策略执行所能获得的折扣回报期望。掌握本课后，学习者能够在模型已知时直接算出最优决策，而不必先收集大量交互数据。</p>
+<h2>② 核心思想</h2>
+<ul>
+<li>策略评估固定策略 $\pi$，反复应用贝尔曼期望方程更新 $V^\pi(s)$，直至收敛，从而得到该策略在每个状态 $s$ 下的长期价值。</li>
+<li>策略改进依据当前 $V^\pi(s)$ 计算 $Q^\pi(s,a)$，并在每个状态 $s$ 选择使 $Q^\pi(s,a)$ 最大的动作 $a$，从而得到不劣于原策略的新策略 $\pi'$。</li>
+<li>策略迭代交替执行策略评估与策略改进，每轮改进都不会降低策略价值，且策略数量有限，因此必在有限步内收敛到最优策略 $\pi^*$。</li>
+<li>值迭代不等待策略评估完全收敛，而是直接对最优价值 $V^*(s)$ 应用贝尔曼最优方程，每步用 $\max_{a}$ 更新 $V(s)$，相当于把评估与改进合并为一次更新。</li>
+<li>两种方法都以已知模型为前提，即转移概率 $P(s'|s,a)$ 与奖励 $R(s,a)$ 已知，本质上都是通过反复应用贝尔曼算子求解不动点。</li>
+<li>收敛判据常用相邻两次 $V(s)$ 的最大变化量是否小于阈值 $\theta$ 来判断，变化量足够小时即可停止迭代并由 $V(s)$ 导出贪心策略。</li>
+</ul>
+<h2>③ 与已学方法对比</h2>
+<p>上一课只给出了描述问题的工具，即马尔可夫决策过程的建模方式，以及刻画策略价值与最优价值的贝尔曼方程，它本身没有给出求解最优策略的具体算法。动态规划把贝尔曼方程变成了可执行的迭代算法：策略迭代通过策略评估与策略改进交替进行，值迭代则直接迭代最优价值，从而真正算出最优策略 $\pi^*$ 与最优价值函数 $V^*(s)$。代价是必须已知完整模型，即转移概率 $P(s'|s,a)$ 与奖励 $R(s,a)$，且每次迭代都要遍历全部状态 $s$ 与动作 $a$，状态规模变大时计算量与内存开销会急剧上升，无法直接用于模型未知或大规模连续问题。</p>
+<h2>④ 学习流程</h2>
+<ol class="flow">
+<li><b>初始化价值与策略</b>读取模型输入 $\mathcal{S}$、$\mathcal{A}$、$P(s'|s,a)$、$R(s,a)$ 与 $\gamma$，令所有 $V(s)=0$ 并任意初始化 $\pi(s)$，输出初始价值表与策略表。</li>
+<li><b>策略评估更新价值</b>在固定 $\pi(s)$ 下，对每个 $s$ 反复用贝尔曼期望方程更新 $V(s) \gets \sum_{s'} P(s'|s,\pi(s))[R(s,\pi(s))+\gamma V(s')]$，直至最大变化量小于 $\theta$，输出收敛的 $V^\pi(s)$。</li>
+<li><b>计算动作价值</b>依据当前 $V^\pi(s)$，对每个 $s$ 与每个 $a$ 计算 $Q^\pi(s,a)=\sum_{s'} P(s'|s,a)[R(s,a)+\gamma V^\pi(s')]$，输出动作价值表 $Q^\pi(s,a)$。</li>
+<li><b>策略改进选动作</b>在每个 $s$ 选择使 $Q^\pi(s,a)$ 最大的动作，令 $\pi'(s)=\arg\max_a Q^\pi(s,a)$，输出候选新策略 $\pi'(s)$。</li>
+<li><b>更新策略与价值</b>把 $\pi'(s)$ 写回 $\pi(s)$，并记录策略是否变化；值迭代则不等待评估收敛，直接令 $V(s) \gets \max_{a} \sum_{s'} P(s'|s,a)[R(s,a)+\gamma V(s')]$，输出更新后的 $\pi(s)$ 或 $V(s)$。</li>
+<li><b>判断收敛与循环</b>计算相邻两次 $V(s)$ 的最大变化量 $\Delta=\max_{s\in\mathcal{S}}|V_{new}(s)-V(s)|$，若 $\Delta$ 不小于 $\theta$ 或策略仍在变化，则返回策略评估继续下一轮，否则进入导出步骤。</li>
+<li><b>导出最优策略</b>由最终 $V(s)$ 导出 $\pi^*(s)=\arg\max_{a}\sum_{s'} P(s'|s,a)[R(s,a)+\gamma V(s')]$，输出最优策略 $\pi^*$ 与最优价值 $V^*(s)$。</li>
+</ol>
+<h2>⑤ 关键公式</h2>
+<div class="formula-card">
+<h4>策略评估更新规则</h4>
+<div>$$V(s) \leftarrow \sum_{s'} P(s'|s,\pi(s)) [R(s,\pi(s)) + \gamma V(s')]$$</div>
+<p>固定策略 $\pi$ 时，对每个状态 $s$ 用贝尔曼期望方程反复更新 $V(s)$。等式右边先按 $P(s'|s,\pi(s))$ 对下一状态 $s'$ 求期望，再把即时奖励 $R(s,\pi(s))$ 与折扣后的 $V(s')$ 相加，直到 $V(s)$ 不再变化，得到的就是 $V^\pi(s)$。</p>
+<ul>
+<li>$V(s)$：当前策略价值的估计值</li>
+<li>$\pi(s)$：当前策略在该状态下选择的动作</li>
+<li>$P(s'|s,\pi(s))$：执行该动作后转移到下一状态的概率</li>
+<li>$R(s,\pi(s))$：执行该动作后获得的即时奖励</li>
+<li>$\gamma$：折扣因子，衡量未来奖励的重要性</li>
+<li>$V(s')$：下一状态的价值估计</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>动作价值函数</h4>
+<div>$$Q^\pi(s,a) = \sum_{s'} P(s'|s,a) [R(s,a) + \gamma V^\pi(s')]$$</div>
+<p>$Q^\pi(s,a)$ 表示在状态 $s$ 先执行动作 $a$、之后再按策略 $\pi$ 执行所能获得的期望回报。它把 $V^\pi(s)$ 的计算从固定动作 $\pi(s)$ 推广到任意动作 $a$，是策略改进的比较依据。策略改进时只需比较不同 $a$ 对应的 $Q^\pi(s,a)$，取最大值者作为新动作。</p>
+<ul>
+<li>$Q^\pi(s,a)$：在该状态执行该动作后的期望回报</li>
+<li>$a$：待评估的候选动作</li>
+<li>$P(s'|s,a)$：执行候选动作后转移到下一状态的概率</li>
+<li>$R(s,a)$：执行候选动作后获得的即时奖励</li>
+<li>$\gamma$：折扣因子</li>
+<li>$V^\pi(s')$：下一状态按当前策略执行时的价值</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>值迭代更新规则</h4>
+<div>$$V(s) \leftarrow \max_{a} \sum_{s'} P(s'|s,a) [R(s,a) + \gamma V(s')]$$</div>
+<p>值迭代不等待策略评估收敛，每轮直接对 $V(s)$ 取所有动作 $a$ 中的最大值进行更新。右边的 $\max_{a}$ 相当于把策略改进隐含在价值更新里，因此评估与改进被合并为一次更新。反复应用该更新，$V(s)$ 会收敛到最优价值 $V^*(s)$，再由它导出贪心策略即为 $\pi^*$。</p>
+<ul>
+<li>$V(s)$：当前最优价值的估计值</li>
+<li>$\max_{a}$：对所有候选动作取最大值</li>
+<li>$P(s'|s,a)$：执行动作后转移到下一状态的概率</li>
+<li>$R(s,a)$：执行动作后获得的即时奖励</li>
+<li>$\gamma$：折扣因子</li>
+<li>$V(s')$：下一状态的价值估计</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>收敛判据</h4>
+<div>$$\max_{s \in \mathcal{S}} |V_{new}(s)-V(s)| < \theta$$</div>
+<p>用相邻两次迭代中 $V(s)$ 的最大变化量衡量是否收敛，变化量越小说明 $V(s)$ 越接近不动点。当该最大值小于阈值 $\theta$ 时停止迭代，认为当前 $V(s)$ 已足够精确，可以据此导出策略。</p>
+<ul>
+<li>$V_{new}(s)$：本轮更新后的价值</li>
+<li>$V(s)$：上一轮的价值</li>
+<li>$\mathcal{S}$：全部状态的集合</li>
+<li>$\theta$：停止迭代的阈值，越小精度越高</li>
+<li>$\max_{s\in\mathcal{S}}$：对所有状态取最大变化量</li>
+</ul>
+</div>
+<h2>⑥ 数学推导</h2>
+<ol class="mathnotes">
+<li>
+<p>从回报的定义出发：从时刻 $t$ 起的折扣回报是之后所有奖励按 $\gamma$ 折扣后的和，价值就是它在策略 $\pi$ 下的期望。</p>
+</li>
+<li>
+<p>把第一步奖励分离出来，剩下的部分恰好是下一时刻的回报，于是价值满足递推关系，下一状态的价值由 $V^\pi(s')$ 表示。</p>
+</li>
+<li>
+<p>对下一状态 $s'$ 按转移概率 $P(s'|s,\pi(s))$ 求期望，就得到贝尔曼期望方程，它是策略评估的理论依据。</p>
+<div>$$V^\pi(s)=\sum_{s'} P(s'|s,\pi(s))[R(s,\pi(s))+\gamma V^\pi(s')]$$</div>
+</li>
+<li>
+<p>策略评估把上式当作更新规则：用旧的 $V(s')$ 算出新的 $V(s)$，反复迭代，因为每次更新都是 $\gamma$ 压缩映射，$V(s)$ 会收敛到唯一不动点 $V^\pi(s)$。</p>
+</li>
+<li>
+<p>策略改进比较同一状态下不同动作的价值：先用当前 $V^\pi(s')$ 算出每个 $a$ 的 $Q^\pi(s,a)$，再取最大值对应的动作作为新策略。</p>
+<div>$$Q^\pi(s,a)=\sum_{s'} P(s'|s,a)[R(s,a)+\gamma V^\pi(s')]$$</div>
+</li>
+<li>
+<p>策略改进定理保证新策略不更差：若在每个 $s$ 都选 $Q^\pi(s,a)$ 最大的动作，则新策略的价值 $V^{\pi'}(s)$ 处处不低于旧的 $V^\pi(s)$，因此价值单调不降。</p>
+</li>
+<li>
+<p>策略数量有限，价值又单调不降且有上界，所以策略迭代必在有限步内停止，停止时策略在每个 $s$ 上都是贪心的，即为最优策略 $\pi^*$。</p>
+</li>
+<li>
+<p>值迭代把改进直接放进更新：不再固定 $\pi(s)$，而是对每个 $s$ 直接取 $\max_{a}$，得到贝尔曼最优方程的更新形式。</p>
+<div>$$V(s) \leftarrow \max_{a} \sum_{s'} P(s'|s,a)[R(s,a)+\gamma V(s')]$$</div>
+</li>
+<li>
+<p>数值例子：设只有一个非终态 $s$，$\gamma=0.9$，动作 $a_1$ 得奖励 $2$ 后到终态，动作 $a_2$ 得奖励 $0$ 后仍回到 $s$，初值 $V_0(s)=0$。</p>
+</li>
+<li>
+<p>值迭代第一轮：$a_1$ 对应 $2+0.9\times 0=2$，$a_2$ 对应 $0+0.9\times 0=0$，取最大值 $2$，得 $V_1(s)=2$。</p>
+</li>
+<li>
+<p>第二轮：$a_1$ 仍为 $2$，$a_2$ 变为 $0+0.9\times 2=1.8$，最大值仍为 $2$，得 $V_2(s)=2$，变化量为 $0$，小于阈值 $\theta$，停止迭代。</p>
+</li>
+<li>
+<p>导出策略：比较 $Q(s,a_1)=2$ 与 $Q(s,a_2)=1.8$，选 $a_1$，故 $\pi^*(s)=a_1$，最优价值为 $V^*(s)=2$。</p>
+</li>
+</ol>
+<h2>⑦ 伪代码</h2>
+<div class="pseudo">
+<h4>策略迭代</h4>
+<div class="step"><span class="stepnum">·</span> 输入：状态集合 $\mathcal{S}$、动作集合 $\mathcal{A}$、转移概率 $P(s'|s,a)$、奖励 $R(s,a)$、折扣因子 $\gamma$、阈值 $\theta$</div>
+<div class="step"><span class="stepnum">·</span> 初始化：对所有 $s \in \mathcal{S}$，令 $V(s)=0$，并任意初始化策略 $\pi(s)$</div>
+<div class="step"><span class="stepnum">·</span> 重复执行以下两步，直到策略 $\pi$ 不再变化：</div>
+<div class="step" style="padding-left:1.04rem"><span class="stepnum">1</span> 策略评估：重复更新，对所有 $s \in \mathcal{S}$，直到 $V(s)$ 的最大变化量小于 $\theta$</div>
+<div class="step formula-line"><div>$$V(s) \gets \sum_{s'} P(s'|s,\pi(s)) [R(s,\pi(s)) + \gamma V(s')]$$</div></div>
+<div class="step" style="padding-left:1.04rem"><span class="stepnum">2</span> 策略改进：对每个 $s \in \mathcal{S}$，令</div>
+<div class="step formula-line"><div>$$\pi(s) \gets \arg\max_{a} \sum_{s'} P(s'|s,a) [R(s,a) + \gamma V(s')]$$</div></div>
+<div class="step"><span class="stepnum">·</span> 输出：最优策略 $\pi$ 与最优价值函数 $V(s)$</div>
+</div>
+<div class="pseudo">
+<h4>值迭代</h4>
+<div class="step"><span class="stepnum">·</span> 输入：状态集合 $\mathcal{S}$、动作集合 $\mathcal{A}$、转移概率 $P(s'|s,a)$、奖励 $R(s,a)$、折扣因子 $\gamma$、阈值 $\theta$</div>
+<div class="step"><span class="stepnum">·</span> 初始化：对所有 $s \in \mathcal{S}$，令 $V(s)=0$</div>
+<div class="step"><span class="stepnum">·</span> 重复执行：对所有 $s \in \mathcal{S}$，更新，直到 $V(s)$ 的最大变化量小于 $\theta$</div>
+<div class="step formula-line"><div>$$V(s) \gets \max_{a} \sum_{s'} P(s'|s,a) [R(s,a) + \gamma V(s')]$$</div></div>
+<div class="step"><span class="stepnum">·</span> 输出最优策略：对每个 $s \in \mathcal{S}$，令</div>
+<div class="step formula-line"><div>$$\pi(s) \gets \arg\max_{a} \sum_{s'} P(s'|s,a) [R(s,a) + \gamma V(s')]$$</div></div>
+</div>
+<h2>⑧ Python 代码（可运行）</h2>
+<pre class="code"><button class="copybtn">复制代码</button><code>import numpy as np
+# 4x4 GridWorld：目标 15 得 +10，陷阱 6 得 -10，其余每步 -1，确定性转移
+ROWS, COLS, N_S, N_A = 4, 4, 16, 4
+GAMMA, THETA = 0.9, 1e-4  # gamma 为折扣因子，theta 为收敛阈值
+TERMINALS = {6, 15}
+ARROWS = np.array(["↑", "→", "↓", "←"])  # 动作：0 上、1 右、2 下、3 左
+
+def step(s, a):
+    """已知模型：给定状态 s 与动作 a，返回下一状态与奖励。"""
+    if s in TERMINALS:
+        return s, 0.0
+    r, c = divmod(s, COLS)
+    dr, dc = [(-1, 0), (0, 1), (1, 0), (0, -1)][a]
+    nr, nc = min(max(r + dr, 0), ROWS - 1), min(max(c + dc, 0), COLS - 1)  # 撞墙原地不动
+    ns = nr * COLS + nc
+    return ns, 10.0 if ns == 15 else (-10.0 if ns == 6 else -1.0)
+
+def q_value(V, s, a):
+    """由 V(s) 算 Q(s,a)：确定性转移只需一项，不必对 s' 求和。"""
+    ns, r = step(s, a)
+    return r + GAMMA * V[ns]
+
+def policy_evaluation(policy, V):
+    """策略评估：固定 pi，反复用贝尔曼期望方程更新 V^pi(s) 直至收敛。"""
+    while True:
+        delta, new_V = 0.0, V.copy()  # 同步更新：先算全部新值再替换，避免新旧混杂
+        for s in range(N_S):
+            if s not in TERMINALS:
+                ns, r = step(s, policy[s])
+                new_V[s] = r + GAMMA * V[ns]
+                delta = max(delta, abs(new_V[s] - V[s]))
+        V = new_V
+        if delta &lt; THETA:  # 最大变化量小于 theta 即认为已收敛
+            return V
+
+def policy_iteration():
+    """策略迭代：评估与改进交替进行，策略不再变化时即为最优策略 pi*。"""
+    policy, V = np.zeros(N_S, dtype=int), np.zeros(N_S)  # 任意初始化策略与价值
+    for i in range(100):
+        V = policy_evaluation(policy, V)
+        stable = True
+        for s in range(N_S):
+            if s not in TERMINALS:
+                old = policy[s]
+                policy[s] = int(np.argmax([q_value(V, s, a) for a in range(N_A)]))
+                stable = stable and policy[s] == old  # 任一状态改变则本轮不稳定
+        print(f"策略迭代第 {i + 1} 轮：策略稳定 = {stable}")
+        if stable:
+            break
+    return policy, V
+
+def value_iteration():
+    """值迭代：直接对最优价值 V*(s) 用贝尔曼最优方程做 max_a 更新。"""
+    V = np.zeros(N_S)
+    for i in range(1000):
+        delta, new_V = 0.0, V.copy()
+        for s in range(N_S):
+            if s not in TERMINALS:
+                new_V[s] = max(q_value(V, s, a) for a in range(N_A))
+                delta = max(delta, abs(new_V[s] - V[s]))
+        V = new_V
+        if delta &lt; THETA:
+            print(f"值迭代在第 {i + 1} 轮收敛")
+            break
+    policy = np.array([int(np.argmax([q_value(V, s, a) for a in range(N_A)]))
+                       if s not in TERMINALS else 0 for s in range(N_S)])
+    return policy, V  # 由收敛后的 V(s) 导出贪心策略
+
+def show(title, policy, V):
+    """打印价值表与策略表，直观检查最优策略是否绕开陷阱、走向目标。"""
+    print(f"\n{title}\n价值表：\n{np.round(V.reshape(ROWS, COLS), 2)}")
+    grid = np.array([ARROWS[a] if s not in TERMINALS else "■" for s, a in enumerate(policy)])
+    print(f"策略表：\n{grid.reshape(ROWS, COLS)}")
+
+if __name__ == "__main__":
+    pi1, V1 = policy_iteration()
+    show("策略迭代", pi1, V1)
+    pi2, V2 = value_iteration()
+    show("值迭代", pi2, V2)
+    print("两种方法得到的最优策略是否一致：", np.array_equal(pi1, pi2))</code></pre>
+<h2>⑨ 代码讲解</h2>
+<ol>
+<li>开头定义 $4 \times 4$ 的 GridWorld 环境与已知模型：状态总数为 $16$，动作数为 $4$，分别为 $0$ 上、$1$ 右、$2$ 下、$3$ 左；目标状态为 $15$，陷阱状态为 $6$，二者均为终止状态。函数 `step` 给定当前状态 $s$ 与动作 $a$，按确定性转移算出下一状态 $s'$ 与奖励 $r$：撞墙时原地不动，进入 $15$ 得 $+10$，进入 $6$ 得 $-10$，其余每步得 $-1$，已在终止状态则停留并得 $0$。这一步把转移概率 $P(s'|s,a)$ 与奖励 $R(s,a)$ 写成可直接调用的模型，是动态规划的前提。</li>
+<li>求动作价值的辅助函数由当前价值 $V(s)$ 计算动作价值 $Q(s,a)$：先调用模型得到下一状态 $s'$ 与奖励 $r$，再按 $Q(s,a)=r+\gamma V(s')$ 计算。因为本例转移是确定性的，只需算这一项，不必像一般贝尔曼期望方程那样对所有 $s'$ 按 $P(s'|s,a)$ 加权求和。理解这一式子是理解后面两处更新的关键：策略评估用它固定动作，值迭代用它对动作取最大值。</li>
+<li>策略评估固定当前策略 $\pi$，反复应用贝尔曼期望方程更新 $V^\pi(s)$。每轮先复制一份价值表做同步更新，再对每个非终止状态 $s$ 用 $\pi(s)$ 指定的动作算出 $r+\gamma V(s')$ 作为新值；同时用相邻两次 $V(s)$ 的最大变化量 $\delta$ 跟踪收敛程度，$\delta$ 取所有状态变化量绝对值的最大值。当 $\delta<\theta$ 时停止并返回 $V$，此时 $V$ 已近似等于该策略的真实价值 $V^\pi(s)$。同步更新能避免同一轮内新旧值混杂，是初学者最容易写错的细节。</li>
+<li>策略迭代在评估与改进之间交替：先调用策略评估得到当前 $\pi$ 对应的 $V^\pi(s)$，再对每个非终止状态 $s$ 计算全部 $4$ 个动作的 $Q^\pi(s,a)$，并用 $\arg\max_a Q^\pi(s,a)$ 选出最优动作构成新策略 $\pi'$。若本轮没有任何状态的动作改变，则令稳定标志为真并跳出循环，否则继续下一轮评估；因为每轮改进都不降低 $V^\pi(s)$，且策略总数有限，所以必在有限步内收敛到最优策略 $\pi^*$。代码用 $100$ 轮作为安全上限，防止因收敛判据写错而无限循环。</li>
+<li>值迭代不等待策略评估收敛，而是直接对最优价值 $V^*(s)$ 应用贝尔曼最优方程：每轮对每个非终止状态 $s$ 计算全部动作的 $Q(s,a)$，并用 $V(s)=\max_a Q(s,a)$ 更新，相当于把评估与改进合并为一次 $\max_a$ 更新。同样用最大变化量 $\delta$ 与阈值 $\theta$ 判断收敛，$\delta<\theta$ 时停止；循环上限为 $1000$ 轮。收敛后不再迭代 $V(s)$，而是对每个 $s$ 取 $\arg\max_a Q(s,a)$ 导出贪心策略，该策略即为由 $V^*(s)$ 得到的 $\pi^*$。</li>
+<li>最后的展示与主程序把两种方法放在同一环境下比较：先运行策略迭代，再运行值迭代，分别打印 $4 \times 4$ 的价值表与策略表，其中终止状态用方块标记，其余状态用箭头表示动作。直观检查时应看最优策略是否绕开 $6$ 号陷阱、沿最短路径走向 $15$ 号目标，以及两种方法得到的策略是否完全一致；若一致，说明两种更新方式求得的是同一个 $V^*(s)$ 与 $\pi^*$。</li>
+</ol>
+<h2>⑩ 超参数</h2>
+<table class="data"><tr><th>参数</th><th>常用取值</th><th>说明</th></tr>
+<tr><td>折扣因子 $\gamma$（GAMMA）</td><td>$0.9$</td><td>$\gamma$ 越接近 $1$，越重视长期回报，$V(s)$ 的传播范围越远、收敛越慢；$\gamma$ 越接近 $0$，策略越短视，只看即时奖励 $r$。本例取 $0.9$ 是在 $4 \times 4$ 网格上兼顾远期目标与收敛速度的常用折中，调大时要相应放宽迭代上限或减小 $\theta$。</td></tr>
+<tr><td>收敛阈值 $\theta$（THETA）</td><td>$10^{-4}$</td><td>每轮用最大变化量 $\delta$ 与 $\theta$ 比较，$\delta<\theta$ 即停止。$\theta$ 取 $10^{-4}$ 时价值表已精确到小数点后约 $4$ 位，足以稳定导出贪心策略；$\theta$ 取得过大，如 $10^{-1}$，会在 $V(s)$ 尚未收敛时提前停止，策略可能仍指向陷阱；取得过小则只增加迭代轮数，收益很小。</td></tr>
+<tr><td>最大迭代轮数</td><td>$100$ 或 $1000$</td><td>这是防止无限循环的安全上限，不是期望的实际轮数：策略迭代通常在数轮内使策略稳定，值迭代则需要数十轮使 $\delta$ 降到 $\theta$ 以下。若程序跑满上限仍未收敛，应先检查 $\gamma$ 是否过大、$\theta$ 是否过小或更新公式是否写错，而不是盲目把上限调到 $10000$。</td></tr>
+<tr><td>奖励设置</td><td>目标 $+10$，陷阱 $-10$，每步 $-1$</td><td>奖励决定了最优策略的形状：每步 $-1$ 会促使智能体尽快到达目标 $15$，而不是原地打转；陷阱 $-10$ 与目标 $+10$ 的差距越大，策略绕开 $6$ 的动机越强。若把每步奖励改为 $0$，多条等长路径的 $V(s)$ 会相等，策略可能出现任意绕路；若把陷阱奖励改为 $-1$，智能体可能宁愿穿过陷阱抄近路。调试时先确认 $R(s,a)$ 与代码中的奖励分支一致，再调 $\gamma$ 与 $\theta$。</td></tr>
+<tr><td>初始价值 $V_0$ 与初始策略 $\pi_0$</td><td>$V(s)=0$，$\pi(s)=0$（向上）</td><td>代码把所有 $V(s)$ 初始化为 $0$，把所有 $\pi(s)$ 初始化为 $0$，即先假设全部向上走；动态规划对任意初始化都收敛，因此初值不影响最终的 $V^*(s)$ 与 $\pi^*$，只影响收敛速度。若把 $V(s)$ 初始化为很大的正数或随机数，早期 $\delta$ 会偏大、迭代轮数增多，但不应改变最终策略；若最终策略随初值变化，说明收敛判据或更新公式有误。</td></tr>
+</table>
+<h2>⑪ 常见坑</h2>
+<ul>
+<li>同步更新写成原地更新：策略评估与值迭代都先复制价值表再统一替换，若直接在循环内写 $V(s)=r+\gamma V(s')$ 并立即用新 $V(s')$ 计算下一个 $s$，同一轮就会混入新旧值，$\delta$ 的含义被破坏，收敛速度与结果都可能改变。调试时保留新旧两份表，只在整轮结束后再替换，并打印每轮的 $\delta$，确认 $\delta$ 总体呈下降趋势。</li>
+<li>终点状态被错误更新或赋予动作：$6$ 与 $15$ 是终止状态，$V(s)$ 应保持为 $0$，进入后奖励也为 $0$，不应再参与贝尔曼更新或策略改进。若忘记跳过它们，$V(6)$ 与 $V(15)$ 会被反复改写，价值会从终点向外错误传播。调试时先打印价值表，检查 $V(6)=0$ 与 $V(15)=0$ 是否成立，再检查策略表中这两个位置是否被标记为终止。</li>
+<li>撞墙与越界处理不当：`step` 用截断把越界坐标限制在网格内，撞墙后应原地不动并仍得 $-1$，而不是跳到对侧或报错。若改成取模或直接计算索引，状态编号会错位，$V(s)$ 表看起来仍能收敛，但策略箭头会在边界处指向墙外。调试时逐个检查边界状态 $s$ 在四个动作 $a$ 下的下一状态 $s'$，确认 $s'$ 仍在 $0$ 到 $15$ 之间且撞墙时 $s'=s$。</li>
+<li>把值迭代的中间价值当作最优价值直接用：值迭代收敛前，$V(s)$ 只是 $V^*(s)$ 的近似，提前用 $\arg\max_a Q(s,a)$ 导出策略可能得到次优策略；同样，策略迭代若在策略评估未收敛时就改进，也会偏离理论保证。调试时不要只看策略是否稳定，要同时看 $\delta$ 是否小于 $\theta$、价值表是否不再明显变化，并比较策略迭代与值迭代的最终策略是否一致；若不一致，先调小 $\theta$ 或增加迭代轮数，再检查 $Q(s,a)$ 的计算是否漏了 $\gamma V(s')$。</li>
+</ul>
+<h2>⑫ 练习题</h2>
+<p><b>练习题 1</b> 在已知模型，即转移概率 $P(s'|s,a)$ 与奖励 $R(s,a)$ 已知的条件下，策略迭代与值迭代都通过反复应用贝尔曼算子求解最优策略。请结合贝尔曼期望方程与贝尔曼最优方程回答：(1) 策略评估与策略改进分别在做什么；(2) 为什么策略迭代必在有限步内收敛到最优策略 $\pi^*$；(3) 值迭代与策略迭代在更新方式上有何本质区别，它为什么不需要等策略评估完全收敛；(4) 两种方法共同的收敛判据是什么，收敛后如何由价值导出最优策略 $\pi^*$？</p>
+<details><summary>练习题 1（点击查看参考答案）</summary><div class="ans">
+<p>要点是：两种方法都以已知模型为前提，本质上都是求贝尔曼算子的不动点，区别只在于评估与改进是分开做还是合并做。</p>
+<p>1. 策略评估：固定策略 $\pi$，反复应用贝尔曼期望方程更新价值。理论形式为 $V^\pi(s)=\sum_{s'} P(s'|s,\pi(s))[R(s,\pi(s))+\gamma V^\pi(s')]$，迭代时用旧的 $V(s')$ 计算新的 $V(s)$。因为每次更新都是 $\gamma$ 压缩映射，所以 $V(s)$ 会收敛到唯一不动点 $V^\pi(s)$，即该策略在每个状态 $s$ 下的长期价值。</p>
+<p>2. 策略改进：依据已评估出的 $V^\pi(s)$，对同一状态 $s$ 下的每个动作 $a$ 计算 $Q^\pi(s,a)=\sum_{s'} P(s'|s,a)[R(s,a)+\gamma V^\pi(s')]$，再取使 $Q^\pi(s,a)$ 最大的动作作为新策略，即 $\pi'(s)=\arg\max_{a} Q^\pi(s,a)$。策略改进定理保证，若在每个 $s$ 都这样选，则新策略的价值处处不低于旧策略，即对所有 $s$ 都有 $V^{\pi'}(s) \ge V^\pi(s)$，因此价值单调不降。</p>
+<p>3. 策略迭代的有限收敛：策略迭代交替执行上述评估与改进，每轮改进都不会降低价值，所以价值序列单调不降且有上界 $V^*(s)$。在有限状态与有限动作下，确定性策略的总数有限，价值不可能无限次严格上升，因此必在有限步内停止。停止时策略在每个 $s$ 上都是关于当前 $V(s)$ 贪心的，即没有动作能再提高 $Q(s,a)$，这正是贝尔曼最优方程成立的条件，故此时的策略就是最优策略 $\pi^*$，对应的价值就是 $V^*(s)$。</p>
+<p>4. 值迭代的区别：值迭代不再固定 $\pi(s)$，也不等待策略评估完全收敛，而是直接对最优价值 $V^*(s)$ 应用贝尔曼最优方程，每步用 $\max_{a}$ 更新，即 $V(s) \leftarrow \max_{a} \sum_{s'} P(s'|s,a)[R(s,a)+\gamma V(s')]$。这相当于把一次评估与一次改进合并为一次更新：先对每个 $a$ 算出一步展望值，再取最大值。最优贝尔曼算子同样是 $\gamma$ 压缩映射，因此 $V(s)$ 仍会收敛到唯一不动点 $V^*(s)$。它每轮计算量较小，但通常需要更多轮才能收敛；策略迭代每轮评估代价较大，但改进步数较少。</p>
+<p>5. 共同的收敛判据与导出策略：常用相邻两次 $V(s)$ 的最大变化量 $\Delta=\max_{s}|V_{new}(s)-V_{old}(s)|$ 是否小于阈值 $\theta$ 来判断，当 $\Delta<\theta$ 时即可停止迭代。收敛后由 $V(s)$ 导出贪心策略，即 $\pi^*(s)=\arg\max_{a}\sum_{s'}P(s'|s,a)[R(s,a)+\gamma V^*(s')]$，在值迭代中 $V(s)$ 已近似等于 $V^*(s)$，在策略迭代中停止时的策略本身就是 $\pi^*$。</p>
+</div></details>
+<p><b>练习题 2</b> 设有一个只有两个状态的确定性 $MDP$：一个非终态 $s$ 和一个终态 $s_T$，且 $V(s_T)=0$。在 $s$ 处有两个动作：动作 $a_1$ 获得奖励 $3$ 后转移到终态 $s_T$；动作 $a_2$ 获得奖励 $2$ 后仍回到 $s$。已知折扣因子 $\gamma=0.5$，值迭代的初值 $V_0(s)=0$，收敛阈值 $\theta=0.1$。请用值迭代的贝尔曼最优更新 $V(s) \leftarrow \max_{a} \sum_{s'} P(s'|s,a)[R(s,a)+\gamma V(s')]$，逐轮手算：(1) 列出每一轮的 $Q(s,a_1)$ 与 $Q(s,a_2)$、更新后的 $V_k(s)$ 以及变化量 $\Delta_k=|V_k(s)-V_{k-1}(s)|$，直至 $\Delta_k<\theta$ 时停止，并说明在哪一轮贪心动作由 $a_1$ 变为 $a_2$；(2) 由停止时的 $V(s)$ 重新计算 $Q(s,a_1)$ 与 $Q(s,a_2)$，导出贪心策略 $\pi^*(s)$；(3) 设最优动作为 $a_2$，由贝尔曼最优方程 $V^*(s)=2+0.5V^*(s)$ 解出精确的 $V^*(s)$，验证 $a_2$ 确实最优，并求近似值与精确值的误差。</p>
+<details><summary>练习题 2（点击查看参考答案）</summary><div class="ans">
+<p>先说明简化：因为转移是确定性的，对 $s'$ 的求和只剩一项；$a_1$ 的下一状态是 $s_T$，且 $V(s_T)=0$，故其 $Q$ 值恒为 $3$；$a_2$ 的下一状态仍是 $s$，故其 $Q$ 值随 $V(s)$ 增大而增大。初值 $V_0(s)=0$。</p>
+<p>第 $1$ 轮：$Q(s,a_1)=3+0.5\times 0=3$，$Q(s,a_2)=2+0.5\times 0=2$，故 $V_1(s)=\max\{3,2\}=3$，$\Delta_1=|3-0|=3$。因为 $3>0.1$，继续迭代；此时贪心动作为 $a_1$。</p>
+<p>第 $2$ 轮：$Q(s,a_1)=3+0.5\times 0=3$，$Q(s,a_2)=2+0.5\times 3=3.5$，故 $V_2(s)=\max\{3,3.5\}=3.5$，$\Delta_2=|3.5-3|=0.5$。因为 $0.5>0.1$，继续迭代；从本轮起贪心动作由 $a_1$ 变为 $a_2$。</p>
+<p>第 $3$ 轮：$Q(s,a_1)=3$，$Q(s,a_2)=2+0.5\times 3.5=3.75$，故 $V_3(s)=\max\{3,3.75\}=3.75$，$\Delta_3=|3.75-3.5|=0.25$。因为 $0.25>0.1$，继续迭代。</p>
+<p>第 $4$ 轮：$Q(s,a_1)=3$，$Q(s,a_2)=2+0.5\times 3.75=3.875$，故 $V_4(s)=\max\{3,3.875\}=3.875$，$\Delta_4=|3.875-3.75|=0.125$。因为 $0.125>0.1$，继续迭代。</p>
+<p>第 $5$ 轮：$Q(s,a_1)=3$，$Q(s,a_2)=2+0.5\times 3.875=3.9375$，故 $V_5(s)=\max\{3,3.9375\}=3.9375$，$\Delta_5=|3.9375-3.875|=0.0625$。因为 $0.0625<0.1$，满足 $\Delta_k<\theta$，停止迭代，近似最优价值为 $V_5(s)=3.9375$。可验证 $V_k(s)=4-(0.5)^{k-1}$（$k\ge 1$），例如 $k=5$ 时 $4-0.0625=3.9375$。</p>
+<p>由停止时的 $V(s)$ 导出贪心策略：重新计算 $Q(s,a_1)=3+0.5\times 0=3$，$Q(s,a_2)=2+0.5\times 3.9375=3.96875$。因为 $3.96875>3$，故 $\pi^*(s)=a_2$。</p>
+<p>求精确最优价值：若最优动作为 $a_2$，贝尔曼最优方程为 $V^*(s)=\max\{3,2+0.5V^*(s)\}$，且 $V^*(s)=2+0.5V^*(s)$，移项得 $V^*(s)-0.5V^*(s)=2$，即 $0.5V^*(s)=2$，解得 $V^*(s)=4$。检验：$2+0.5\times 4=4$，且 $4>3$，假设成立，故 $a_2$ 确实最优，$\pi^*(s)=a_2$，$V^*(s)=4$。近似值与精确值的误差为 $|4-3.9375|=0.0625$。直观上，$a_1$ 只能一次性获得 $3$，而 $a_2$ 每步获得 $2$，其折扣和为 $2+0.5\times 2+0.5^2\times 2+\cdots=4$，长期来看更优。</p>
+</div></details>
+<p><b>练习题 3</b> 【代码改造题】基于本课 pythonCode 做三组对比实验，记录结果并解释原因：(a) 把 GAMMA 从 $0.9$ 改为 $0.5$，记录 $V^*(0)$ 与策略表是否变化；(b) 把陷阱从状态 $6$ 移到状态 $9$（TERMINALS 与 step() 里的奖励分支要同步改），记录 $V^*(0)$ 是否变化、策略表哪几个状态的动作变了；(c) 把 step() 里的每步奖励从 $-1$ 改为 $0$，记录 $V^*(0)$ 与策略表是否变化。最后总结：这三处改动里，哪些只改变价值大小、哪些会改变最优策略，为什么。</p>
+<details><summary>练习题 3（点击查看参考答案）</summary><div class="ans">
+<p>(a) 只改 GAMMA 一行重跑：$V^*(0)$ 从 $1.81$ 降到约 $-1.62$，策略表完全不变。原因：最优路径由网格几何决定（$0 \to 1 \to 2 \to 3 \to 7 \to 11 \to 15$，共 $6$ 步），$\gamma$ 不改变各条路径回报的相对顺序，只改变折现程度；$\gamma = 0.5$ 时终点的 $+10$ 折回起点只剩 $0.5^5 \times 10 \approx 0.31$，而沿途五步 $-1$ 的折现和约 $-1.94$，合计约 $-1.62$。$\gamma$ 越小越短视，远处的大奖励也撑不起长路径的价值。
+(b) TERMINALS 改为 $\{9, 15\}$、step() 里判断陷阱的 `ns == 6` 同步改为 `ns == 9`：$V^*(0)$ 不变，仍为 $1.81$；策略变化只发生在陷阱周边——状态 $5$ 由「下」改为「右」（下方不再是陷阱），状态 $8$ 由「右」改为「下」（右侧变成陷阱，必须绕开），状态 $6$ 不再是终止格、会显示箭头。原因：从起点出发的最优路径不经过 $5$、$8$ 的决策，陷阱搬家只改变它邻近状态的局部最优动作，不影响起点价值。
+(c) step() 里 `else -1.0` 改为 `else 0.0`：$V^*(0)$ 从 $1.81$ 升到约 $5.90$，策略表完全不变。$5.90 = 0.9^5 \times 10$：没有步惩罚后，起点价值就等于终点奖励纯折现的结果。策略不变是因为 $\gamma < 1$ 时绕路会让 $+10$ 被折得更狠，最短路依然最优；每步 $-1$ 的作用是惩罚拖延、区分等长路径，而不是决定走向。
+总结：(a)(c) 只改价值大小、不改策略——它们缩放的是所有路径共享的折现与步成本，不改变路径间的相对优劣；(b) 改的是环境结构（哪里危险），会改变局部最优策略。判断一个改动会不会改变策略，就看它是否改变了不同路径回报的相对大小关系。</p>
+</div></details>
+<h2>参考文献</h2>
+<ol>
+<li>Sutton &amp; Barto 2018, Reinforcement Learning: An Introduction, 第4章 动态规划</li>
+<li>Bellman 1957, Dynamic Programming</li>
+<li>Howard 1960, Dynamic Programming and Markov Processes</li>
+<li>Puterman 1994, Markov Decision Processes: Discrete Stochastic Dynamic Programming</li>
+</ol>
+<div class="pager">
+<a href="lesson-1.html">← 上一课：MDP 与 Bellman 方程</a>
+<a href="../rl.html">← 返回 RL 精讲目录</a>
+<span>第 3 课 · 蒙特卡洛方法（即将更新）</span>
+</div>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="../assets/effects.js"></script>
+</body>
+</html>
