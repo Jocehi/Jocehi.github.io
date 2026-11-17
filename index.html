@@ -27,10 +27,10 @@
 
 <!-- 往下滚动：三个空间的内容框 -->
 <main class="wrap" id="contents">
-  <nav class="topnav reveal"><b>Jocehi</b><a href="index.html">首页</a><a href="papers.html">论文精读</a><a href="rl.html">RL 精讲</a><a href="briefing.html">每日简报</a><a href="review.html">每日复盘</a><a href="diary.html">日记</a><a class="home" href="#hero">↑ 回到顶部</a></nav>
+  <nav class="topnav reveal"><b>Jocehi</b><a href="index.html">首页</a><a href="papers.html">论文精读</a><a href="rl.html">RL 精讲</a><a href="briefing.html">每日简报</a><a href="review.html">每日复盘</a><a href="diary.html">日记</a><a href="blog.html">博客</a><a class="home" href="#hero">↑ 回到顶部</a></nav>
 
   <section class="card latest reveal split" id="briefing">
-    <div class="card-img contain" style="background-image:url(assets/card-briefing.jpg)"><img src="assets/card-briefing.jpg" alt="World Model 每日简报"></div>
+    <div class="card-img" style="--imgw:280px"><img src="assets/card-briefing.jpg" alt="World Model 每日简报"></div>
     <div class="card-body">
     <h2>📰 World Model 每日简报</h2>
     <p class="meta">2026 年 11 月 17 日（周二）· 正式发布 1 条 · 论文 11 条</p>
@@ -46,7 +46,7 @@
   </section>
 
   <section class="card latest reveal split" id="papers" style="--d:.08s">
-    <div class="card-img contain" style="background-image:url(assets/card-papers.jpg)"><img src="assets/card-papers.jpg" alt="Interactive World Model 论文精读"></div>
+    <div class="card-img" style="--imgw:260px"><img src="assets/card-papers.jpg" alt="Interactive World Model 论文精读"></div>
     <div class="card-body">
     <h2>📄 Interactive World Model 论文精读</h2>
     <p class="meta">第 3 篇 · 2026 年 11 月 17 日 · Dreamer</p>
@@ -62,7 +62,7 @@
   </section>
 
   <section class="card latest reveal split" id="rl" style="--d:.16s">
-    <div class="card-img contain" style="background-image:url(assets/card-rl.jpg)"><img src="assets/card-rl.jpg" alt="RL 算法每日精讲"></div>
+    <div class="card-img" style="--imgw:320px"><img src="assets/card-rl.jpg" alt="RL 算法每日精讲"></div>
     <div class="card-body">
     <h2>🤖 RL 算法每日精讲</h2>
     <p class="meta">第 3 课 · 2026 年 11 月 17 日 · Monte Carlo 方法</p>
@@ -79,7 +79,7 @@
   </section>
 
   <section class="card latest reveal split" id="review" style="--d:.24s">
-    <div class="card-img"><img src="assets/card-review.jpg" alt="每日复盘"></div>
+    <div class="card-img" style="--imgw:480px"><img src="assets/card-review.jpg" alt="每日复盘"></div>
     <div class="card-body">
     <h2>📝 每日复盘</h2>
     <p class="meta">每天写下来 · 只保存在你的浏览器本地</p>
@@ -90,12 +90,22 @@
   </section>
 
   <section class="card latest reveal split" id="diary" style="--d:.32s">
-    <div class="card-img"><img src="assets/card-diary.jpg" alt="日记"></div>
+    <div class="card-img" style="--imgw:480px"><img src="assets/card-diary.jpg" alt="日记"></div>
     <div class="card-body">
     <h2>🔒 日记</h2>
     <p class="meta">写给自己的话 · 需要密码才能打开</p>
     <p>每天的心情和想法，写下来锁好，只属于你自己。</p>
     <p><a href="diary.html">打开日记 →</a></p>
+    </div>
+  </section>
+
+  <section class="card latest reveal split" id="blog" style="--d:.4s">
+    <div class="card-img" style="--imgw:480px"><img src="assets/card-blog.jpg" alt="博客"></div>
+    <div class="card-body">
+    <h2>✍️ 博客</h2>
+    <p class="meta">写点什么 · 想法、记录、分享</p>
+    <p>想到什么就写下来，文章发给我，我帮你放上来。</p>
+    <p><a href="blog.html">去博客 →</a></p>
     </div>
   </section>
 
@@ -106,7 +116,7 @@
 <script src="assets/player.js"></script>
 
 <!-- 音乐播放器：加歌只改 assets/player.js 顶部的 PLAYLIST，并把音频传到 assets/music/ -->
-<div class="player" id="player">
+<div class="player" id="player" hidden>
   <div class="player-note">♪</div>
   <div class="player-main">
     <div class="player-title" id="playerTitle">OST Playlist · 01</div>
@@ -122,6 +132,6 @@
   <button class="player-close" id="playerClose" aria-label="最小化">⌄</button>
   <audio id="playerAudio" preload="metadata"></audio>
 </div>
-<button class="player-fab" id="playerFab" aria-label="打开播放器" hidden>♪</button>
+<button class="player-fab" id="playerFab" aria-label="打开播放器">♪</button>
 </body>
 </html>
