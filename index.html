@@ -30,7 +30,7 @@
   <nav class="topnav reveal"><b>Jocehi</b><a href="index.html">首页</a><a href="papers.html">论文精读</a><a href="rl.html">RL 精讲</a><a href="briefing.html">每日简报</a><a href="review.html">每日复盘</a><a href="diary.html">日记</a><a class="home" href="#hero">↑ 回到顶部</a></nav>
 
   <section class="card latest reveal split" id="briefing">
-    <div class="card-img"><img src="assets/card-briefing.jpg" alt="World Model 每日简报"></div>
+    <div class="card-img contain" style="background-image:url(assets/card-briefing.jpg)"><img src="assets/card-briefing.jpg" alt="World Model 每日简报"></div>
     <div class="card-body">
     <h2>📰 World Model 每日简报</h2>
     <p class="meta">2026 年 11 月 17 日（周二）· 正式发布 1 条 · 论文 11 条</p>
@@ -46,7 +46,7 @@
   </section>
 
   <section class="card latest reveal split" id="papers" style="--d:.08s">
-    <div class="card-img"><img src="assets/card-papers.jpg" alt="Interactive World Model 论文精读" style="object-position:bottom"></div>
+    <div class="card-img contain" style="background-image:url(assets/card-papers.jpg)"><img src="assets/card-papers.jpg" alt="Interactive World Model 论文精读"></div>
     <div class="card-body">
     <h2>📄 Interactive World Model 论文精读</h2>
     <p class="meta">第 3 篇 · 2026 年 11 月 17 日 · Dreamer</p>
@@ -62,7 +62,7 @@
   </section>
 
   <section class="card latest reveal split" id="rl" style="--d:.16s">
-    <div class="card-img"><img src="assets/card-rl.jpg" alt="RL 算法每日精讲" style="object-position:top"></div>
+    <div class="card-img contain" style="background-image:url(assets/card-rl.jpg)"><img src="assets/card-rl.jpg" alt="RL 算法每日精讲"></div>
     <div class="card-body">
     <h2>🤖 RL 算法每日精讲</h2>
     <p class="meta">第 3 课 · 2026 年 11 月 17 日 · Monte Carlo 方法</p>
@@ -105,22 +105,18 @@
 <script src="assets/effects.js"></script>
 <script src="assets/player.js"></script>
 
-<!-- 音乐播放器（网易云风格）：加歌只改 assets/player.js 顶部的 PLAYLIST，并把音频传到 assets/music/ -->
+<!-- 音乐播放器：加歌只改 assets/player.js 顶部的 PLAYLIST，并把音频传到 assets/music/ -->
 <div class="player" id="player">
-  <div class="player-cover">♪</div>
+  <div class="player-note">♪</div>
   <div class="player-main">
     <div class="player-title" id="playerTitle">OST Playlist · 01</div>
-    <div class="player-artist">本地音乐</div>
+    <div class="player-progress" id="playerProgress"><div class="player-bar" id="playerBar"></div></div>
+    <div class="player-times"><span id="playerCur">0:00</span><span id="playerDur">0:00</span></div>
   </div>
   <div class="player-controls">
     <button id="playerPrev" aria-label="上一首">⏮</button>
     <button id="playerPlay" class="player-play" aria-label="播放">▶</button>
     <button id="playerNext" aria-label="下一首">⏭</button>
-  </div>
-  <div class="player-progress-wrap">
-    <span id="playerCur">0:00</span>
-    <div class="player-progress" id="playerProgress"><div class="player-bar" id="playerBar"></div></div>
-    <span id="playerDur">0:00</span>
   </div>
   <input type="range" id="playerVol" min="0" max="1" step="0.05" value="0.8" aria-label="音量">
   <button class="player-close" id="playerClose" aria-label="最小化">⌄</button>
