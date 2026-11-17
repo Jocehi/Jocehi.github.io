@@ -4,31 +4,36 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Learning Latent Dynamics for Planning from Pixels · 第 2 篇 · Jocehi 的论文精读</title>
-<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="../assets/space-papers.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(','right':'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
 </head>
 <body>
-<canvas id="sakura"></canvas>
 <div class="wrap">
 <nav class="topnav"><b>Jocehi</b><a href="../index.html">首页</a><a href="../papers.html">论文精读</a><a href="../rl.html">RL 精讲</a><a href="../briefing.html">每日简报</a><a class="home" href="../index.html">← 返回首页</a></nav>
 
+<header class="space-header"><p class="eyebrow">每日精读 · INTERACTIVE WORLD MODELS</p><nav class="day-pills"><a href="world-models.html">Day 1 · World Models</a><a href="planet.html" class="active">Day 2 · PlaNet</a><a href="dreamer.html">Day 3 · Dreamer</a></nav></header>
+<div class="layout"><article class="article">
 <h1>Learning Latent Dynamics for Planning from Pixels</h1>
 <p class="meta">Interactive World Model 论文精读 · 第 2 篇 · 2026 年 11 月 16 日<br>原论文：Danijar Hafner, Timothy Lillicrap, Ian Fischer, Ruben Villegas, David Ha, Honglak Lee, James Davidson，2019 年 · arXiv:<a href="https://arxiv.org/abs/1811.04551">1811.04551</a> · 阅读约 25 分钟</p>
-<div class="thesis">只从像素中学习一个确定性与随机性兼备的隐空间动力学模型，就能在隐空间里通过快速在线规划解决此前只有无模型方法才能解决的复杂连续控制任务，且样本效率高出两个数量级。</div>
-<p class="small"><b>原论文摘要：</b>Planning has been very successful for control tasks with known environment dynamics. To leverage planning in unknown environments, the agent needs to learn the dynamics from interactions with the world. However, learning dynamics models that are accurate enough for planning has been a long-standing challenge, especially in image-based domains. We propose the Deep Planning Network (PlaNet), a purely model-based agent that learns the environment dynamics from images and chooses actions through fast online planning in latent space. To achieve high performance, the dynamics model must accurately predict the rewards ahead for multiple time steps. We approach this using a latent dynamics model with both deterministic and stochastic transition components. Moreover, we propose a multi-step variational inference objective that we name latent overshooting. Using only pixel observations, our agent solves continuous control tasks with contact dynamics, partial observability, and sparse rewards, which exceed the difficulty of tasks that were previously solved by planning with learned models. PlaNet uses substantially fewer episodes and reaches final performance close to and sometimes higher than strong model-free algorithms.</p>
-<h2>问题与动机</h2>
+<div class="actions"><button class="btn-done" type="button">标记读完</button><button class="btn-bookmark" type="button">☆ 收藏</button><a href="https://arxiv.org/abs/1811.04551">arXiv 原文</a><a href="https://arxiv.org/pdf/1811.04551">PDF</a></div>
+
+<div class="thesis"><span class="thesis-label">核心论点</span>只从像素中学习一个确定性与随机性兼备的隐空间动力学模型，就能在隐空间里通过快速在线规划解决此前只有无模型方法才能解决的复杂连续控制任务，且样本效率高出两个数量级。</div>
+<details class="abstract"><summary>原论文摘要 · English Abstract</summary><p>Planning has been very successful for control tasks with known environment dynamics. To leverage planning in unknown environments, the agent needs to learn the dynamics from interactions with the world. However, learning dynamics models that are accurate enough for planning has been a long-standing challenge, especially in image-based domains. We propose the Deep Planning Network (PlaNet), a purely model-based agent that learns the environment dynamics from images and chooses actions through fast online planning in latent space. To achieve high performance, the dynamics model must accurately predict the rewards ahead for multiple time steps. We approach this using a latent dynamics model with both deterministic and stochastic transition components. Moreover, we propose a multi-step variational inference objective that we name latent overshooting. Using only pixel observations, our agent solves continuous control tasks with contact dynamics, partial observability, and sparse rewards, which exceed the difficulty of tasks that were previously solved by planning with learned models. PlaNet uses substantially fewer episodes and reaches final performance close to and sometimes higher than strong model-free algorithms.</p></details>
+<div class="flow5"><div class="fstep"><span class="n">1</span><h5>编码器推断状态</h5><p>从历史观测推断当前隐状态信念</p></div><div class="fstep"><span class="n">2</span><h5>CEM 采样候选序列</h5><p>每步采样 1000 条候选动作序列</p></div><div class="fstep"><span class="n">3</span><h5>隐空间滚动评估</h5><p>前向滚动隐动力学，累加预测奖励</p></div><div class="fstep"><span class="n">4</span><h5>执行首个动作</h5><p>执行均值动作，模型预测控制</p></div><div class="fstep"><span class="n">5</span><h5>新观测重规划</h5><p>根据新观测重新规划</p></div></div>
+<h2 class="sec-num">问题与动机</h2>
 <p>规划在已知动力学的任务上早已大获成功，从围棋到模拟机器人控制都是例证；但一旦环境动力学未知，智能体就必须先从与世界的交互中把动力学学出来。学一个“准到能用来规划”的动力学模型是长期难题，尤其在图像域：模型误差会随预测步数累积、未来本身有多种可能、而模型在训练分布之外又常常过度自信。</p>
 <p>此前的出路各有短板：低维状态空间的模型方法假设能直接看到系统真实状态、甚至假设奖励函数已知，这在现实中往往不成立；图像域的潜空间方法只解决过平衡杆子、控制双连杆手臂这类简单任务，而且奖励稠密；纯视频预测方法能生成逼真的未来帧，却不直接服务于决策。PlaNet 要回答的问题是：能否只从像素出发，学一个紧凑的隐空间动力学，并在其中做快速在线规划，去解决带接触动力学、部分可观测与稀疏奖励的连续控制任务？</p>
 <p>论文的关键洞察是重新定义“模型好”的标准：规划并不需要模型重建出逼真的图像，只需要它能准确预测未来多步的奖励。因此模型设计与训练目标都应围绕“多步奖励预测的准确性”来组织，而不是围绕“像素重建的保真度”。这个判断贯穿了 RSSM 的结构选择与 latent overshooting 的目标设计，是理解整篇论文的钥匙。</p>
 <ul><li>规划在已知动力学下很强，但在未知环境中要先从交互中学动力学</li><li>图像域学动力学尤其难：误差累积、多未来、分布外过度自信</li><li>此前方法要么假设可见低维状态与已知奖励，要么只解决简单任务</li><li>核心洞察：规划只需要准确的多步奖励预测，不需要重建逼真图像</li></ul>
-<h2>核心思想</h2>
+<h2 class="sec-num">核心思想</h2>
 <p>PlaNet 是一个纯粹的模型智能体：它学习环境的动力学，然后通过在线规划选择动作——不学习策略网络，也不用价值网络。每个时间步，它先用编码器从历史观测中推断当前隐状态的信念，再用交叉熵方法在隐空间中搜索未来动作序列，执行其中第一步，然后根据新观测重新规划，即模型预测控制（MPC）。</p>
 <p>规划完全在隐空间里进行，这是速度的关键。奖励被建模为隐状态的函数，因此评估一条候选动作序列只需要前向滚动隐动力学、累加预测奖励的均值，全程不生成图像；这让规划器每步能快速评估成千上万条候选序列。相比之下，在像素空间里做同样的搜索在计算上是不可行的。</p>
 <p>支撑这一切的是两项设计。第一是 RSSM：把隐状态拆成确定性递推部分与随机采样部分，让模型既能记住长期信息、又能表达多种可能的未来。第二是 latent overshooting：一个多步变分目标，在隐空间中训练模型的多步预测能力，而不必付出解码图像的代价。两者共同服务于同一个目标——让多步奖励预测准到能支撑规划。</p>
 <ul><li>纯模型智能体：学动力学加在线规划，不学策略网络与价值网络</li><li>规划只在隐空间运行、不生成图像，因此能快速评估大量候选序列</li><li>RSSM 以确定性加随机双通道兼顾长期记忆与多未来表达</li><li>latent overshooting 在隐空间训练多步预测，不必解码图像</li></ul>
-<h2>模型结构与关键机制</h2>
+<h2 class="sec-num">模型结构与关键机制</h2>
 <p>PlaNet 把环境看作部分可观测马尔可夫决策过程。真实环境的动力学由以下随机过程描述：</p>
 <p>$$
 \begin{aligned}
@@ -52,7 +57,7 @@ $$</p>
 <p>实现上，除 GRU 外的所有函数都是两层 200 维 ReLU 全连接网络，隐分布为 30 维对角高斯；图像先降到 5 比特位深，训练用 Adam、学习率 $10^{-3}$、批大小 $B=50$、序列长度 $L=50$，并给 KL 项留 3 个自由 nat（把散度损失截断在该值之下）。除动作重复外，全部六个任务共用同一套超参数。</p>
 <ul><li>环境是 POMDP：单帧图像看不到完整状态，必须用滤波后验推断状态信念</li><li>$h_t$ 为 200 维 GRU 确定性状态，负责长期记忆；$s_t$ 为 30 维随机状态，负责多未来</li><li>观测与奖励都以 $h_t$ 与 $s_t$ 为条件，规划只在隐空间滚动、无需生成图像</li><li>观测信息必须经过编码器采样步骤，杜绝确定性捷径绕过随机状态</li></ul>
 <figure><img src="../assets/planet-models.png" alt="RSSM 模型结构示意：确定性递推状态与随机状态的双通道，以及编码器、观测模型与奖励模型如何配合。" loading="lazy"><figcaption>RSSM 模型结构示意：确定性递推状态与随机状态的双通道，以及编码器、观测模型与奖励模型如何配合。</figcaption></figure>
-<h2>训练与推理流程</h2>
+<h2 class="sec-num">训练与推理流程</h2>
 <p>训练用变分推断。由编码器出发，对观测序列的对数似然可得变分下界：</p>
 <p>$$
 \ln p(o_{1:T} \mid a_{1:T}) \geq \sum_{t=1}^{T}\Big(\mathbb{E}_{q(s_t \mid o_{\leq t}, a_{<t})}[\ln p(o_t \mid s_t)] - \mathbb{E}_{q(s_{t-1} \mid o_{\leq t-1}, a_{<t-1})}[\mathrm{KL}[q(s_t \mid o_{\leq t}, a_{<t}) \parallel p(s_t \mid s_{t-1}, a_{t-1})]]\Big)
@@ -67,13 +72,13 @@ $$</p>
 <p>外层是数据收集与模型训练交替的循环：先用 $S=5$ 个随机动作的种子回合建数据集，每 $C=100$ 次更新就用当前模型规划着收集一个新回合，动作加 $\mathcal{N}(0, 0.3)$ 的高斯探索噪声；每步动作重复 $R$ 次以缩短规划视野、给模型更清晰的学习信号，$R$ 因任务而异（摆起杆子为 $R=8$，到达、猎豹、接球为 $R=4$，手指旋转、行走为 $R=2$）。模型越准、收集的数据越好，数据越好、模型越准，这正是 PlaNet 的飞轮。</p>
 <ul><li>变分下界等于重建项减 KL 复杂度项，奖励损失与观测损失类比</li><li>标准目标只训练一步预测；latent overshooting 把全部距离 $d$ 的多步先验在隐空间拉向后验</li><li>CEM 每步采样 $J=1000$ 条序列、取前 $K=100$ 条重拟合、迭代 $I=10$ 次，视野 $H=12$</li><li>MPC 每步重规划只执行 $μ_t$；新观测后信念重置，避免局部最优</li><li>每 $C=100$ 次更新收集一回合，动作加 $\mathcal{N}(0, 0.3)$ 探索噪声</li></ul>
 <figure><img src="../assets/planet-overshooting.png" alt="Latent overshooting 示意：多步先验预测在隐空间中被拉向对应的后验，从而训练模型的多步预测能力，而不必解码图像。" loading="lazy"><figcaption>Latent overshooting 示意：多步先验预测在隐空间中被拉向对应的后验，从而训练模型的多步预测能力，而不必解码图像。</figcaption></figure>
-<h2>实验与结果</h2>
+<h2 class="sec-num">实验与结果</h2>
 <p>实验在 DeepMind Control Suite 的六个图像连续控制任务上进行，观测均为 $64\times64\times3$ 的第三人称相机图像：摆起杆子要求长视野与记住出画的小车，到达任务奖励稀疏，手指旋转涉及接触动力学，猎豹奔跑的状态与动作空间更大，接球只有接到球时才有稀疏奖励，行走要先站起来再走、还伴随与地面的碰撞。除动作重复外全部任务共用超参数，训练在单块 V100 上耗时 10 到 20 小时。</p>
 <p>与无模型方法的对比是论文最亮眼的结果（详见结果图表，数字取自表 1）：100 个回合内，PlaNet 在全部任务上超过训练了 10 万个回合的 A3C；500 个回合后，基本追平用图像训练了 10 万个回合的 D4PG，只在手指旋转任务上例外；猎豹奔跑任务上 PlaNet 以 662 分超过 D4PG 的 524 分，相对提升约 26%。相对 D4PG 的数据效率增益在 40 到 500 倍以上。</p>
 <p>模型设计的消融验证了 RSSM 的双通道：确定性部分让模型记住多步之前的信息，随机部分更为重要——没有它智能体根本学不会。智能体设计的消融同样清晰：在线数据收集对摆起杆子、手指旋转、行走是必需的，只靠随机动作收集数据会在这些任务上失败；CEM 的迭代精化在全部任务上都优于每步只采样一次的 random shooting。</p>
 <p>附录还做了一个多任务实验：单个智能体同时学六个任务，不被告知当前是哪个任务、只能从图像中推断，六个任务全部解决、只是学习稍慢。这说明同一个 RSSM 能够跨域共享动力学知识，也为后来的多任务世界模型埋下伏笔。</p>
 <ul><li>六个 Control Suite 任务，图像 $64\times64\times3$，覆盖接触动力学、部分可观测与稀疏奖励</li><li>100 回合超 A3C（10 万回合），500 回合基本追平 D4PG（10 万回合）</li><li>猎豹任务 662 分对 524 分，反超 D4PG 约 26%，接近真实动力学上界</li><li>随机路径缺失则完全学不会；在线收集数据与 CEM 迭代精化各自都不可或缺</li><li>单智能体六任务全解，模型可跨域共享</li></ul>
-<h2>实验结果 · 数据</h2>
+<h2 class="sec-num">实验结果 · 数据</h2>
 <p>以下数字全部取自论文表 1（5 个种子、10 条轨迹的均值最终性能）与正文第 5 节；数据效率增益为论文从 D4PG 训练曲线上估算的倍数，其中猎豹任务为 500 倍以上。</p>
 <h3>最终性能：PlaNet vs D4PG vs 真实动力学 CEM（表 1，6 项任务均值）</h3>
 <table class="data"><thead><tr><th>任务</th><th>PlaNet（1000 回合）</th><th>D4PG（100000 回合）</th><th>CEM + 真实仿真器（上界）</th></tr></thead><tbody>
@@ -126,13 +131,13 @@ $$</p>
 <figure><img src="../assets/planet-cheetah-rssm.png" alt="猎豹奔跑任务上 RSSM 的表现：用完整 RSSM 学习的智能体在该任务上的学习情况。" loading="lazy"><figcaption>猎豹奔跑任务上 RSSM 的表现：用完整 RSSM 学习的智能体在该任务上的学习情况。</figcaption></figure>
 <figure><img src="../assets/planet-cheetah-ssm.png" alt="同一猎豹奔跑任务上仅用随机状态空间模型（SSM）的对照结果，与 RSSM 形成对比。" loading="lazy"><figcaption>同一猎豹奔跑任务上仅用随机状态空间模型（SSM）的对照结果，与 RSSM 形成对比。</figcaption></figure>
 <figure><img src="../assets/planet-diagnostics.png" alt="诊断图：模型各部分与消融对照对最终性能的影响。" loading="lazy"><figcaption>诊断图：模型各部分与消融对照对最终性能的影响。</figcaption></figure>
-<h2>局限与争议</h2>
+<h2 class="sec-num">局限与争议</h2>
 <p>最实在的局限是规划视野与算力。CEM 的视野只有 $H=12$ 步，视野之外的奖励没有任何价值函数来估计，智能体本质上是短视的；同时每步要评估 $J=1000$ 条序列、迭代 $I=10$ 次，推理成本远高于一次前向的策略网络。论文自己在未来工作里承认，学一个价值函数来估计视野之外的奖励、以及用基于梯度的规划提效，都是自然的下一步。</p>
 <p>其次是动作重复 $R$ 这个手工旋钮：它在不同任务上取不同值（$R=2$ 到 $R=8$），是论文点名“重要”的超参数之一，等于把时间抽象这件事外包给了人工调参。后续工作用层级模型或可变时间步来取代固定动作重复，正是对这一局限的回应。</p>
 <p>第三，latent overshooting 的理论与实践地位并不匹配。论文猜想多步预测分布是单步预测分布的下界（基于数据处理不等式），但这只是一个猜想而非定理；更关键的是附录 D 显示，overshooting 能显著提升 DRNN 等弱模型，却略微降低了最终 RSSM 的性能——最终版的智能体其实没有用它。一个标题级的贡献在最终系统里并非必需，这提醒读者区分“思想的价值”与“系统的必需”。</p>
 <p>最后是评估范围：全部结果都在视觉简单的仿真环境中取得，作者也承认，不依赖重建的表征学习可能是通向高视觉多样性任务的关键一步。把 PlaNet 直接外推到真实机器人之前，还需要跨过视觉复杂性与模型误差在真实世界中被放大的两道坎。</p>
 <ul><li>视野仅 $H=12$ 步且无价值函数，视野外奖励完全无法估计</li><li>每步 CEM 搜索昂贵，远高于策略网络一次前向的成本</li><li>固定动作重复 $R$ 是手工调参的时间抽象，论文点名其为重要超参数</li><li>latent overshooting 只是猜想级理论，且最终 RSSM 并不需要它</li><li>实验局限于视觉简单的仿真环境，未验证真实机器人</li></ul>
-<h2>为什么今天还重要</h2>
+<h2 class="sec-num">为什么今天还重要</h2>
 <p>PlaNet 最直接的遗产是 RSSM：它成了 Dreamer 系列的骨架。Dreamer 保留了确定性加随机的隐状态分解与隐空间想象，只是把“每步在线 CEM 搜索”换成“在想象轨迹上训练 actor-critic 策略”，从而同时解决了 PlaNet 的推理成本与短视问题。没有 PlaNet 先证明“隐动力学加规划”在复杂任务上走得通，Dreamer 的“隐动力学加想象中学习策略”就缺少立足点。</p>
 <p>方法论上的遗产同样持久。第一，RSSM 确立了“确定性记忆加随机分支”作为隐世界模型的标准结构，之后的 DreamerV2、DreamerV3 与 TD-MPC2 等工作都在这个分解上做文章。第二，latent overshooting 把“多步一致性应该在隐空间里约束”的思想留了下来，后续的多步预测与一致性损失都能看到它的影子。第三，PlaNet 把评判模型的标尺从“像素重建得像不像”改成“多步奖励预测得准不准”，这个视角转换影响了整个世界模型领域的评估方式。</p>
 <p>对今天的读者，PlaNet 的价值不只在结论、更在它提供的参照系：一个不学策略、不用价值函数、只靠模型加规划的智能体，到底能走多远、会在哪里撞墙。每当新的世界模型方法宣称进步时，都值得拿 PlaNet 的表 1 对照一下——样本效率提升了多少、代价是什么、以及那块“规划 vs 想象中学习策略”的取舍题，今天是否有了不同的答案。</p>
@@ -140,14 +145,19 @@ $$</p>
 <h2>关键术语</h2>
 <dl class="kv"><dt>RSSM（循环状态空间模型）</dt><dd>把隐状态拆成确定性递推部分 $h_t$ 与随机采样部分 $s_t$ 的动力学模型，确定性部分负责长期记忆，随机部分负责表达多未来与不确定性。</dd><dt>潜在超前（Latent Overshooting）</dt><dd>把多步先验预测在隐空间中拉向对应后验的多步变分训练目标，用以提升长期预测精度，而不必解码生成图像。</dd><dt>交叉熵方法（CEM）</dt><dd>通过反复采样候选动作序列、保留奖励最高的 $K$ 条重拟合高斯分布来优化动作序列的群体优化算法，PlaNet 用它在隐空间中在线搜索动作。</dd><dt>模型预测控制（MPC）</dt><dd>每步都重新规划、只执行规划出的第一个动作、再根据新观测重规划的滚动时域控制方式，使智能体能根据最新观测修正计划。</dd><dt>部分可观测马尔可夫决策过程（POMDP）</dt><dd>智能体只能看到图像观测 $o_t$ 而看不到真实隐状态 $s_t$ 的决策问题设定，PlaNet 必须用滤波后验来推断当前状态信念。</dd><dt>变分下界（ELBO）</dt><dd>由重建项减 KL 复杂度项构成的对数似然下界，PlaNet 用它同时训练隐动力学模型、观测模型、奖励模型与编码器。</dd></dl>
 <h2>思考题</h2>
-<details><summary>思考题 1：为什么 PlaNet 宁愿每步花大力气在线做 CEM 规划，也不像 World Models 那样在模型里训练一个策略网络？在什么条件下，在线规划会输给“在想象中训练策略”？</summary><div class="ans"><p>判断：在线规划是对的取舍，但它只在“规划便宜、视野够用”的条件下成立，长期看会被“在想象中训练策略”取代。PlaNet 每步用交叉熵方法评估 $J=1000$ 条候选动作序列、迭代 $I=10$ 次，算力换来的是不需要学策略网络、也不需要把奖励通过贝尔曼备份反向传播，100 个回合就超过训练了 10 万个回合的 A3C，而且模型与任务无关、换个奖励函数就能复用；但代价同样真实：每步都要重复这套搜索、规划视野只有 $H=12$ 步、视野之外的奖励完全没有价值函数来估计。后续 Dreamer 的做法恰恰补上了这一环——保留 PlaNet 的 RSSM 与隐空间想象，但把每步在线搜索换成在想象轨迹上训练一个 actor-critic 策略，执行时只需一次前向。所以结论是：PlaNet 证明了“模型加规划”这条路走得通，而 Dreamer 证明了把规划的结果蒸馏进策略里才能走得远、走得便宜。</p></div></details>
-<details><summary>思考题 2：RSSM 为什么必须同时保留确定性路径 $h_t$ 与随机路径 $s_t$？如果只保留其中一条，规划会在哪个环节出问题？</summary><div class="ans"><p>判断：两者缺一不可，而且随机路径比确定性路径更关键，缺了它智能体根本学不会。纯确定性 RNN 的转移是单值的，无法表达“同一个状态下未来可能有多种走向”，规划器还会专门挑模型最自信、却最可能是错的动作序列去利用，等于在奖励模型误差；纯随机状态空间模型则相反，每个时间步都要重新采样，信息很难在几十步的时间尺度上可靠地保留下来，例如摆起杆子任务中小车一度移出画面，位置信息必须靠确定性记忆扛过去。论文的消融实验验证了这个分工：去掉随机部分后智能体在所有任务上都学不会，去掉确定性部分则长期记忆类任务明显崩溃；RSSM 把 200 维确定性递推状态 $h_t$ 与 30 维随机状态 $s_t$ 拼在一起，正是让记忆与不确定性各归其位。</p></div></details>
-<details><summary>思考题 3：Latent overshooting 在论文标题级贡献中占一席之地，但最终的 RSSM 智能体却并不需要它——这说明了什么？多步预测能力到底应该由模型结构保证，还是由训练目标保证？</summary><div class="ans"><p>判断：这说明长期预测能力主要由模型结构保证，训练目标只是辅助，结构对了、目标可以省，结构错了、目标也救不回来。Latent overshooting 的想法是对的——标准变分目标只用 KL 项训练一步转移，梯度从不穿过多个转移组成的链条，所以多步预测天然不在训练目标的射程内；但 RSSM 本身已经通过确定性递推路径把长期信息显式地背了下来，多步一致性在结构上就已经近似满足，于是再加 overshooting 反而略微拖累了 RSSM 的性能，而对缺少确定性记忆的 DRNN 等弱模型，overshooting 的提升却非常显著。附录 D 的这个反差是最有价值的一课：它把“结构”与“目标”的贡献拆开了，结论是先修结构、再补目标；这也解释了为什么后续的 Dreamer 系列沿用了 RSSM，却没有把 latent overshooting 作为标配。</p></div></details>
+<p class="qa-q">思考题 1：为什么 PlaNet 宁愿每步花大力气在线做 CEM 规划，也不像 World Models 那样在模型里训练一个策略网络？在什么条件下，在线规划会输给“在想象中训练策略”？</p><details class="qa"><summary>查看参考答案</summary><div class="ans"><p>判断：在线规划是对的取舍，但它只在“规划便宜、视野够用”的条件下成立，长期看会被“在想象中训练策略”取代。PlaNet 每步用交叉熵方法评估 $J=1000$ 条候选动作序列、迭代 $I=10$ 次，算力换来的是不需要学策略网络、也不需要把奖励通过贝尔曼备份反向传播，100 个回合就超过训练了 10 万个回合的 A3C，而且模型与任务无关、换个奖励函数就能复用；但代价同样真实：每步都要重复这套搜索、规划视野只有 $H=12$ 步、视野之外的奖励完全没有价值函数来估计。后续 Dreamer 的做法恰恰补上了这一环——保留 PlaNet 的 RSSM 与隐空间想象，但把每步在线搜索换成在想象轨迹上训练一个 actor-critic 策略，执行时只需一次前向。所以结论是：PlaNet 证明了“模型加规划”这条路走得通，而 Dreamer 证明了把规划的结果蒸馏进策略里才能走得远、走得便宜。</p></div></details>
+<p class="qa-q">思考题 2：RSSM 为什么必须同时保留确定性路径 $h_t$ 与随机路径 $s_t$？如果只保留其中一条，规划会在哪个环节出问题？</p><details class="qa"><summary>查看参考答案</summary><div class="ans"><p>判断：两者缺一不可，而且随机路径比确定性路径更关键，缺了它智能体根本学不会。纯确定性 RNN 的转移是单值的，无法表达“同一个状态下未来可能有多种走向”，规划器还会专门挑模型最自信、却最可能是错的动作序列去利用，等于在奖励模型误差；纯随机状态空间模型则相反，每个时间步都要重新采样，信息很难在几十步的时间尺度上可靠地保留下来，例如摆起杆子任务中小车一度移出画面，位置信息必须靠确定性记忆扛过去。论文的消融实验验证了这个分工：去掉随机部分后智能体在所有任务上都学不会，去掉确定性部分则长期记忆类任务明显崩溃；RSSM 把 200 维确定性递推状态 $h_t$ 与 30 维随机状态 $s_t$ 拼在一起，正是让记忆与不确定性各归其位。</p></div></details>
+<p class="qa-q">思考题 3：Latent overshooting 在论文标题级贡献中占一席之地，但最终的 RSSM 智能体却并不需要它——这说明了什么？多步预测能力到底应该由模型结构保证，还是由训练目标保证？</p><details class="qa"><summary>查看参考答案</summary><div class="ans"><p>判断：这说明长期预测能力主要由模型结构保证，训练目标只是辅助，结构对了、目标可以省，结构错了、目标也救不回来。Latent overshooting 的想法是对的——标准变分目标只用 KL 项训练一步转移，梯度从不穿过多个转移组成的链条，所以多步预测天然不在训练目标的射程内；但 RSSM 本身已经通过确定性递推路径把长期信息显式地背了下来，多步一致性在结构上就已经近似满足，于是再加 overshooting 反而略微拖累了 RSSM 的性能，而对缺少确定性记忆的 DRNN 等弱模型，overshooting 的提升却非常显著。附录 D 的这个反差是最有价值的一课：它把“结构”与“目标”的贡献拆开了，结论是先修结构、再补目标；这也解释了为什么后续的 Dreamer 系列沿用了 RSSM，却没有把 latent overshooting 作为标配。</p></div></details>
 <h2>谱系与位置</h2>
 <p>这是本系列第 2 篇，上一篇是 Ha 与 Schmidhuber 的《World Models》（2018），而 David Ha 本人也是 PlaNet 的作者之一，承继关系非常直接：两者共享“先学一个世界模型、再在模型里做决策”的路线，PlaNet 附录 A 明确说明其卷积与反卷积网络沿用 World Models 的设计。但分歧同样根本。World Models 的做法是在学好的模型中用 CMA-ES 训练一个策略网络，模型训练与策略训练是分离的两阶段，且模型是纯随机的 MDN-RNN；PlaNet 则彻底抛弃策略网络与价值网络，改用每步在线的 CEM 规划加 MPC，并在“用规划收集数据”与“用数据训练模型”之间交替迭代。模型上，PlaNet 把纯随机的 MDN-RNN 换成确定性加随机双通道的 RSSM，并引入多步变分目标 latent overshooting 来解决长期预测问题。一句话：World Models 证明了“世界模型可以学出来”，PlaNet 证明了“世界模型可以直接拿来规划，而且比学策略更省样本”——这一步把 world model 从“策略训练的模拟器”变成了“决策本身的推理引擎”，也正是 Dreamer 系列此后沿用的范式。</p>
+<section class="notes"><h2>我的笔记</h2><textarea id="paper-notes" placeholder="写下你的想法、疑问或灵感……"></textarea><div><button id="save-notes" type="button">保存笔记</button><span class="saved" id="notes-saved"></span></div></section>
+
 <div class="pager"><a href="world-models.html">← 上一篇：World Models</a><a href="../papers.html">全部精读</a><a href="dreamer.html">下一篇：Dreamer →</a></div>
 <footer>Jocehi 的论文精读 · Interactive World Model 系列</footer>
+</article>
+<aside class="sidebar"><h3>全部精读</h3><ol><li><a href="world-models.html"><span class="daynum">Day 1</span>World Models</a></li><li><a href="planet.html" class="active"><span class="daynum">Day 2</span>Learning Latent Dynamics for Planning from Pixels</a></li><li><a href="dreamer.html"><span class="daynum">Day 3</span>Dream to Control: Learning Behaviors by Latent Imagination</a></li></ol></aside>
 </div>
-<script src="../assets/effects.js"></script>
+</div>
+<script>(function(){var K='jocehi-paper-notes-2';var D='jocehi-paper-done-2';var B='jocehi-paper-bookmark-2';var ta=document.getElementById('paper-notes');try{ta.value=localStorage.getItem(K)||''}catch(e){}document.getElementById('save-notes').addEventListener('click',function(){try{localStorage.setItem(K,ta.value);document.getElementById('notes-saved').textContent='已保存 ✓'}catch(e){}});var done=document.querySelector('.btn-done'),bm=document.querySelector('.btn-bookmark');function paint(){var d=false,b=false;try{d=localStorage.getItem(D)==='1';b=localStorage.getItem(B)==='1'}catch(e){}done.textContent=d?'✓ 已读完':'标记读完';done.classList.toggle('done',d);bm.textContent=b?'★ 已收藏':'☆ 收藏';bm.classList.toggle('on',b)}done.addEventListener('click',function(){try{localStorage.setItem(D,localStorage.getItem(D)==='1'?'0':'1')}catch(e){}paint()});bm.addEventListener('click',function(){try{localStorage.setItem(B,localStorage.getItem(B)==='1'?'0':'1')}catch(e){}paint()});paint();})();</script>
 </body>
 </html>
