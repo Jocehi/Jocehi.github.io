@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 3 课 · Monte Carlo 方法 · Jocehi 的 RL 精讲</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
+</head>
+<body>
+<canvas id="sakura"></canvas>
+<div class="wrap">
+<nav class="topnav"><b>Jocehi</b><a href="../index.html">首页</a><a href="../papers.html">论文精读</a><a href="../rl.html">RL 精讲</a><a href="../briefing.html">每日简报</a><a class="home" href="../index.html">← 返回首页</a></nav>
+<h1>第 3 课 · Monte Carlo 方法</h1>
+<p class="meta">Monte Carlo Methods · RL 算法每日精讲 · 2026-11-17 · 基础理论 · 入门 · 约 30 分钟</p>
+<p class="meta">前置知识：MDP 与 Bellman 方程</p>
+<div class="thesis">不用模型，用真实回报的平均值估计价值。</div>
+<h2>① 问题设定</h2>
+<p>动态规划需要已知环境的转移概率与奖励函数，但在许多真实任务中模型未知或难以建模。蒙特卡洛方法要解决的正是在模型未知的情况下，仅通过与环境交互得到的完整回合经验来估计策略的价值并改进策略。它适用于能够反复生成完整回合的情节式任务，例如棋类对弈、纸牌游戏、模拟器中的导航任务或机器人单次抓取试验，回合必须有明确的终止状态。输入是智能体与环境交互产生的轨迹，包括每一步的状态 $s$、动作 $a$ 与奖励 $r$，以及折扣因子 $\gamma$；输出是策略的状态价值 $V^\pi(s)$、动作价值 $Q^\pi(s, a)$ 或改进后的策略 $\pi$。蒙特卡洛方法不依赖单步自举，而是等到回合结束，用从时刻 $t$ 起的实际折扣回报 $G_t$ 作为价值的无偏样本，再对多次采样的 $G_t$ 取平均，从而得到对 $V^\pi(s)$ 或 $Q^\pi(s, a)$ 的估计。</p>
+<h2>② 核心思想</h2>
+<ul>
+<li>蒙特卡洛方法用实际回报 $G_t$ 直接估计价值，不需要知道转移概率 $P(s'|s, a)$ 与奖励函数 $R(s, a)$，也不需要像贝尔曼方程那样用下一状态的价值自举。</li>
+<li>对同一状态 $s$ 多次采样得到的 $G_t$ 取平均，平均值会随样本增多收敛到真实的 $V^\pi(s)$，这是大数定律在价值估计中的直接应用。</li>
+<li>首次访问蒙特卡洛只在回合中第一次遇到 $s$ 时用该回合的 $G_t$ 更新 $V(s)$，每次访问蒙特卡洛则在每次遇到 $s$ 时都更新，前者无偏且更常用，后者利用了更多数据但样本之间相关性更强。</li>
+<li>蒙特卡洛控制在评估后用 $\epsilon$-贪心方法更新策略 $\pi$，并在探索与利用之间保持平衡，使策略在反复采样中逐步逼近最优策略 $\pi^*$。</li>
+<li>蒙特卡洛方法只在回合结束时才能更新，适用于情节式任务而不适用于无终止的连续任务，且方差较大、样本效率较低，需要大量回合才能得到稳定估计。</li>
+</ul>
+<h2>③ 与已学方法对比</h2>
+<p>与前一课的动态规划相比，蒙特卡洛方法最大的进步是不再需要已知的环境模型：动态规划必须利用转移概率 $P(s'|s, a)$ 和奖励函数 $R(s, a)$ 进行全宽度的贝尔曼更新，而蒙特卡洛只需采样真实轨迹并用实际回报 $G_t$ 的平均值估计 $V^\pi(s)$，因此能处理模型未知的问题。代价是它只能在回合结束后更新，学习速度慢、方差大、样本效率低，且只适用于情节式任务；动态规划则可以每步更新、收敛更快、更稳定，但前提是模型已知且状态空间不能太大。与同类方法相比，蒙特卡洛比时序差分方法更直接、无偏，但需要等到回合结束，不能像时序差分那样在线学习。</p>
+<h2>④ 学习流程</h2>
+<ol class="flow">
+<li><b>初始化并观察</b>将所有 $Q(s,a)$ 置为 $0$，$\text{Returns}(s,a)$ 置为空，$\pi$ 置为均匀分布；回合开始时读取初始状态 $s_0$ 作为输入，并准备记录完整轨迹。</li>
+<li><b>贪心选动作</b>在当前状态 $s_t$ 下，以 $1-\epsilon$ 的概率选择 $Q$ 值最大的动作 $a^*$，以 $\epsilon$ 的概率从全部动作中随机选择一个动作，以此平衡利用与探索。</li>
+<li><b>执行动作</b>执行选定的动作 $a_t$，智能体与环境进行一次交互，并把 $(s_t,a_t)$ 加入当前回合的轨迹记录中，等待环境响应。</li>
+<li><b>环境给反馈</b>环境返回即时奖励 $r_{t+1}$ 与下一状态 $s_{t+1}$，若 $s_{t+1}$ 不是终止状态则继续采样，若到达终止状态 $s_T$ 则本回合结束，得到一条完整轨迹。</li>
+<li><b>倒序算回报</b>回合结束后令 $G=0$，从 $t=T-1$ 开始倒序递推 $G \gets \gamma G + r_{t+1}$，逐个算出每个时刻的实际回报 $G_t$，作为后续更新的样本。</li>
+<li><b>更新价值</b>若 $(s_t,a_t)$ 在本回合中首次出现，将 $G$ 加入 $\text{Returns}(s_t,a_t)$，令 $Q(s_t,a_t)$ 取该列表的平均值；随后按 $\epsilon$-贪心规则更新 $\pi(\cdot|s_t)$，提高最优动作 $a^*$ 的选择概率。</li>
+<li><b>判断是否收敛</b>若策略 $\pi$ 尚未收敛，开始新回合并回到第一步继续采样与更新；若策略 $\pi$ 已收敛，输出最终策略 $\pi$ 与动作价值 $Q(s,a)$，流程结束。</li>
+</ol>
+<h2>⑤ 关键公式</h2>
+<div class="formula-card">
+<h4>折扣回报定义</h4>
+<div>$$G_t = R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots + \gamma^{T-t-1} R_T$$</div>
+<p>这个公式把从时刻 $t$ 开始、直到回合结束的全部奖励按 $\gamma$ 的幂次加权求和，得到该时刻的实际回报 $G_t$。它不依赖下一状态的价值估计，是蒙特卡洛方法用真实经验代替自举的关键。越靠后的奖励权重越小，体现了折扣因子 $\gamma$ 对远期奖励的衰减作用。</p>
+<ul>
+<li>$G_t$：从某一时刻起的折扣回报</li>
+<li>$R_{t+1}$：下一时刻获得的即时奖励</li>
+<li>$\gamma$：折扣因子，取值在零到一之间</li>
+<li>$t$：当前时刻</li>
+<li>$T$：回合终止的时刻</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>状态价值的期望定义</h4>
+<div>$$V^\pi(s) = \mathbb{E}_\pi[G_t \mid S_t = s]$$</div>
+<p>这个公式把策略 $\pi$ 下状态 $s$ 的价值定义为：从 $s$ 出发、按 $\pi$ 行动所得到的回报 $G_t$ 的期望。它说明 $V^\pi(s)$ 不是某一次回合的结果，而是多次重复同一出发状态后 $G_t$ 的平均趋势。蒙特卡洛方法正是用样本平均来逼近这个期望。</p>
+<ul>
+<li>$V^\pi(s)$：某一策略下某个状态的价值</li>
+<li>$\mathbb{E}_\pi$：在该策略下取期望</li>
+<li>$G_t$：从当前时刻起的折扣回报</li>
+<li>$S_t$：当前时刻的状态随机变量</li>
+<li>$s$：所评估的具体状态</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>首次访问蒙特卡洛估计</h4>
+<div>$$V(s) \leftarrow \frac{1}{N(s)} \sum_{i=1}^{N(s)} G_t^{(i)}$$</div>
+<p>这个公式是蒙特卡洛预测的更新规则：把状态 $s$ 在以往回合中首次出现时得到的 $N(s)$ 个回报样本 $G_t^{(i)}$ 求平均，作为 $V(s)$ 的新估计。样本越多，平均值越接近真实的 $V^\pi(s)$，这正是大数定律的体现。每次新回合加入一个样本后，都需要重新计算该平均值。</p>
+<ul>
+<li>$V(s)$：某个状态价值的估计值</li>
+<li>$N(s)$：该状态被首次访问并采样的总次数</li>
+<li>$G_t^{(i)}$：某一次采样得到的回报</li>
+<li>$i$：样本的序号</li>
+<li>$s$：所评估的具体状态</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>贪心策略改进</h4>
+<div>$$\pi(a|s) = \begin{cases} 1-\epsilon+\frac{\epsilon}{|\mathcal{A}(s)|}, & a=a^* \\ \frac{\epsilon}{|\mathcal{A}(s)|}, & a \neq a^* \end{cases}$$</div>
+<p>这个公式给出 $\epsilon$-贪心策略在状态 $s$ 下选择动作 $a$ 的概率：最优动作 $a^*$ 以接近 $1$ 的大概率被选中，其余动作各分得一小部分探索概率 $\epsilon / |\mathcal{A}(s)|$。它在利用当前最优动作与探索未知动作之间保持平衡，使策略在反复采样中逐步改进。其中最优动作 $a^*$ 由 $\arg\max_a Q(s,a)$ 决定。</p>
+<ul>
+<li>$\pi(a|s)$：在某个状态下选择某个动作的概率</li>
+<li>$\epsilon$：探索参数，取值在零到一之间</li>
+<li>$|\mathcal{A}(s)|$：该状态下可选动作的总数</li>
+<li>$a^*$：当前动作价值最大的最优动作</li>
+<li>$a$：所讨论的某个动作</li>
+</ul>
+</div>
+<h2>⑥ 数学推导</h2>
+<ol class="mathnotes">
+<li>
+<p>从价值的定义出发，策略 $\pi$ 下状态 $s$ 的价值 $V^\pi(s)$ 是从 $s$ 出发后实际回报 $G_t$ 的期望，而不是某一次回合的偶然结果。</p>
+</li>
+<li>
+<p>因为真实的转移概率与奖励函数未知，无法像动态规划那样直接计算这个期望，只能通过与环境交互采样得到 $G_t$ 的样本。</p>
+</li>
+<li>
+<p>回报本身由未来奖励的折扣和定义，越靠后的奖励权重越小，写成递推形式更便于从回合末尾倒序计算。</p>
+<div>$$G_t = R_{t+1} + \gamma G_{t+1}$$</div></li>
+<li>
+<p>对同一状态 $s$ 重复采样多次，每次得到一个 $G_t$，把这些样本取平均，就得到蒙特卡洛估计；样本数越多，平均值越稳定。</p>
+<div>$$V(s) \leftarrow \frac{1}{N(s)} \sum_{i=1}^{N(s)} G_t^{(i)}$$</div></li>
+<li>
+<p>大数定律保证，当采样次数 $N(s)$ 不断增大时，样本平均会收敛到真实的期望 $V^\pi(s)$，因此该估计是无偏且一致的。</p>
+</li>
+<li>
+<p>首次访问规则只取每个回合中第一次遇到 $s$ 时的 $G_t$，避免同一回合内重复出现的状态带来相关样本，从而保持无偏性。</p>
+</li>
+<li>
+<p>数值例子：设某回合奖励为 $R_1=0$、$R_2=0$、$R_3=1$，折扣因子 $\gamma=0.9$，终止时刻 $T=3$。</p>
+</li>
+<li>
+<p>从末尾倒推，先得 $G_2=1$，再得 $G_1=0+0.9 \times 1=0.9$，最后得 $G_0=0+0.9 \times 0.9=0.81$。</p>
+</li>
+<li>
+<p>若状态 $s$ 在该回合首次出现在 $t=0$，则把 $G_0=0.81$ 作为 $s$ 的一个样本；若此前已有一个样本 $0$，则更新后的估计为 $(0.81+0)/2=0.405$。</p>
+</li>
+<li>
+<p>在蒙特卡洛控制中，用同样的 $G_t$ 更新 $Q(s,a)$ 后，再按 $\epsilon$-贪心规则改进 $\pi$，下一回合按新策略继续采样，价值与策略在循环中共同逼近最优。</p>
+</li>
+</ol>
+<h2>⑦ 伪代码</h2>
+<div class="pseudo">
+<h4>首次访问蒙特卡洛预测</h4>
+<div class="step"><span class="stepnum">·</span> 输入：待评估策略 $\pi$，折扣因子 $\gamma$，回合数 $N$</div>
+<div class="step"><span class="stepnum">·</span> 初始化：对所有 $s$，令 $V(s) \gets 0$，$\text{Returns}(s) \gets []$</div>
+<div class="step"><span class="stepnum">·</span> 重复 $N$ 次：</div>
+<div class="step"><span class="stepnum">·</span> 生成一条回合轨迹 $s_0, a_0, r_1, s_1, a_1, r_2, \dots, s_T$</div>
+<div class="step"><span class="stepnum">·</span> 令 $G \gets 0$</div>
+<div class="step"><span class="stepnum">·</span> 对 $t = T-1, T-2, \dots, 0$ 倒序执行：</div>
+<div class="step"><span class="stepnum">·</span> 令 $G \gets \gamma G + r_{t+1}$</div>
+<div class="step"><span class="stepnum">·</span> 若 $s_t$ 在本回合中首次出现：</div>
+<div class="step"><span class="stepnum">·</span> 将 $G$ 加入 $\text{Returns}(s_t)$</div>
+<div class="step"><span class="stepnum">·</span> 令 $V(s_t) \gets \text{average}(\text{Returns}(s_t))$</div>
+<div class="step"><span class="stepnum">·</span> 输出：$V(s)$ 对所有 $s$</div>
+</div>
+<div class="pseudo">
+<h4>蒙特卡洛控制（$\epsilon$-贪心）</h4>
+<div class="step"><span class="stepnum">·</span> 输入：折扣因子 $\gamma$，探索参数 $\epsilon$</div>
+<div class="step"><span class="stepnum">·</span> 初始化：对所有 $s$ 和 $a$，令 $Q(s, a) \gets 0$，$\text{Returns}(s, a) \gets []$</div>
+<div class="step"><span class="stepnum">·</span> 初始化：对所有 $s$ 和 $a$，令 $\pi(a|s) \gets 1 / |\mathcal{A}(s)|$</div>
+<div class="step"><span class="stepnum">·</span> 循环直到策略 $\pi$ 收敛：</div>
+<div class="step"><span class="stepnum">·</span> 生成一条由 $\pi$ 采样的回合轨迹 $s_0, a_0, r_1, s_1, a_1, r_2, \dots, s_T$</div>
+<div class="step"><span class="stepnum">·</span> 令 $G \gets 0$</div>
+<div class="step"><span class="stepnum">·</span> 对 $t = T-1, T-2, \dots, 0$ 倒序执行：</div>
+<div class="step"><span class="stepnum">·</span> 令 $G \gets \gamma G + r_{t+1}$</div>
+<div class="step"><span class="stepnum">·</span> 若 $(s_t, a_t)$ 在本回合中首次出现：</div>
+<div class="step"><span class="stepnum">·</span> 将 $G$ 加入 $\text{Returns}(s_t, a_t)$</div>
+<div class="step"><span class="stepnum">·</span> 令</div>
+<div class="step formula-line"><div>$$Q(s_t, a_t) \gets \text{average}(\text{Returns}(s_t, a_t))$$</div></div>
+<div class="step"><span class="stepnum">·</span> 令 $a^* \gets \arg\max_{a} Q(s_t, a)$</div>
+<div class="step"><span class="stepnum">·</span> 对所有 $a$，令 $\pi(a|s_t) \gets \epsilon / |\mathcal{A}(s_t)|$</div>
+<div class="step"><span class="stepnum">·</span> 令</div>
+<div class="step formula-line"><div>$$\pi(a^*|s_t) \gets 1 - \epsilon + \epsilon / |\mathcal{A}(s_t)|$$</div></div>
+<div class="step"><span class="stepnum">·</span> 输出：最优策略 $\pi$ 与 $Q(s, a)$</div>
+</div>
+<h2>⑧ Python 代码（可运行）</h2>
+<pre class="code"><button class="copybtn">复制代码</button><code>import numpy as np
+
+np.random.seed(0)
+N, GAMMA, EPS, EPISODES = 4, 0.9, 0.1, 5000  # 棋盘大小、折扣、探索率、回合数
+GOAL, TRAP = (3, 3), (1, 1)  # 终点+1，陷阱-1，均为终止状态
+ACTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # 上、下、左、右
+
+def step(s, a):
+    """一步转移：出界则停留原地，走到终点/陷阱则终止。"""
+    r, c = s
+    dr, dc = ACTIONS[a]
+    nr, nc = min(max(r + dr, 0), N - 1), min(max(c + dc, 0), N - 1)
+    ns = (nr, nc)
+    if ns == GOAL:
+        return ns, 1.0, True
+    if ns == TRAP:
+        return ns, -1.0, True
+    return ns, 0.0, False
+
+def gen_episode(pi):
+    """按策略 π 采样一条完整回合：MC 必须等回合结束才有 G_t。"""
+    s, traj = (0, 0), []
+    for _ in range(100):  # 防死循环：最长 100 步截断
+        a = np.random.choice(4, p=pi[s])
+        ns, r, done = step(s, a)
+        traj.append((s, a, r))
+        s = ns
+        if done:
+            break
+    return traj
+
+def first_visit_mc(pi, episodes=2000):
+    """首次访问 MC 预测：只用每回合第一次出现的 G_t 更新，无偏。"""
+    V = np.zeros((N, N))
+    returns = {(r, c): [] for r in range(N) for c in range(N)}
+    for _ in range(episodes):
+        traj, G, seen = gen_episode(pi), 0.0, set()
+        for s, a, r in reversed(traj):  # 倒序递推 G = γG + r
+            G = GAMMA * G + r
+            if s not in seen:  # 首次访问才更新，避免同一回合重复计数
+                seen.add(s)
+                returns[s].append(G)
+                V[s] = np.mean(returns[s])  # 大数定律：均值收敛到 V^π(s)
+    return V
+
+def mc_control(episodes=EPISODES):
+    """MC 控制：评估 Q(s,a) 后用 ε-贪心改进策略，探索与利用兼顾。"""
+    Q = np.zeros((N, N, 4))
+    returns = {}
+    pi = np.full((N, N, 4), 0.25)  # 均匀随机初始策略，保证充分探索
+    for _ in range(episodes):
+        traj, G, seen = gen_episode(pi), 0.0, set()
+        for s, a, r in reversed(traj):
+            G = GAMMA * G + r
+            if (s, a) not in seen:
+                seen.add((s, a))
+                returns.setdefault((s, a), []).append(G)
+                Q[s][a] = np.mean(returns[(s, a)])
+                best = np.argmax(Q[s])  # 贪心动作
+                pi[s] = EPS / 4  # 非贪心动作保留 ε/|A| 概率
+                pi[s][best] = 1 - EPS + EPS / 4  # 贪心动作占主导但仍探索
+    return Q, pi
+
+if __name__ == "__main__":
+    random_pi = np.full((N, N, 4), 0.25)
+    print("随机策略的 V(s)（首次访问 MC）：")
+    print(np.round(first_visit_mc(random_pi), 2))
+    Q, pi = mc_control()
+    print("最优策略（箭头：0上 1下 2左 3右）：")
+    print(np.argmax(pi, axis=2))
+    print("最优 Q 在起点处：", np.round(Q[0, 0], 2))
+</code></pre>
+<h2>⑨ 代码讲解</h2>
+<ol>
+<li>环境搭建：棋盘大小为 $N=4$，即 $4 \times 4$ 网格；终点为 $(3,3)$，陷阱为 $(1,1)$，两者均为终止状态；动作集合包含上、下、左、右共 $|A|=4$ 种动作。`step` 函数按动作移动一格，出界时截断而停留在原地，走到终点返回奖励 $+1$、走到陷阱返回 $-1$、其余情况返回 $0$，并返回是否终止的标志。这里的环境只充当采样器，算法本身并不需要显式知道转移概率 $P(s'|s,a)$ 与奖励函数 $R(s,a)$。</li>
+<li>采样完整回合：`gen_episode` 从起点 $s=(0,0)$ 出发，按当前策略 $\pi$ 依概率采样动作，调用 `step` 得到下一个状态 $s'$、奖励 $r$ 与终止标志，并把 $(s,a,r)$ 依次存入轨迹列表，直到终止或达到最长 $100$ 步截断。关键点是蒙特卡洛必须等回合结束才有完整的回报 $G_t$，因此这里只负责收集数据、不做任何价值更新。</li>
+<li>首次访问蒙特卡洛预测：`first_visit_mc` 先把所有状态的价值 $V(s)$ 初始化为 $0$，并用字典保存每个状态 $s$ 历史上得到的所有回报。每个回合结束后倒序遍历轨迹，用 $G=\gamma G+r$ 递推得到每个时刻的回报 $G_t$；只有当 $s$ 在本回合首次出现时才把 $G_t$ 加入记录并更新 $V(s)$ 为已收集回报的平均值。按大数定律，该平均值会随样本增多收敛到真实的 $V^\pi(s)$，且首次访问的估计是无偏的。</li>
+<li>蒙特卡洛控制：`mc_control` 同时维护动作价值 $Q(s,a)$ 与策略 $\pi$，初始策略为均匀随机策略，即每个动作的概率均为 $0.25$。每个回合结束后同样倒序计算 $G_t$，并只在 $(s,a)$ 首次出现时更新 $Q(s,a)$ 为历史回报的平均值；随后找出当前最优动作 $a^*=\arg\max_a Q(s,a)$，再按 $\epsilon$-贪心重建 $\pi(s)$：贪心动作的概率为 $1-\epsilon+\epsilon/|A|$，其余每个动作保留 $\epsilon/|A|$ 的概率。这样既利用已学到的 $Q(s,a)$ 进行改进，又保留探索，最终使 $\pi$ 逐步逼近最优策略 $\pi^*$。</li>
+<li>主程序演示：先用均匀随机策略调用 `first_visit_mc`，打印其 $V(s)$，可直观看到靠近终点的状态价值更高、靠近陷阱的状态价值更低；再调用 `mc_control` 进行 $5000$ 个回合的控制学习，打印最优策略在每个状态的贪心动作编号 $0$、$1$、$2$、$3$ 分别对应上、下、左、右，并打印起点 $(0,0)$ 处的 $Q(0,0)$，用于检查学习结果是否合理。</li>
+</ol>
+<h2>⑩ 超参数</h2>
+<table class="data"><tr><th>参数</th><th>常用取值</th><th>说明</th></tr>
+<tr><td>折扣因子 $\gamma$（`GAMMA`）</td><td>$0.9$</td><td>决定未来奖励在回报 $G_t$ 中的权重：$\gamma$ 越接近 $1$，越看重远期回报，估计方差也越大；$\gamma$ 越小，越看重即时奖励，学习目标更短视。情节式任务中常取 $0.9$ 至 $0.99$。</td></tr>
+<tr><td>探索率 $\epsilon$（`EPS`）</td><td>$0.1$</td><td>$\epsilon$-贪心中的探索概率：每步以 $\epsilon$ 的概率随机探索，以 $1-\epsilon$ 的概率利用当前最优动作。$\epsilon$ 过大则策略难以收敛，过小则很多 $(s,a)$ 长期得不到采样，$Q(s,a)$ 无法准确估计。入门实验常取 $0.05$ 至 $0.2$。</td></tr>
+<tr><td>回合数（`EPISODES`）</td><td>$5000$</td><td>蒙特卡洛只在回合结束时更新一次，且回报 $G_t$ 方差较大，因此需要大量回合才能让 $V(s)$ 或 $Q(s,a)$ 的平均值稳定。回合数过少时估计抖动明显，可先从 $2000$ 试起，再逐步增加到 $5000$ 以上并观察估计是否收敛。</td></tr>
+<tr><td>棋盘大小 $N$（`N`）</td><td>$4$</td><td>网格为 $N \times N$，状态总数为 $N^2$，本课为 $16$ 个状态。$N$ 增大后状态数与所需回合数都会快速上升，入门时先用 $4 \times 4$ 的小环境验证逻辑，再尝试更大的棋盘。</td></tr>
+<tr><td>单回合最大步数</td><td>$100$</td><td>为防止策略在未到达终点或陷阱时无限循环，`gen_episode` 将每回合截断为最多 $100$ 步。截断过短会使很多回合拿不到终止奖励 $+1$ 或 $-1$，从而低估 $V(s)$；截断过长则浪费采样时间，一般取远大于最优路径长度的值即可。</td></tr>
+</table>
+<h2>⑪ 常见坑</h2>
+<ul>
+<li>不要在回合中途更新价值：蒙特卡洛的 $G_t$ 只有在回合结束后才能完整算出，若像动态规划那样用下一个状态的价值 $V(s')$ 自举更新，就变成了时序差分方法。调试时先确认更新代码在 `gen_episode` 返回之后、倒序循环之内，而不是在采样循环中。</li>
+<li>首次访问与每次访问不要混用：`first_visit_mc` 与 `mc_control` 都用集合 `seen` 记录本回合已处理过的 $s$ 或 $(s,a)$，只有首次出现才更新。若漏掉 `seen` 判断，同一回合内同一状态会被重复计入多次，导致样本相关、估计有偏；若把 $s$ 与 $(s,a)$ 的集合混用，也会出现更新错位。改动后可打印某个状态的回报列表长度，与其首次出现次数核对。</li>
+<li>倒序递推不要写成正序：回报必须从回合末尾向前算，即 $G=\gamma G+r$，先算靠近终点的时刻，再算起点。若按正序累加，得到的不是 $G_t$ 而是错误的累计和，$V(s)$ 会系统性偏大或偏小。调试时可取一条只有两三步的短回合，手工算出 $G_t$ 再与程序输出对照。</li>
+<li>探索率不要设为 $0$，回合数不要设得太少：若 $\epsilon=0$，策略变为纯贪心，未访问过的 $(s,a)$ 的 $Q(s,a)$ 将一直保持初始值 $0$，算法可能过早锁定次优动作；若回合数只有几百个，$V(s)$ 与 $Q(s,a)$ 的平均值仍在大幅抖动，容易误判为不收敛。建议先固定随机种子、把 $\epsilon$ 取 $0.1$、回合数取 $5000$，再逐步调参并多次运行观察稳定性。</li>
+</ul>
+<h2>⑫ 练习题</h2>
+<p><b>练习题 1</b> 蒙特卡洛方法为什么不需要知道转移概率 $P(s'|s,a)$ 与奖励函数 $R(s,a)$，也不需要像贝尔曼方程那样用下一状态的价值进行自举，就能估计 $V^\pi(s)$？请结合实际回报 $G_t$ 的定义与平均估计公式，说明首次访问与每次访问蒙特卡洛的区别，并解释它为什么只适用于情节式任务且方差较大。</p>
+<details><summary>练习题 1（点击查看参考答案）</summary><div class="ans">
+<p>（1）从价值的定义出发。策略 $\pi$ 下状态 $s$ 的价值 $V^\pi(s)$ 是从 $s$ 出发后实际回报 $G_t$ 的期望，即 $V^\pi(s)=\mathbb{E}_\pi[G_t|S_t=s]$，其中 $G_t=R_{t+1}+\gamma R_{t+2}+\gamma^2 R_{t+3}+\cdots$，递推形式为 $G_t=R_{t+1}+\gamma G_{t+1}$。因此只要能采样到真实的 $G_t$，就能估计 $V^\pi(s)$。</p>
+<p>（2）与动态规划的本质区别。动态规划利用贝尔曼方程，用 $R_{t+1}+\gamma V^\pi(S_{t+1})$ 代替真实的 $G_t$，这既需要知道转移概率 $P(s'|s,a)$ 与奖励函数 $R(s,a)$ 来计算期望，也需要用下一状态的估计值 $V^\pi(S_{t+1})$ 进行自举。蒙特卡洛则相反：它不需要模型，直接与环境交互采样一条完整回合，从回合末尾倒序算出真实的 $G_t$，再用它更新价值，所以是无模型、无自举的方法。</p>
+<p>（3）平均估计与大数定律。对同一状态 $s$ 多次采样，得到 $G_t^{(1)}, G_t^{(2)}, \cdots, G_t^{(N(s))}$，蒙特卡洛估计为 $V(s) \leftarrow \frac{1}{N(s)} \sum_{i=1}^{N(s)} G_t^{(i)}$。根据大数定律，当 $N(s)$ 增大时，该平均值会收敛到真实的 $V^\pi(s)$。例如某回合 $R_1=0$、$R_2=0$、$R_3=1$，$\gamma=0.9$ 时，$G_2=1$，$G_1=0+0.9 \times 1=0.9$，$G_0=0+0.9 \times 0.9=0.81$，这就是 $s$ 在 $t=0$ 处的一个样本。</p>
+<p>（4）首次访问与每次访问的区别。首次访问蒙特卡洛只在每回合第一次遇到 $s$ 时用对应的 $G_t$ 更新，避免同一回合内重复出现的状态产生相关样本，因而无偏且更常用；每次访问蒙特卡洛则在每次遇到 $s$ 时都更新，利用了更多数据，但同一回合内的多个 $G_t$ 共享后续奖励，样本之间相关性更强。</p>
+<p>（5）控制与局限。在蒙特卡洛控制中，同样用 $G_t$ 平均估计 $Q(s,a)$，再按 $\epsilon$-贪心改进 $\pi$，即以大概率选当前最优动作、以小概率探索其它动作，在评估与改进的循环中使 $\pi$ 逐步逼近 $\pi^*$。代价是：只有回合结束、得到完整的 $G_t$ 后才能更新，所以它只适用于有终止的情节式任务，不适用于无终止的连续任务；同时 $G_t$ 是整条轨迹奖励的折扣和，包含多次随机转移与动作的影响，一次样本的噪声很大，因此方差较大、样本效率较低，需要大量回合平均后估计才稳定。</p>
+</div></details>
+<p><b>练习题 2</b> 设折扣因子 $\gamma=0.5$，用首次访问蒙特卡洛和每次访问蒙特卡洛估计状态 $s$ 在策略 $\pi$ 下的价值 $V^\pi(s)$。已知两条完整回合，奖励 $R_{t+1}$ 为离开 $S_t$ 后得到的奖励，回合结束时 $G_T=0$，初始时 $s$ 没有历史回报样本，$V(s)=0$：</p>
+<p>第一回合：$S_0=s$，$R_1=0$；$S_1=s$，$R_2=1$；$S_2=x$，$R_3=4$，之后终止。
+第二回合：$S_0=s$，$R_1=0$；$S_1=y$，$R_2=0$；$S_2=z$，$R_3=1$，之后终止。</p>
+<p>（一）用递推式 $G_t=R_{t+1}+\gamma G_{t+1}$ 从回合末尾倒序计算第一回合的 $G_2$、$G_1$、$G_0$ 和第二回合的 $G_2$、$G_1$、$G_0$。
+（二）用首次访问蒙特卡洛分别计算两回合后的 $V(s)$，写出每次更新后的 $V(s)$ 和样本数 $N(s)$。
+（三）用每次访问蒙特卡洛计算两回合后的 $V(s)$，并与（二）的结果比较，说明多计入的样本是哪个 $G_t$。</p>
+<details><summary>练习题 2（点击查看参考答案）</summary><div class="ans">
+<p>第一步：倒序计算回报。由 $G_t=R_{t+1}+\gamma G_{t+1}$ 和 $G_T=0$，也可直接验证 $G_t=R_{t+1}+\gamma R_{t+2}+\gamma^2 R_{t+3}$。</p>
+<p>第一回合：$G_2=R_3+\gamma G_3=4+0.5\times 0=4$；$G_1=R_2+\gamma G_2=1+0.5\times 4=1+2=3$；$G_0=R_1+\gamma G_1=0+0.5\times 3=1.5$。直接展开验证：$G_0=0+0.5\times 1+0.5^2\times 4=0.5+1=1.5$。</p>
+<p>第二回合：$G_2=R_3+\gamma G_3=1+0.5\times 0=1$；$G_1=R_2+\gamma G_2=0+0.5\times 1=0.5$；$G_0=R_1+\gamma G_1=0+0.5\times 0.5=0.25$。直接展开验证：$G_0=0+0.5\times 0+0.5^2\times 1=0.25$。</p>
+<p>第二步：首次访问蒙特卡洛。首次访问只取每回合第一次出现 $s$ 时的 $G_t$，用 $V(s)=\frac{1}{N(s)}\sum_{i=1}^{N(s)}G_t^{(i)}$ 取平均，初始的 $V(s)=0$ 不是样本，不计入分母。</p>
+<p>第一回合后：$s$ 首次出现在 $t=0$，样本为 $G_0=1.5$，$t=1$ 的 $G_1=3$ 不计入；此时 $N(s)=1$，$V(s)=\frac{1.5}{1}=1.5$。</p>
+<p>第二回合后：$s$ 只在 $t=0$ 出现一次，样本为 $G_0=0.25$；此时 $N(s)=2$，$V(s)=\frac{1.5+0.25}{2}=\frac{1.75}{2}=0.875$。</p>
+<p>第三步：每次访问蒙特卡洛。每次访问把同一回合内 $s$ 的每次出现都当作样本。</p>
+<p>第一回合后：样本为 $G_0=1.5$ 和 $G_1=3$，$N(s)=2$，$V(s)=\frac{1.5+3}{2}=2.25$。</p>
+<p>第二回合后：再加入 $G_0=0.25$，共 $3$ 个样本，$N(s)=3$，$V(s)=\frac{1.5+3+0.25}{3}=\frac{4.75}{3}\approx 1.58$，更精确为 $1.583\cdots$。</p>
+<p>结论：首次访问蒙特卡洛两回合后的估计为 $V(s)=0.875$，每次访问蒙特卡洛为 $V(s)\approx 1.58$。两者差别来自第一回合中 $s$ 第二次出现时的样本 $G_1=3$，它与 $G_0=1.5$ 共享了 $R_2=1$ 和 $R_3=4$ 带来的后续奖励，因而相关性更强，而首次访问只保留 $G_0=1.5$，更能保持样本的无偏性。</p>
+</div></details>
+<p><b>练习题 3</b> 基于本课 `mc_control` 的代码，只改探索率，做一组对照实验，验证探索与利用的平衡对蒙特卡洛控制的影响。</p>
+<p>本课代码中，全局常量行把探索率设为 $0.1$，`mc_control` 在每次用实际回报 $G_t$ 更新 $Q(s, a)$ 后，都按 $\epsilon$-贪心规则重建策略 $\pi$：非贪心动作各占 $\epsilon/|A|$ 的概率，贪心动作占 $1-\epsilon+\epsilon/|A|$ 的概率，其中 $|A|=4$。</p>
+<p>任务：保持随机种子、棋盘大小、折扣因子 $\gamma$、回合数与其它代码不变，只把探索率 $EPS$ 的值依次改为 $0$ 和 $1.0$，分别完整运行程序，记录并比较三种取值（$0$、$0.1$、$1.0$）下打印出的最优策略和起点处的 $Q$ 值，即 $Q((0, 0), a)$ 对四个动作 $a$ 的值。</p>
+<p>要求在答案中写清：改的是哪一行、改前改后分别是什么；$EPS=0$ 和 $EPS=1.0$ 时策略 $\pi$ 的更新公式分别变成什么；以及预期看到的最优策略、$Q$ 值与学习效果有何不同，并用 $\epsilon$-贪心探索与利用的道理和蒙特卡洛控制只能从实际采样回报中学习的特点解释原因。</p>
+<details><summary>练习题 3（点击查看参考答案）</summary><div class="ans">
+<p><b>1. 改哪一行、改成什么</b></p>
+<p>只改程序开头的一行全局常量，其它代码一行也不动：</p>
+<pre class="code"><code># 基准
+N, GAMMA, EPS, EPISODES = 4, 0.9, 0.1, 5000
+# 对照实验 1：改为纯贪心
+N, GAMMA, EPS, EPISODES = 4, 0.9, 0.0, 5000
+# 对照实验 2：改为纯随机
+N, GAMMA, EPS, EPISODES = 4, 0.9, 1.0, 5000</code></pre>
+<p>这一行中的 $0.9$ 是折扣因子 $\gamma$，$5000$ 是回合数，$4$ 是棋盘大小，都保持不变；只有 $EPS$，也就是 $\epsilon$，被改动。`mc_control` 内部决定策略更新的两行保持不变：</p>
+<pre class="code"><code>pi[s] = EPS / 4
+pi[s][best] = 1 - EPS + EPS / 4</code></pre>
+<p>其中 $best$ 是当前 $Q(s, a)$ 最大的动作。由此可得三种取值下的策略更新公式：基准 $EPS=0.1$ 时，非贪心动作的概率为 $\epsilon/|A|=0.1/4=0.025$，贪心动作的概率为 $1-\epsilon+\epsilon/|A|=1-0.1+0.025=0.925$；$EPS=0$ 时，非贪心动作的概率为 $0/4=0$，贪心动作的概率为 $1-0+0=1$，策略变为完全确定性的贪心策略；$EPS=1.0$ 时，非贪心动作的概率为 $1.0/4=0.25$，贪心动作的概率为 $1-1.0+0.25=0.25$，所有动作的概率相等，策略恒为均匀随机策略。</p>
+<p><b>2. 预期看到的现象</b></p>
+<p>先说基准 $EPS=0.1$ 时的预期：经过 $5000$ 个回合，蒙特卡洛控制通常能学到绕开陷阱 $(1, 1)$、走向终点 $(3, 3)$ 的策略。从起点 $(0, 0)$ 出发，最短需要 $6$ 步到达终点，例如先向右再向下；终点奖励为 $1$，按 $\gamma=0.9$ 折扣，最优确定性策略下起点价值的上限约为 $\gamma^5=0.9^5=0.59049$。因为 $\epsilon$-贪心策略仍有 $0.1$ 的随机动作，实际学到的最优动作的 $Q((0, 0), a)$ 会低于该上限，但明显为正，通常在 $0.2$ 至 $0.5$ 之间；打印出的策略在靠近终点的状态多指向终点，在陷阱附近多避开陷阱。</p>
+<p>再看 $EPS=0$ 时的预期：策略一旦被更新就变为确定性，之后按该策略采样的回合只能走同一条路，只有未访问过的状态仍保留均匀随机策略，探索基本停止。结果高度依赖前几个回合的运气，换一个随机种子结果可能大不相同，学习不稳定。很多 $(s, a)$ 从未被采样，其 $Q(s, a)$ 一直保持初始值 $0$；若某个动作因一次偶然的坏回报得到负的 $Q(s, a)$，它此后被执行的概率为 $0$，再也不会被尝试，即使它实际上是好动作。打印的策略常出现指向上的动作 $0$，因为多个 $Q(s, a)$ 都是 $0$ 时，取最大值的函数返回第一个下标 $0$，甚至可能出现原地不动、走进陷阱 $(1, 1)$ 或在 $100$ 步截断前一直打转的情况；起点最优动作的 $Q$ 值通常低于基准，甚至可能为 $0$ 或负值。</p>
+<p>最后看 $EPS=1.0$ 时的预期：策略始终是均匀随机，$Q$ 的更新仍在进行，但学到的只是随机策略的价值，不是更优策略的价值。因为陷阱 $(1, 1)$ 比终点 $(3, 3)$ 离起点 $(0, 0)$ 更近，随机游走先撞上陷阱的概率更大，起点处各动作的 $Q((0, 0), a)$ 彼此接近且偏低，常接近 $0$ 或为负，明显低于基准。打印出的最优策略全是 $0$，这不是学到了向上最优，而是四个动作的概率都等于 $0.25$、取最大值时返回第一个下标造成的假象；回合通常很长，很多回合在 $100$ 步截断时仍未到达终点或陷阱。</p>
+<p><b>3. 原因解释</b></p>
+<p>蒙特卡洛控制是评估与改进的循环，评估靠采样实际回报 $G_t$ 估计 $Q(s, a)$，改进靠 $\epsilon$-贪心把 $Q(s, a)$ 最大的动作变成最可能被执行的动作。$EPS=0$ 时改进太激进、评估的覆盖面太窄；$EPS=1.0$ 时根本没有改进，只有评估。$EPS=0.1$ 介于两者之间，既保留 $0.925$ 的概率利用当前最优动作，又保留 $0.1$ 的概率探索其它动作，使每个 $(s, a)$ 都有机会被反复采样、使 $Q(s, a)$ 的估计随样本增多而修正，策略才可能逐步逼近最优策略 $\pi^*$。把 $EPS$ 改回 $0.1$ 后重新运行，预期能恢复基准的学习效果；这也顺带说明，第一段首次访问蒙特卡洛预测的输出不受 $EPS$ 影响，因为它不使用 $EPS$，只按给定的均匀随机策略采样。</p>
+</div></details>
+<h2>参考文献</h2>
+<ol>
+<li>Sutton &amp; Barto 2018, Reinforcement Learning: An Introduction, 第5章 Monte Carlo Methods</li>
+<li>Kaelbling, Littman &amp; Moore 1996, Reinforcement Learning: A Survey, Journal of Artificial Intelligence Research, Vol. 4</li>
+</ol>
+<div class="pager">
+<a href="lesson-2.html">← 上一课：动态规划：策略迭代与值迭代</a>
+<a href="../rl.html">← 返回 RL 精讲目录</a>
+<span>第 4 课 · 时序差分 TD 学习（即将更新）</span>
+</div>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="../assets/effects.js"></script>
+</body>
+</html>
