@@ -164,7 +164,7 @@ TERMINALS = {6, 15}
 ARROWS = np.array(["↑", "→", "↓", "←"])  # 动作：0 上、1 右、2 下、3 左
 
 def step(s, a):
-    """已知模型：给定状态 s 与动作 a，返回下一状态与奖励。"""
+    """已知模型：给定状态 $s$ 与动作 $a$，返回下一状态与奖励。"""
     if s in TERMINALS:
         return s, 0.0
     r, c = divmod(s, COLS)
@@ -174,7 +174,7 @@ def step(s, a):
     return ns, 10.0 if ns == 15 else (-10.0 if ns == 6 else -1.0)
 
 def q_value(V, s, a):
-    """由 V(s) 算 Q(s,a)：确定性转移只需一项，不必对 s' 求和。"""
+    """由 $V(s)$ 算 $Q(s,a)$：确定性转移只需一项，不必对 $s'$ 求和。"""
     ns, r = step(s, a)
     return r + GAMMA * V[ns]
 
