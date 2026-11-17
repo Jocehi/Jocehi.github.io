@@ -16,7 +16,7 @@ body{
   min-height:100vh;
 }
 #sakura{position:fixed;inset:0;pointer-events:none;z-index:3}
-.wrap{max-width:880px;margin:0 auto;padding:2rem 1.25rem 3.5rem;position:relative;z-index:2}
+.wrap{max-width:1120px;margin:0 auto;padding:2rem 1.25rem 3.5rem;position:relative;z-index:2}
 a{color:#c2437c;text-decoration:none}
 a:hover{text-decoration:underline}
 h1{font-size:2rem;line-height:1.35;margin:.4rem 0 .3rem;letter-spacing:.02em}
@@ -69,7 +69,7 @@ li{margin:.3rem 0}
   border-radius:999px;padding:.1rem .8rem;font-size:.8rem;font-weight:700;margin-bottom:.5rem}
 /* 首页卡片：左图右文 */
 .card.split{display:flex;padding:0;overflow:hidden}
-.card.split .card-img{flex:0 0 42%;min-height:100%}
+.card.split .card-img{flex:0 0 44%;min-height:100%}
 .card.split .card-img img{display:block;width:100%;height:100%;object-fit:cover}
 .card.split .card-body{flex:1;min-width:0;padding:1.4rem 1.5rem}
 /* 论文 / 课程正文 */
@@ -141,8 +141,8 @@ footer{text-align:center;color:var(--faint);font-size:.85rem;margin-top:2.5rem}
 .hero-inner{will-change:transform,opacity}
 .hero-full img.avatar{width:150px;height:150px;border-radius:50%;object-fit:cover;
   border:4px solid #fff;box-shadow:0 14px 36px rgba(242,123,167,.38);background:#fff}
-.hero-full h1{font-family:'Zhi Mang Xing','Liu Jian Mao Cao','Great Vibes',cursive;font-weight:400;
-  font-size:3.8rem;margin:1rem 0 .3rem;letter-spacing:.05em;color:#141414}
+.hero-full h1{font-family:'Water Brush','Yuji Boku','Great Vibes',cursive;font-weight:400;
+  font-size:4.2rem;margin:1rem 0 .3rem;letter-spacing:.02em;color:#141414}
 .hero-full .typewriter{font-family:'ZCOOL KuaiLe','Baloo 2',cursive;font-size:1.4rem;color:#3d2b33}
 .hero-en{font-family:'Baloo 2',cursive;font-weight:700;color:#4a3a44;font-size:.92rem;letter-spacing:.22em;text-transform:uppercase;margin:.5rem 0 0}
 /* 往下滚动提示 */
