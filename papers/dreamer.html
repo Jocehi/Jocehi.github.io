@@ -147,7 +147,7 @@
 <p>在 interactive world model 的脉络里，Dreamer 是 PlaNet 的直接继承者，也是分歧点。它与上一篇 PlaNet 共享同一套世界模型——RSSM 循环状态空间模型加像素重建的变分目标，连编码器、解码器结构都沿用同一套；分歧在于行为的来源：PlaNet 每一步都要在线用交叉熵方法（CEM）做模型预测控制、当场规划动作，没有一个可复用的策略；Dreamer 把“规划”改成“学习”，离线在想象中训练一个参数化策略和价值函数，执行时一次前向即可出动作，并用价值模型把有限想象视界之外的回报折现进来，同时解决了 PlaNet 的短视问题与在线规划昂贵的问题。往前追溯，它把 World Models“在梦中进化线性控制器”的路线与 SVG、DPG 一系“解析价值梯度”的思想合流，并第一次规模化到像素输入的 20 个控制任务；往后，它直接通向 DreamerV2（离散隐变量）、DreamerV3（跨任务通用智能体）。</p>
 <section class="notes"><h2>我的笔记</h2><textarea id="paper-notes" placeholder="写下你的想法、疑问或灵感……"></textarea><div><button id="save-notes" type="button">保存笔记</button><span class="saved" id="notes-saved"></span></div></section>
 
-<div class="pager"><a href="planet.html">← 上一篇：PlaNet</a><a href="../papers.html">全部精读</a><span></span></div>
+<div class="pager"><a href="planet.html">← 上一篇：PlaNet</a><a href="../papers.html">全部精读</a><a href="muzero.html">下一篇：MuZero →</a></div>
 <footer>Jocehi 的论文精读 · Interactive World Model 系列</footer>
 </article>
 <aside class="sidebar"><h3>全部精读</h3><ol><li><a href="world-models.html"><span class="daynum">Day 1</span>World Models</a></li><li><a href="planet.html"><span class="daynum">Day 2</span>Learning Latent Dynamics for Planning from Pixels</a></li><li><a href="dreamer.html" class="active"><span class="daynum">Day 3</span>Dream to Control: Learning Behaviors by Latent Imagination</a></li></ol></aside>
