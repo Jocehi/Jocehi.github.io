@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 4 课 · 时序差分 TD 学习 · Jocehi 的 RL 精讲</title>
+<link rel="stylesheet" href="../assets/space-rl.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
+</head>
+<body>
+<div class="wrap">
+<nav class="topnav"><b>Jocehi</b><a href="../index.html">首页</a><a href="../papers.html">论文精读</a><a href="../rl.html">RL 精讲</a><a href="../briefing.html">每日简报</a><a class="home" href="../index.html">← 返回首页</a></nav>
+<h1>第 4 课 · 时序差分 TD 学习</h1>
+<p class="meta">Temporal Difference Learning · RL 算法每日精讲 · 2026-11-18 · 基础理论 · 入门 · 约 30 分钟</p>
+<p class="meta">前置知识：Monte Carlo 方法</p>
+<div class="thesis">用下一步的估计更新当前估计，边走边学。</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-4-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · 时序差分 TD 学习 · 4 分 16 秒</p>
+</div>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>在前几课中，我们已经知道策略评估的目标是估计给定策略 $\pi$ 下的状态价值 $V^\pi(s)$，即从状态 $s$ 出发按 $\pi$ 行动所能获得的期望折扣回报。动态规划需要已知的环境模型 $p(s', r \mid s, a)$，而 $MC$ 方法虽然不需要模型，却必须等到回合结束才能用完整回报 $G_t$ 更新价值，无法处理持续任务或很长的回合。$TD$ 学习要解决的正是这一问题：如何在不知道模型、也不必等到回合结束的情况下，从与环境的真实交互中在线估计 $V^\pi(s)$ 或动作价值 $Q^\pi(s, a)$。适用场景包括模型未知、回合很长或没有终止状态、需要边交互边学习的预测与控制任务，例如机器人导航、游戏与在线推荐等。输入为智能体与环境交互产生的每一步经验 $(s, a, r, s')$，以及折扣因子 $\gamma$ 与步长 $\alpha$；输出为逐步收敛的状态价值估计 $V(s)$ 或动作价值估计 $Q(s, a)$，进而可用于策略改进。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">② 核心思想</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>自举：用下一步价值估计 $V(s')$ 更新当前价值 $V(s)$，无需等到回合结束即可学习，这是 $TD$ 与 $MC$ 的根本区别。</li>
+<li>$TD$ 误差 $\delta = r + \gamma V(s') - V(s)$ 衡量当前估计与一步目标之间的差距，是 $TD(0)$ 更新的驱动信号。</li>
+<li>在线增量更新：每经历一步经验 $(s, a, r, s')$ 就按 $V(s) \leftarrow V(s) + \alpha \delta$ 更新一次，适合持续任务与长回合。</li>
+<li>偏差与方差的权衡：$TD$ 目标依赖有偏的旧估计，偏差较大，但只用一步奖励，方差远小于依赖完整回报 $G_t$ 的 $MC$ 方法。</li>
+<li>可推广到控制与多步方法：同一思想可用于动作价值 $Q(s, a)$ 的 $SARSA$ 更新，也可通过资格迹把一步误差向过去多步传播。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">③ 与已学方法对比</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>与动态规划相比，$TD$ 学习不需要已知的转移模型 $p(s', r \mid s, a)$，可以直接从真实交互经验中学习，因此适用于模型未知或难以建模的任务，但代价是只能通过采样逐步逼近 $V^\pi(s)$，收敛速度与稳定性不如基于模型的精确计算。与 $MC$ 方法相比，$TD$ 不必等到回合结束再用完整回报 $G_t$ 更新，可以在每一步后立即用 $V(s')$ 自举更新 $V(s)$，因而能处理持续任务、在线学习且方差更小；代价是目标本身依赖旧的估计，引入偏差，且对步长 $\alpha$ 的选择更敏感，若 $\alpha$ 过大容易震荡。总体上，$TD$ 在模型自由、在线性与方差之间取得了折中，是后续 $SARSA$ 与 $Q$ 学习等控制方法的基础。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">④ 学习流程</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="agent-env" role="img" aria-label="智能体与环境交互循环"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrA" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6472"/></marker></defs><rect x="20" y="45" width="170" height="80" rx="12" fill="#d97706"/><text x="105" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">智能体 Agent</text><text x="105" y="103" text-anchor="middle" font-size="12" fill="#ffedd5">策略 π · 价值 V</text><rect x="450" y="45" width="170" height="80" rx="12" fill="#0f766e"/><text x="535" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">环境 Environment</text><text x="535" y="103" text-anchor="middle" font-size="12" fill="#ccfbf1">状态 s · 奖励 r</text><path d="M195,65 L445,65" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="55" text-anchor="middle" font-size="12" fill="#5b6472">动作 a</text><path d="M445,105 L195,105" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="125" text-anchor="middle" font-size="12" fill="#5b6472">观测 s′ · 奖励 r</text></svg></div>
+<ol class="flow">
+<li><span class="chip kind-observe">观察</span><b>初始化并观察状态</b>将所有状态的 $V(s)$ 初始化为任意值，终止状态的 $V(s)$ 设为 $0$，随后观测回合的初始状态 $s$ 作为当前状态。</li>
+<li><span class="chip kind-decide">决策</span><b>按策略选择动作</b>在当前状态 $s$ 下，按待评估策略 $\pi$ 选择动作 $a$，输入为 $s$ 与 $\pi$，输出为待执行的 $a$。</li>
+<li><span class="chip kind-act">行动</span><b>执行动作并交互</b>执行动作 $a$，与环境进行一步交互，输入为 $(s, a)$，输出为环境即将返回的奖励与下一状态。</li>
+<li><span class="chip kind-feedback">反馈</span><b>观测奖励与新状态</b>观测环境返回的奖励 $r$ 与下一状态 $s'$，得到一步经验 $(s, a, r, s')$，输入为环境反馈，输出为该经验四元组。</li>
+<li><span class="chip kind-compute">计算</span><b>计算 TD 误差</b>用一步目标 $r + \gamma V(s')$ 与当前估计 $V(s)$ 作差，计算 $TD$ 误差 $\delta = r + \gamma V(s') - V(s)$，输入为 $(r, s', s)$，输出为 $\delta$。</li>
+<li><span class="chip kind-update">更新</span><b>更新状态价值</b>沿 $TD$ 误差方向按步长 $\alpha$ 增量更新，$V(s) \leftarrow V(s) + \alpha \delta$，输入为 $V(s)$ 与 $\delta$，输出为更新后的 $V(s)$。</li>
+<li><span class="chip kind-loop">循环</span><b>推进状态并循环</b>令 $s \leftarrow s'$ 进入下一步；若回合未结束则回到选择动作继续学习，若 $V(s)$ 已收敛则停止，否则开始新回合。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑤ 关键公式</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="formula-card">
+<h4>TD 误差定义</h4>
+<div>$$\delta_t = R_{t+1} + \gamma V(S_{t+1}) - V(S_t)$$</div>
+<p>该公式把一步真实奖励 $R_{t+1}$ 加上折扣后的下一状态价值 $\gamma V(S_{t+1})$ 作为一步目标，再减去当前估计 $V(S_t)$，得到误差 $\delta_t$。当 $\delta_t$ 为正时，说明当前估计 $V(S_t)$ 偏低，需要上调；为负时则需要下调。它是 $TD(0)$ 更新的驱动信号，每一步经验都会先算出它再更新价值。</p>
+<ul>
+<li>$\delta_t$：一步目标与当前估计之间的差距，正值表示当前估计偏低，负值表示偏高</li>
+<li>$R_{t+1}$：执行动作后环境在下一步给出的即时奖励</li>
+<li>$\gamma$：折扣因子，取值在 $0$ 到 $1$ 之间，用于折算下一状态价值</li>
+<li>$V(S_{t+1})$：对下一状态价值的当前估计，即自举所用的旧估计</li>
+<li>$V(S_t)$：对当前状态价值的当前估计，是本次要修正的对象</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>TD(0) 更新规则</h4>
+<div>$$V(S_t) \leftarrow V(S_t) + \alpha \delta_t$$</div>
+<p>该公式是 $TD(0)$ 的核心更新式：每经历一步经验，就把当前估计 $V(S_t)$ 沿 $TD$ 误差 $\delta_t$ 的方向移动一小步，移动幅度由步长 $\alpha$ 控制。它不需要等到回合结束，也不需要环境模型，只用一步经验即可在线学习。反复更新后，$V(S_t)$ 会逐步逼近真实价值 $V^\pi(S_t)$。</p>
+<ul>
+<li>$V(S_t)$：当前状态的价值估计，是本次更新的对象</li>
+<li>$\alpha$：步长，取值在 $0$ 到 $1$ 之间，控制每步修正的幅度</li>
+<li>$\delta_t$：本步的 $TD$ 误差，由一步奖励与下一状态价值算出</li>
+<li>$S_t$：当前时刻所处的状态</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>SARSA 更新规则</h4>
+<div>$$Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha \big[ R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t) \big]$$</div>
+<p>该公式把 $TD$ 思想推广到动作价值 $Q(S_t, A_t)$ 的控制问题：目标用下一状态实际执行的动作 $A_{t+1}$ 对应的 $Q(S_{t+1}, A_{t+1})$ 构成，而不是取最大值。更新后 $Q(S_t, A_t)$ 逐步逼近策略 $\pi$ 下的真实动作价值 $Q^\pi(S_t, A_t)$，再据此改进策略；因为更新用到 $(S_t, A_t, R_{t+1}, S_{t+1}, A_{t+1})$ 五元组，所以称为 $SARSA$。</p>
+<ul>
+<li>$Q(S_t, A_t)$：在状态 $S_t$ 下执行动作 $A_t$ 的动作价值估计</li>
+<li>$\alpha$：步长，控制每步更新的幅度</li>
+<li>$R_{t+1}$：执行动作后环境给出的即时奖励</li>
+<li>$\gamma$：折扣因子，用于折算下一状态动作价值</li>
+<li>$Q(S_{t+1}, A_{t+1})$：在下一状态 $S_{t+1}$ 下实际执行的下一动作 $A_{t+1}$ 对应的动作价值估计</li>
+<li>$A_{t+1}$：在下一状态实际选择的下一动作，由 $\epsilon$ 贪心策略决定</li>
+</ul>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑥ 数学推导</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol class="mathnotes">
+<li>
+<p>从回报的定义出发：从时刻 $t$ 起的折扣回报 $G_t$ 是后续所有奖励的折扣和，它满足一步递推关系，即当前奖励加上折扣后的未来回报。</p>
+<div>$$G_t = R_{t+1} + \gamma G_{t+1}$$</div></li>
+<li>
+<p>对上式两边在策略 $\pi$ 下取期望，得到 $V^\pi(s)$ 的 $Bellman$ 期望方程，价值等于一步期望奖励加上折扣后的下一状态期望价值。</p>
+<div>$$V^\pi(s) = \mathbb{E}_\pi\left[R_{t+1} + \gamma V^\pi(S_{t+1}) \mid S_t = s\right]$$</div></li>
+<li>
+<p>$MC$ 方法用一次完整采样的 $G_t$ 代替上式右边的期望，目标无偏，但必须等到回合结束，且 $G_t$ 包含多步随机奖励，方差很大。</p>
+</li>
+<li>
+<p>$TD$ 方法的自举思想是，不等 $G_{t+1}$ 的真实采样，而是用当前已有的估计 $V(S_{t+1})$ 代替它，构造只用一步真实奖励加一步旧估计的一步目标 $r + \gamma V(s')$。</p>
+</li>
+<li>
+<p>一步目标与当前估计之差就是 $TD$ 误差，误差为正说明当前估计偏低，误差为负说明当前估计偏高。</p>
+<div>$$\delta = r + \gamma V(s') - V(s)$$</div></li>
+<li>
+<p>把误差乘以步长 $\alpha$ 加回当前估计，得到 $TD(0)$ 更新；$\alpha$ 越小学习越稳但越慢，$\alpha$ 越大修正越快但波动越大。</p>
+<div>$$V(s) \leftarrow V(s) + \alpha \delta$$</div></li>
+<li>
+<p>偏差与方差的权衡由此产生：一步目标依赖有偏的旧估计 $V(s')$，所以 $TD$ 目标有偏；但它只含一步真实奖励 $r$，不含后续多步随机性，所以方差远小于用完整 $G_t$ 的 $MC$ 方法。</p>
+</li>
+<li>
+<p>数值例子：设当前 $V(s) = 0.5$，下一步 $V(s') = 1.0$，奖励 $r = 0$，折扣因子 $\gamma = 0.9$，步长 $\alpha = 0.1$。</p>
+</li>
+<li>
+<p>先算一步目标为 $0 + 0.9 \times 1.0 = 0.9$，再算 $TD$ 误差 $\delta = 0.9 - 0.5 = 0.4$，说明当前估计低估了 $0.4$。</p>
+</li>
+<li>
+<p>再按步长更新，$V(s) \leftarrow 0.5 + 0.1 \times 0.4 = 0.54$，只向目标移动了一小步；重复经历类似经验后，$V(s)$ 会逐步向 $0.9$ 附近收敛。</p>
+</li>
+<li>
+<p>同一思想用于动作价值时，只需把 $V(s)$ 换成 $Q(s, a)$、把 $V(s')$ 换成下一状态实际动作对应的 $Q(s', a')$，即得到 $SARSA$ 更新；把一步误差沿轨迹向过去传播，则得到多步 $TD$ 与资格迹方法。</p>
+</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑦ 伪代码</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="pseudo">
+<h4>算法一：$TD(0)$ 策略评估</h4>
+<div class="step"><span class="stepnum">·</span> 输入：待评估策略 $\pi$，步长 $\alpha$，折扣因子 $\gamma$</div>
+<div class="step"><span class="stepnum">·</span> 初始化：对所有状态 $s$，令 $V(s)$ 为任意值，终止状态的 $V(s)$ 为 $0$</div>
+<div class="step"><span class="stepnum">·</span> 输出：收敛后的状态价值估计 $V(s)$</div>
+<div class="step"><span class="stepnum">·</span> 重复以下过程，直至 $V(s)$ 收敛：</div>
+<div class="step"><span class="stepnum">·</span> 在每一回合开始时，观测初始状态 $s$</div>
+<div class="step"><span class="stepnum">·</span> 在回合未结束时重复以下步骤：</div>
+<div class="step"><span class="stepnum">·</span> 按策略 $\pi$ 在状态 $s$ 选择动作 $a$</div>
+<div class="step"><span class="stepnum">·</span> 执行动作 $a$，观测奖励 $r$ 与下一状态 $s'$</div>
+<div class="step"><span class="stepnum">·</span> 计算 $TD$ 误差 $\delta = r + \gamma V(s') - V(s)$</div>
+<div class="step"><span class="stepnum">·</span> 更新 $V(s) \leftarrow V(s) + \alpha \delta$</div>
+<div class="step"><span class="stepnum">·</span> 令 $s \leftarrow s'$</div>
+</div>
+<div class="pseudo">
+<h4>算法二：$SARSA$ 控制</h4>
+<div class="step"><span class="stepnum">·</span> 输入：步长 $\alpha$，折扣因子 $\gamma$，探索参数 $\epsilon$</div>
+<div class="step"><span class="stepnum">·</span> 初始化：对所有状态 $s$ 与动作 $a$，令 $Q(s, a)$ 为任意值，终止状态的 $Q(s, a)$ 为 $0$</div>
+<div class="step"><span class="stepnum">·</span> 输出：收敛后的动作价值估计 $Q(s, a)$</div>
+<div class="step"><span class="stepnum">·</span> 重复以下过程，直至 $Q(s, a)$ 收敛：</div>
+<div class="step"><span class="stepnum">·</span> 在每一回合开始时，观测初始状态 $s$，并按 $\epsilon$ 贪心策略选择动作 $a$</div>
+<div class="step"><span class="stepnum">·</span> 在回合未结束时重复以下步骤：</div>
+<div class="step"><span class="stepnum">·</span> 执行动作 $a$，观测奖励 $r$ 与下一状态 $s'$</div>
+<div class="step"><span class="stepnum">·</span> 在状态 $s'$ 按 $\epsilon$ 贪心策略选择下一动作 $a'$</div>
+<div class="step"><span class="stepnum">·</span> 计算 $TD$ 误差 $\delta = r + \gamma Q(s', a') - Q(s, a)$</div>
+<div class="step"><span class="stepnum">·</span> 更新 $Q(s, a) \leftarrow Q(s, a) + \alpha \delta$</div>
+<div class="step"><span class="stepnum">·</span> 令 $s \leftarrow s'$，$a \leftarrow a'$</div>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑧ Python 代码（可运行）</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<pre class="code"><button class="copybtn">复制代码</button><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69</span><code><span class="tok-kw">import</span> numpy <span class="tok-kw">as</span> np
+
+<span class="tok-com"># 4x4 GridWorld：起点(0,0)，终点(3,3)奖励+1，每步-0.01，撞墙原地不动</span>
+ROWS, COLS = <span class="tok-num">4</span>, <span class="tok-num">4</span>
+START, GOAL = (<span class="tok-num">0</span>, <span class="tok-num">0</span>), (<span class="tok-num">3</span>, <span class="tok-num">3</span>)
+ACTIONS = [(-<span class="tok-num">1</span>, <span class="tok-num">0</span>), (<span class="tok-num">1</span>, <span class="tok-num">0</span>), (<span class="tok-num">0</span>, -<span class="tok-num">1</span>), (<span class="tok-num">0</span>, <span class="tok-num">1</span>)]  <span class="tok-com"># 上、下、左、右</span>
+NAMES = [<span class="tok-str">"↑"</span>, <span class="tok-str">"↓"</span>, <span class="tok-str">"←"</span>, <span class="tok-str">"→"</span>]
+
+<span class="tok-kw">def</span> <span class="tok-fn">step</span>(s, a):
+    <span class="tok-str">"""执行动作，返回 (r, s_next, done)：越界则留在原地"""</span>
+    r, c = s
+    dr, dc = ACTIONS[a]
+    nr, nc = <span class="tok-bi">min</span>(<span class="tok-bi">max</span>(r + dr, <span class="tok-num">0</span>), ROWS - <span class="tok-num">1</span>), <span class="tok-bi">min</span>(<span class="tok-bi">max</span>(c + dc, <span class="tok-num">0</span>), COLS - <span class="tok-num">1</span>)
+    s_next = (nr, nc)
+    <span class="tok-kw">if</span> s_next == GOAL:
+        <span class="tok-kw">return</span> <span class="tok-num">1.0</span>, s_next, <span class="tok-kw">True</span>
+    <span class="tok-kw">return</span> -<span class="tok-num">0.01</span>, s_next, <span class="tok-kw">False</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">epsilon_greedy</span>(Q, s, eps):
+    <span class="tok-str">"""eps-贪心：以 eps 概率随机探索，否则选 $Q$ 最大动作（探索是学到最优策略的关键）"""</span>
+    <span class="tok-kw">if</span> np.random.<span class="tok-fn">rand</span>() &lt; eps:
+        <span class="tok-kw">return</span> np.random.<span class="tok-fn">randint</span>(<span class="tok-bi">len</span>(ACTIONS))
+    <span class="tok-kw">return</span> <span class="tok-bi">int</span>(np.<span class="tok-fn">argmax</span>(Q[s]))
+
+<span class="tok-kw">def</span> <span class="tok-fn">td0_evaluation</span>(episodes=<span class="tok-num">2000</span>, alpha=<span class="tok-num">0.1</span>, gamma=<span class="tok-num">0.99</span>):
+    <span class="tok-str">"""TD(0) 策略评估：评估均匀随机策略，每步用 $V(s')$ 自举更新 $V(s)$"""</span>
+    V = np.<span class="tok-fn">zeros</span>((ROWS, COLS))
+    <span class="tok-kw">for</span> _ <span class="tok-kw">in</span> <span class="tok-bi">range</span>(episodes):
+        s = START
+        <span class="tok-kw">while</span> <span class="tok-kw">True</span>:
+            a = np.random.<span class="tok-fn">randint</span>(<span class="tok-bi">len</span>(ACTIONS))  <span class="tok-com"># 随机策略</span>
+            r, s_next, done = <span class="tok-fn">step</span>(s, a)
+            <span class="tok-com"># $\delta$ 为 TD 误差：一步奖励加自举目标减当前估计，无需等回合结束</span>
+            delta = r + gamma * V[s_next] * (<span class="tok-num">0</span> <span class="tok-kw">if</span> done <span class="tok-kw">else</span> <span class="tok-num">1</span>) - V[s]
+            V[s] += alpha * delta  <span class="tok-com"># 在线增量更新：$V(s) \leftarrow V(s) + \alpha \delta$</span>
+            s = s_next
+            <span class="tok-kw">if</span> done:
+                <span class="tok-kw">break</span>
+    <span class="tok-kw">return</span> V
+
+<span class="tok-kw">def</span> <span class="tok-fn">sarsa_control</span>(episodes=<span class="tok-num">3000</span>, alpha=<span class="tok-num">0.1</span>, gamma=<span class="tok-num">0.99</span>, eps=<span class="tok-num">0.1</span>):
+    <span class="tok-str">"""SARSA 控制：同策略 TD 控制，用 $(s, a, r, s', a')$ 五元组更新 $Q(s, a)$"""</span>
+    Q = np.<span class="tok-fn">zeros</span>((ROWS, COLS, <span class="tok-bi">len</span>(ACTIONS)))
+    <span class="tok-kw">for</span> _ <span class="tok-kw">in</span> <span class="tok-bi">range</span>(episodes):
+        s, a = START, <span class="tok-fn">epsilon_greedy</span>(Q, START, eps)
+        <span class="tok-kw">while</span> <span class="tok-kw">True</span>:
+            r, s_next, done = <span class="tok-fn">step</span>(s, a)
+            a_next = <span class="tok-fn">epsilon_greedy</span>(Q, s_next, eps) <span class="tok-kw">if</span> <span class="tok-kw">not</span> done <span class="tok-kw">else</span> <span class="tok-num">0</span>
+            <span class="tok-com"># 目标用下一动作的 $Q(s', a')$，而非最大值：SARSA 是同策略方法</span>
+            target = r + gamma * Q[s_next][a_next] * (<span class="tok-num">0</span> <span class="tok-kw">if</span> done <span class="tok-kw">else</span> <span class="tok-num">1</span>)
+            delta = target - Q[s][a]
+            Q[s][a] += alpha * delta
+            s, a = s_next, a_next
+            <span class="tok-kw">if</span> done:
+                <span class="tok-kw">break</span>
+    <span class="tok-kw">return</span> Q
+
+<span class="tok-kw">if</span> __name__ == <span class="tok-str">"__main__"</span>:
+    np.random.<span class="tok-fn">seed</span>(<span class="tok-num">0</span>)
+    V = <span class="tok-fn">td0_evaluation</span>()
+    <span class="tok-bi">print</span>(<span class="tok-str">"TD(0) 评估随机策略的状态价值："</span>)
+    <span class="tok-bi">print</span>(np.<span class="tok-fn">round</span>(V, <span class="tok-num">2</span>))
+    Q = <span class="tok-fn">sarsa_control</span>()
+    <span class="tok-bi">print</span>(<span class="tok-str">"\nSARSA 学到的贪心策略（↑↓←→）："</span>)
+    policy = np.<span class="tok-fn">array</span>([[NAMES[<span class="tok-bi">int</span>(np.<span class="tok-fn">argmax</span>(Q[r, c]))] <span class="tok-kw">for</span> c <span class="tok-kw">in</span> <span class="tok-bi">range</span>(COLS)] <span class="tok-kw">for</span> r <span class="tok-kw">in</span> <span class="tok-bi">range</span>(ROWS)])
+    policy[GOAL] = <span class="tok-str">"★"</span>
+    <span class="tok-bi">print</span>(<span class="tok-str">"\n"</span>.<span class="tok-fn">join</span>(<span class="tok-str">" "</span>.<span class="tok-fn">join</span>(row) <span class="tok-kw">for</span> row <span class="tok-kw">in</span> policy))
+    <span class="tok-bi">print</span>(<span class="tok-str">"\nSARSA 的状态价值（每状态最大动作价值）："</span>)
+    <span class="tok-bi">print</span>(np.<span class="tok-fn">round</span>(Q.<span class="tok-fn">max</span>(axis=<span class="tok-num">2</span>), <span class="tok-num">2</span>))</code></pre>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑨ 代码讲解</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>环境定义与转移函数：代码用 $4 \times 4$ 网格表示 GridWorld，起点为 $(0,0)$、终点为 $(3,3)$，动作只有上、下、左、右四种；`step` 先按动作计算新位置并用边界截断实现撞墙原地不动，到达终点返回奖励 $+1$ 并结束回合，否则返回 $-0.01$，返回值可理解为一步经验中的 $r$、$s'$ 与是否结束的标志 $done$。</li>
+<li>$\epsilon$贪心探索函数 `epsilon_greedy`：以概率 $\epsilon$ 随机选择动作进行探索，否则选择当前 $Q(s, a)$ 最大的动作进行利用；这一步只在 $SARSA$ 控制中使用，$TD(0)$ 评估使用均匀随机策略，因此不需要它。</li>
+<li>$TD(0)$ 策略评估 `td0_evaluation`：初始化 $V$ 为全零的 $4 \times 4$ 数组，每回合从起点出发、按均匀随机策略选动作；每步计算 $TD$ 误差 $\delta = r + \gamma V(s') - V(s)$，其中终点处 $V(s')$ 项乘以 $0$ 以消除自举，接着按 $V(s) \leftarrow V(s) + \alpha \delta$ 在线更新；与 $MC$ 方法不同，它不需要等到回合结束、拿到完整回报 $G_t$ 后才学习。</li>
+<li>$SARSA$ 控制 `sarsa_control`：初始化动作价值 $Q$ 为全零的 $4 \times 4 \times 4$ 数组，先用 $\epsilon$贪心选出初始动作 $a$；每步执行动作得到 $r$ 与 $s'$，再用 $\epsilon$贪心选出下一动作 $a'$，目标为 $r + \gamma Q(s', a')$，误差为 $\delta = r + \gamma Q(s', a') - Q(s, a)$，按 $Q(s, a) \leftarrow Q(s, a) + \alpha \delta$ 更新；关键在目标用实际执行的下一动作 $a'$ 而非最大值，因此是同策略方法。</li>
+<li>主程序与结果解读：固定随机种子后先运行 $TD(0)$ 评估并打印 $V$，再运行 $SARSA$ 并对每个状态取 $\arg\max_a Q(s, a)$ 得到贪心策略，终点标为星号；同时打印 $Q$ 在每个状态上的最大值 $\max_a Q(s, a)$，可作为 $SARSA$ 学到的状态价值近似，用于检查策略是否沿最短路径走向终点。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑩ 超参数</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<table class="data"><tr><th>参数</th><th>常用取值</th><th>说明</th></tr>
+<tr><td>学习率 $\alpha$</td><td>$0.1$</td><td>每步按 $V(s) \leftarrow V(s) + \alpha \delta$ 或 $Q(s, a) \leftarrow Q(s, a) + \alpha \delta$ 更新的步长；$\alpha$ 过大易震荡甚至发散，过小则 $V$ 与 $Q$ 收敛很慢，可先用 $0.1$ 再按需调小。</td></tr>
+<tr><td>折扣因子 $\gamma$</td><td>$0.99$</td><td>决定未来奖励在目标 $r + \gamma V(s')$ 或 $r + \gamma Q(s', a')$ 中的权重；$\gamma$ 越接近 $1$ 越看重到达终点的 $+1$ 奖励，但 $TD$ 目标传播越慢，$\gamma$ 过小会使智能体只顾眼前的 $-0.01$ 惩罚而忽视终点。</td></tr>
+<tr><td>探索率 $\epsilon$</td><td>$0.1$</td><td>仅用于 $SARSA$ 的 $\epsilon$贪心策略，以概率 $\epsilon$ 随机探索；$\epsilon$ 过大导致学到的 $Q(s, a)$ 被大量随机动作污染，过小则可能长期困在局部路径，常用 $0.1$，也可在训练后期逐步减小。</td></tr>
+<tr><td>训练回合数 $episodes$</td><td>$2000$ 或 $3000$</td><td>$TD(0)$ 评估用 $2000$ 回合、$SARSA$ 控制用 $3000$ 回合；回合数不足时 $V$ 与 $Q$ 尚未收敛，策略仍可能绕路，判断标准是 $V$ 与贪心策略在增加回合后基本不再变化。</td></tr>
+</table>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑪ 常见坑</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>忘记在终点截断自举项：若把目标写成 $r + \gamma V(s')$ 而不乘以 $0$，终点后的 $V(s')$ 会被错误计入，导致 $V$ 偏高且难以收敛；调试时打印终点那一步的 $\delta$，确认目标等于 $r$，并核对 `step` 返回的 $done$ 是否为真。</li>
+<li>把 $SARSA$ 误写成 $Q$ 学习：若把目标中的 $Q(s', a')$ 换成 $\max_a Q(s', a)$，就变成了异策略的 $Q$ 学习而非同策略 $SARSA$；调试时确认 $a'$ 是用 $\epsilon$贪心实际选出的下一动作，且 $Q(s, a)$ 的更新使用该 $a'$ 对应的值。</li>
+<li>学习率与探索率设置不当：$\alpha$ 过大时 $V$ 与 $Q$ 会在终点附近震荡，打印的价值表忽高忽低；$\epsilon$ 过大时策略长期随机、难以形成稳定路径。建议先固定 $\alpha=0.1$、$\epsilon=0.1$、$\gamma=0.99$，再逐个调参，并观察 $V$ 是否随回合数增加而趋稳。</li>
+<li>混淆评估与控制：`td0_evaluation` 评估的是均匀随机策略，其 $V$ 远低于最优价值，不能直接取 $\arg\max$ 得到最优策略；若想得到最优策略，必须运行 $SARSA$ 控制并从 $Q(s, a)$ 中提取贪心策略，检查时应比较随机策略与 $SARSA$ 策略的 $V$ 或 $\max_a Q(s, a)$。</li>
+<li>每回合忘记重置状态与动作：`td0_evaluation` 每回合必须把 $s$ 重置为起点，`sarsa_control` 每回合必须重新用 $\epsilon$贪心选出初始动作 $a$；否则智能体会从上一回合的终点继续走，$V$ 与 $Q$ 的更新分布被破坏，表现为价值表不对称或策略出现断裂。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑫ 练习题</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p class="qa-q"><b>练习题 1</b> 什么是时序差分 $TD$ 学习中的“自举”？请结合 $TD$ 误差 $\delta$ 与 $TD(0)$ 更新公式，说明 $TD$ 为什么无需等到回合结束就能学习，并解释它与 $MC$ 方法在学习目标、偏差与方差上的根本区别。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>自举是指在更新当前状态价值 $V(s)$ 时，不等待真实的未来回报，而是直接用下一步状态的已有价值估计 $V(s')$ 来构造学习目标。</p>
+<p>从回报的定义 $G_t = R_{t+1} + \gamma G_{t+1}$ 出发，对其取期望可得 $Bellman$ 期望方程 $V^\pi(s) = \mathbb{E}_\pi\left[R_{t+1} + \gamma V^\pi(S_{t+1}) \mid S_t = s\right]$。$MC$ 方法用一次完整采样得到的 $G_t$ 代替上式右端，因此必须等到回合结束才能得到目标；而 $TD$ 方法用 $V(S_{t+1})$ 代替未知的 $G_{t+1}$，得到只含一步真实奖励的一步目标 $r + \gamma V(s')$。</p>
+<p>两者之差就是 $TD$ 误差 $\delta = r + \gamma V(s') - V(s)$。若 $\delta &gt; 0$，说明一步目标高于当前估计，即 $V(s)$ 被低估，应上调；若 $\delta &lt; 0$，说明 $V(s)$ 被高估，应下调；若 $\delta = 0$，则当前估计与一步目标一致。</p>
+<p>$TD(0)$ 更新为 $V(s) \leftarrow V(s) + \alpha \delta$，其中 $\alpha$ 为步长。$\alpha$ 越小，更新越稳但学习越慢；$\alpha$ 越大，修正越快但波动越大。每经历一步经验 $(s, a, r, s')$ 就可以立即计算 $\delta$ 并更新 $V(s)$，这就是在线增量学习，因此 $TD$ 适用于持续任务和很长的回合，而 $MC$ 必须等回合结束。</p>
+<p>偏差与方差的权衡正在于此：$TD$ 的一步目标依赖旧估计 $V(s')$，而 $V(s')$ 本身未必等于真实价值 $V^\pi(s')$，所以 $TD$ 目标是有偏的；但它只含一步真实奖励 $r$，不含后续多步的随机奖励与随机转移，所以方差远小于 $MC$。相反，$MC$ 的目标 $G_t$ 是真实回报的一次无偏采样，偏差小，但它累积了整条轨迹的随机性，方差很大，且学习效率较低。</p>
+<p>例如，设 $V(s) = 0.5$，$V(s') = 1.0$，$r = 0$，$\gamma = 0.9$，$\alpha = 0.1$，则一步目标为 $0 + 0.9 \times 1.0 = 0.9$，$TD$ 误差为 $\delta = 0.9 - 0.5 = 0.4$，更新后 $V(s) \leftarrow 0.5 + 0.1 \times 0.4 = 0.54$。可见 $V(s)$ 只向目标移动了一小步，多次经历类似经验后才会逐步逼近 $0.9$ 附近。</p>
+<p>同一自举思想也可推广到控制：把 $V(s)$ 换成动作价值 $Q(s, a)$，把 $V(s')$ 换成下一状态实际动作对应的 $Q(s', a')$，就得到 $SARSA$ 更新；把一步误差沿轨迹向过去传播，则可得到多步 $TD$ 与资格迹方法。</p>
+<p>总之，自举是 $TD$ 的核心：用旧估计 $V(s')$ 换取即时学习与低方差，代价是引入偏差；$MC$ 则用完整回报 $G_t$ 换取无偏性，代价是高方差与必须等待回合结束。</p>
+</div></details>
+<p class="qa-q"><b>练习题 2</b> 手算题：设折扣因子 $\gamma = 0.9$，步长 $\alpha = 0.1$，某策略下两个非终结状态 $s_0$ 和 $s_1$ 的初始价值估计分别为 $V(s_0) = 0.5$ 和 $V(s_1) = 0.8$，终结状态的价值规定为 $0$。智能体依次经历以下三步经验（每步都用 $TD(0)$ 更新，且后一步使用前一步更新后的价值）：（1）从 $s_0$ 出发，得到奖励 $r = 0$，转移到 $s_1$，$s_1$ 不是终结状态；（2）从 $s_1$ 出发，得到奖励 $r = 1$，转移到终结状态；（3）再次从 $s_0$ 出发，得到奖励 $r = 0$，转移到 $s_1$，$s_1$ 不是终结状态。请分别计算每一步的 $TD$ 目标 $r + \gamma V(s')$、$TD$ 误差 $\delta$ 和更新后的价值，并给出最终的 $V(s_0)$ 和 $V(s_1)$，同时简要说明第（3）步的目标与第（1）步相比为什么会发生变化。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>先写出 $TD(0)$ 的公式：$TD$ 目标为 $r + \gamma V(s')$，$TD$ 误差为 $\delta = r + \gamma V(s') - V(s)$，更新公式为 $V(s) \leftarrow V(s) + \alpha \delta$。其中终结状态的 $V(s')$ 取 $0$，即目标退化为 $r$。$\delta &gt; 0$ 表示当前估计偏低，$\delta &lt; 0$ 表示当前估计偏高，$\delta = 0$ 表示当前估计与一步目标一致。</p>
+<p>第（1）步：当前 $V(s_0) = 0.5$，$V(s_1) = 0.8$，$r = 0$，$\gamma = 0.9$。$TD$ 目标为 $0 + 0.9 \times 0.8 = 0.72$；$TD$ 误差为 $\delta = 0.72 - 0.5 = 0.22$，为正说明 $V(s_0)$ 低估了 $0.22$；更新为 $V(s_0) \leftarrow 0.5 + 0.1 \times 0.22 = 0.5 + 0.022 = 0.522$。</p>
+<p>第（2）步：当前 $V(s_1) = 0.8$，$r = 1$，$s'$ 为终结状态，故 $V(s') = 0$。$TD$ 目标为 $1 + 0.9 \times 0 = 1$；$TD$ 误差为 $\delta = 1 - 0.8 = 0.2$，为正说明 $V(s_1)$ 低估了 $0.2$；更新为 $V(s_1) \leftarrow 0.8 + 0.1 \times 0.2 = 0.8 + 0.02 = 0.82$。</p>
+<p>第（3）步：此时已更新的 $V(s_0) = 0.522$，$V(s_1) = 0.82$，$r = 0$。$TD$ 目标为 $0 + 0.9 \times 0.82 = 0.738$；$TD$ 误差为 $\delta = 0.738 - 0.522 = 0.216$；更新为 $V(s_0) \leftarrow 0.522 + 0.1 \times 0.216 = 0.522 + 0.0216 = 0.5436$。</p>
+<p>最终结果为 $V(s_0) = 0.5436$，$V(s_1) = 0.82$。第（3）步的目标由第（1）步的 $0.72$ 升为 $0.738$，因为第（2）步把 $V(s_1)$ 从 $0.8$ 提高到 $0.82$，而第（3）步的 $TD$ 目标依赖自举项 $\gamma V(s_1)$，所以 $s_1$ 价值的提高会经由自举向上传播到 $s_0$。这正是 $TD$ 无需等到回合结束、一步一步向后传播信息的体现；同时每步只按 $\alpha = 0.1$ 的比例向目标移动一小步，因此价值是逐步收敛而非一次跳到目标值。</p>
+</div></details>
+<p class="qa-q"><b>练习题 3</b> 代码改造题：把 $SARSA$ 改成 $Q$-learning，并对比同策略与异策略 $TD$ 控制学到的价值</p>
+<p class="qa-q">背景：本课 $4 \times 4$ 网格世界中，`sarsa_control()` 实现的是 $SARSA$ 控制。它的关键更新在每一步经验 $(s, a, r, s', a')$ 上，用下一时刻实际执行的动作 $a'$ 对应的 $Q(s', a')$ 做自举目标，$TD$ 目标为 $r + \gamma Q(s', a')$，$TD$ 误差为 $\delta = r + \gamma Q(s', a') - Q(s, a)$，更新为 $Q(s, a) \leftarrow Q(s, a) + \alpha \delta$。相关代码节选如下：</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15</span><code><span class="tok-kw">def</span> <span class="tok-fn">sarsa_control</span>(episodes=<span class="tok-num">3000</span>, alpha=<span class="tok-num">0.1</span>, gamma=<span class="tok-num">0.99</span>, eps=<span class="tok-num">0.1</span>):
+    Q = np.<span class="tok-fn">zeros</span>((ROWS, COLS, <span class="tok-bi">len</span>(ACTIONS)))
+    <span class="tok-kw">for</span> _ <span class="tok-kw">in</span> <span class="tok-bi">range</span>(episodes):
+        s, a = START, <span class="tok-fn">epsilon_greedy</span>(Q, START, eps)
+        <span class="tok-kw">while</span> <span class="tok-kw">True</span>:
+            r, s_next, done = <span class="tok-fn">step</span>(s, a)
+            a_next = <span class="tok-fn">epsilon_greedy</span>(Q, s_next, eps) <span class="tok-kw">if</span> <span class="tok-kw">not</span> done <span class="tok-kw">else</span> <span class="tok-num">0</span>
+            <span class="tok-com"># 目标用下一动作的 $Q(s', a')$，而非最大值：SARSA 是同策略方法</span>
+            target = r + gamma * Q[s_next][a_next] * (<span class="tok-num">0</span> <span class="tok-kw">if</span> done <span class="tok-kw">else</span> <span class="tok-num">1</span>)
+            delta = target - Q[s][a]
+            Q[s][a] += alpha * delta
+            s, a = s_next, a_next
+            <span class="tok-kw">if</span> done:
+                <span class="tok-kw">break</span>
+    <span class="tok-kw">return</span> Q</code></pre>
+<p class="qa-q">任务：请在不改动环境 `step()`、探索函数 `epsilon_greedy()`、奖励与折扣设定的前提下，复制一份 `sarsa_control()` 并改名为 `q_learning_control()`，只改动与自举目标有关的代码，把它改成异策略的 $Q$-learning；同时在 `__main__` 中用相同的超参数和随机种子先后运行 $SARSA$ 与 $Q$-learning，打印并对比两者学到的贪心策略与每状态最大动作价值 $\max_a Q(s, a)$。</p>
+<p class="qa-q">请在答案中写清：(1) 改了哪几行、原来是什么、改成什么，并给出改动后的关键代码片段；(2) 改动后 $TD$ 目标与 $TD$ 误差的公式变成了什么；(3) 运行后预期看到什么现象，并用目标中 $Q(s', a')$ 与 $\max_{a'} Q(s', a')$ 的区别解释为什么会出现这种现象。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>参考答案：核心改动只有自举目标一行，行为策略仍用 $\epsilon$-贪心策略，目标策略改为贪心策略。</p>
+<p>1. 改动位置与改法</p>
+<p>在 `sarsa_control()` 中复制一份并改名为 `q_learning_control()`，只改目标计算这一行。原来用下一时刻实际执行的动作 $a'$ 对应的 $Q(s', a')$ 做目标：</p>
+<pre class="code"><span class="ln-col">1</span><code>target = r + gamma * Q[s_next][a_next] * (<span class="tok-num">0</span> <span class="tok-kw">if</span> done <span class="tok-kw">else</span> <span class="tok-num">1</span>)</code></pre>
+<p>改成用下一状态所有动作的最大动作价值做目标：</p>
+<pre class="code"><span class="ln-col">1</span><code>target = r + gamma * np.<span class="tok-fn">max</span>(Q[s_next]) * (<span class="tok-num">0</span> <span class="tok-kw">if</span> done <span class="tok-kw">else</span> <span class="tok-num">1</span>)</code></pre>
+<p>`a_next = epsilon_greedy(Q, s_next, eps) if not done else 0` 这一行保留，选出的 $a'$ 只作为下一步实际执行的行为动作，不再参与目标计算；`Q[s][a] += alpha * delta` 与终结时的乘子 $0$ 也不用改。</p>
+<p>2. 改动后的完整函数</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15</span><code><span class="tok-kw">def</span> <span class="tok-fn">q_learning_control</span>(episodes=<span class="tok-num">3000</span>, alpha=<span class="tok-num">0.1</span>, gamma=<span class="tok-num">0.99</span>, eps=<span class="tok-num">0.1</span>):
+    Q = np.<span class="tok-fn">zeros</span>((ROWS, COLS, <span class="tok-bi">len</span>(ACTIONS)))
+    <span class="tok-kw">for</span> _ <span class="tok-kw">in</span> <span class="tok-bi">range</span>(episodes):
+        s, a = START, <span class="tok-fn">epsilon_greedy</span>(Q, START, eps)
+        <span class="tok-kw">while</span> <span class="tok-kw">True</span>:
+            r, s_next, done = <span class="tok-fn">step</span>(s, a)
+            a_next = <span class="tok-fn">epsilon_greedy</span>(Q, s_next, eps) <span class="tok-kw">if</span> <span class="tok-kw">not</span> done <span class="tok-kw">else</span> <span class="tok-num">0</span>
+            <span class="tok-com"># 改动：目标改用最大值，不再用实际下一动作 a' 对应的 Q 值</span>
+            target = r + gamma * np.<span class="tok-fn">max</span>(Q[s_next]) * (<span class="tok-num">0</span> <span class="tok-kw">if</span> done <span class="tok-kw">else</span> <span class="tok-num">1</span>)
+            delta = target - Q[s][a]
+            Q[s][a] += alpha * delta
+            s, a = s_next, a_next
+            <span class="tok-kw">if</span> done:
+                <span class="tok-kw">break</span>
+    <span class="tok-kw">return</span> Q</code></pre>
+<p>3. 主程序对比写法：用相同超参数 $\alpha=0.1$、$\gamma=0.99$、$\epsilon=0.1$ 和相同回合数 $3000$，每次调用前都重置随机种子，使对比更公平。</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9</span><code><span class="tok-kw">if</span> __name__ == <span class="tok-str">'__main__'</span>:
+    np.random.<span class="tok-fn">seed</span>(<span class="tok-num">0</span>)
+    Q_sarsa = <span class="tok-fn">sarsa_control</span>()
+    np.random.<span class="tok-fn">seed</span>(<span class="tok-num">0</span>)
+    Q_qlearning = <span class="tok-fn">q_learning_control</span>()
+    <span class="tok-bi">print</span>(<span class="tok-str">'SARSA 每状态最大动作价值：'</span>)
+    <span class="tok-bi">print</span>(np.<span class="tok-fn">round</span>(Q_sarsa.<span class="tok-fn">max</span>(axis=<span class="tok-num">2</span>), <span class="tok-num">2</span>))
+    <span class="tok-bi">print</span>(<span class="tok-str">'Q-learning 每状态最大动作价值：'</span>)
+    <span class="tok-bi">print</span>(np.<span class="tok-fn">round</span>(Q_qlearning.<span class="tok-fn">max</span>(axis=<span class="tok-num">2</span>), <span class="tok-num">2</span>))</code></pre>
+<p>4. 改动后的公式</p>
+<p>非终结状态的 $TD$ 目标由 $r + \gamma Q(s', a')$ 变为 $r + \gamma \max_{a'} Q(s', a')$，终结状态的目标仍为 $r$；$TD$ 误差变为 $\delta = r + \gamma \max_{a'} Q(s', a') - Q(s, a)$，更新仍为 $Q(s, a) \leftarrow Q(s, a) + \alpha \delta$。</p>
+<p>5. 预期现象与解释</p>
+<p>贪心策略方面，两者基本相同，都学到沿最短路向右或向下走向终点，因为最优路径本身没有变，差别主要不在策略箭头，而在价值大小。</p>
+<p>价值方面，$Q$-learning 学到的每状态最大动作价值 $\max_a Q(s, a)$ 会系统性地高于 $SARSA$，且离终点越远差别往往越明显。原因是对同一张 $Q$ 表总有 $\max_{a'} Q(s', a') \ge Q(s', a')$，只有当 $a'$ 恰好是贪心动作时才取等号，所以 $Q$-learning 的 $TD$ 目标不低于 $SARSA$ 的 $TD$ 目标。更本质地说，$SARSA$ 估计的是会继续以 $\epsilon$ 概率随机探索的 $\epsilon$-贪心策略的价值，随机动作会带来额外的每步 $-0.01$ 奖励损失和撞墙原地不动，因此价值被拉低；而 $Q$-learning 的目标策略是贪心策略，它直接估计最优动作价值 $Q^*$，不受训练时探索动作的拖累。</p>
+<p>收敛方面，在相同回合数 $3000$ 下，$Q$-learning 的价值通常更接近最优值，因为它的目标每一步都朝着最优方向自举，而 $SARSA$ 的目标会被实际执行的探索动作 $a'$ 拉低，需要更多经验才能把探索带来的低估抵消掉。</p>
+</div></details>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">参考文献</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>Sutton, R. S. 1988, Learning to Predict by the Methods of Temporal Differences, Machine Learning, 3(1), 9-44</li>
+<li>Sutton &amp; Barto 2018, Reinforcement Learning: An Introduction, 第2版, 第6章 Temporal-Difference Learning</li>
+<li>Tesauro, G. J. 1995, Temporal Difference Learning and TD-Gammon, Communications of the ACM, 38(3), 58-68</li>
+</ol>
+</div></details>
+<div class="pager">
+<a href="lesson-3.html">← 上一课：Monte Carlo 方法</a>
+<a href="../rl.html">← 返回 RL 精讲目录</a>
+<span>第 5 课 · Q-Learning（即将更新）</span>
+</div>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="../assets/effects.js"></script>
+</body>
+</html>
