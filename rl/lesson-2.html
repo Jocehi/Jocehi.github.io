@@ -17,6 +17,10 @@
 <p class="meta">Dynamic Programming: Policy &amp; Value Iteration · RL 算法每日精讲 · 2026-11-16 · 基础理论 · 入门 · 约 30 分钟</p>
 <p class="meta">前置知识：MDP 与 Bellman 方程</p>
 <div class="thesis">反复用贝尔曼方程评估并改进策略，直到得到最优策略。</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-2-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · 动态规划：策略迭代与值迭代 · 4 分 05 秒</p>
+</div>
 <details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
 <p>本课要解决的问题是，在已知环境模型的前提下，如何求解马尔可夫决策过程的最优策略。已知模型是指转移概率 $P(s'|s,a)$ 与奖励 $R(s,a)$ 均已给出，智能体无需通过与环境反复试错来学习，只需利用模型进行规划计算。适用场景是能够用精确模型描述、且状态集合 $\mathcal{S}$ 与动作集合 $\mathcal{A}$ 有限或可离散化的问题，例如已知规则的棋盘游戏、网格路径规划、库存管理与资源调度等。输入包括状态集合 $\mathcal{S}$、动作集合 $\mathcal{A}$、转移概率 $P(s'|s,a)$、奖励 $R(s,a)$ 与折扣因子 $\gamma$；输出为最优策略 $\pi^*$ 以及对应的最优价值函数 $V^*(s)$，其中 $V^*(s)$ 表示从状态 $s$ 出发按最优策略执行所能获得的折扣回报期望。掌握本课后，学习者能够在模型已知时直接算出最优决策，而不必先收集大量交互数据。</p>
 </div></details>
