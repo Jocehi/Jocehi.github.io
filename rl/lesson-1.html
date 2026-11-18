@@ -17,6 +17,10 @@
 <p class="meta">MDP &amp; Bellman Equation · RL 算法每日精讲 · 2026-11-15 · 基础理论 · 入门 · 约 30 分钟</p>
 <p class="meta">前置知识：概率、期望的基本概念</p>
 <div class="thesis">把未来奖励折现求和，用递推关系把大问题拆成小问题。</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-1-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · MDP 与 Bellman 方程 · 3 分 06 秒</p>
+</div>
 <details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
 <p>本课解决序贯决策问题：智能体处在会随动作变化的环境中，每一步观察状态 $s$、选择动作 $a$、得到奖励 $r$ 并转移到新状态 $s'$，目标不是单步奖励最大，而是从当前起未来所有奖励的折现期望最大。典型场景有网格导航与机器人避障、棋牌与电子游戏、库存补货、资源调度、推荐与对话系统——共同点是「现在的选择改变未来的状态与机会」，不能把每一步当作独立样本。不同于监督学习有标注答案，也不同于多臂老虎机只有一步且无状态，MDP 需要同时建模状态、动作、转移和奖励。输入是 MDP 五元组 $(\mathcal{S}, \mathcal{A}, P, R, \gamma)$，其中 $P$ 描述在 $s$ 做 $a$ 后到 $s'$ 并得 $r$ 的概率，$\gamma$ 控制远期奖励的权重；也可只给可交互的环境，由采样估计 $P$。输出是最优策略 $\pi^*(s)$（每个状态该做什么）及其价值 $V^*(s)$、$Q^*(s, a)$，即在每个状态下长期回报的期望。本课用已知的确定性小网格做规划：先用 Bellman 方程算价值，再贪心得到策略，并用真实轨迹回报验证价值。</p>
 </div></details>
