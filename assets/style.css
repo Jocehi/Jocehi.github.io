@@ -223,6 +223,8 @@ body.has-player{padding-bottom:6rem}
 .entry-sec p{margin:0}
 .entry-body{margin:.6rem 0 0;white-space:pre-wrap}
 .empty{color:var(--faint)}
+.list-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin:.6rem 0 .2rem}
+.list-head .btn{padding:.4rem .95rem;font-size:.85rem}
 .lock{max-width:420px;margin:3rem auto;text-align:center}
 .lock-icon{font-size:3rem}
 .lock h1{margin:.5rem 0}

@@ -164,7 +164,8 @@
     items.forEach(function (x) { if (x.id === id) it = x; });
     if (!it) return;
     if (t.hasAttribute('data-del')) {
-      if (!confirm('确定删除 ' + it.date + ' 的日记吗？')) return;
+      /* 不可逆操作的确认交给滑动条（assets/sub-effects.js）；没有接管时才回落到 confirm */
+      if (!window.__sxSlideConfirm && !confirm('确定删除 ' + it.date + ' 的日记吗？')) return;
       store(items.filter(function (x) { return x.id !== id; }));
       if (editingId === id) resetForm();
       render();
@@ -205,6 +206,18 @@
   });
 
   cancelBtn.addEventListener('click', resetForm);
+
+  /* 清空全部：确认由 assets/sub-effects.js 的滑动条接管 */
+  var clearAllBtn = document.getElementById('dyClearAll');
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', function () {
+      if (!window.__sxSlideConfirm && !confirm('确定清空全部日记吗？此操作不可撤销。')) return;
+      store([]);
+      if (editingId) resetForm();
+      render();
+      tip('已清空全部日记');
+    });
+  }
 
   exportBtn.addEventListener('click', function () {
     var items = load().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
