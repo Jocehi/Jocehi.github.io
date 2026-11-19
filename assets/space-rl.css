@@ -200,3 +200,25 @@ footer{color:var(--dim);font-size:.85rem;text-align:center;padding:1.5rem 0 0}
 .lesson-card .badge{display:inline-block;background:var(--accent);color:#fff;
   font-size:.75rem;font-weight:700;border-radius:999px;padding:.15rem .6rem}
 .small{color:var(--dim);font-size:.88rem}
+
+/* ============================================================
+   质感升级 · Peekdesign 做法，翻成 RL 页调子（2026-11-19）
+   只加纸纹、细线、分层柔影与轻微悬停；颜色、字号、
+   版式与空间样式一律不动。
+   ============================================================ */
+body::before{content:"";position:fixed;inset:0;z-index:70;pointer-events:none;opacity:.03;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+.topnav{position:sticky;top:0;z-index:40;background:var(--bg)}
+h1{letter-spacing:-.015em}
+.lesson-card{box-shadow:0 1px 2px rgba(26,35,50,.04),0 8px 22px rgba(26,35,50,.06);
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.lesson-card:hover{transform:translateY(-2px);border-color:#d8d0bd;
+  box-shadow:0 1px 2px rgba(26,35,50,.05),0 14px 30px rgba(26,35,50,.09)}
+.lesson-card h2{letter-spacing:-.01em}
+.formula-card{box-shadow:0 1px 2px rgba(26,35,50,.04),0 8px 22px rgba(26,35,50,.05)}
+pre.code{border:1px solid #2a3040;
+  box-shadow:0 1px 2px rgba(26,35,50,.10),0 10px 26px rgba(26,35,50,.14)}
+figure{padding:.55rem;box-shadow:0 1px 2px rgba(26,35,50,.04),0 8px 22px rgba(26,35,50,.06)}
+.tabs a{transition:transform .15s ease,border-color .15s ease}
+.tabs a:hover{transform:translateY(-1px)}
+@media (hover:none){.lesson-card:hover{transform:none}}

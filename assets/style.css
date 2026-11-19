@@ -234,3 +234,74 @@ body.has-player{padding-bottom:6rem}
 .card.split .card-img img{transition:opacity .35s ease}
 .card-img{cursor:pointer}
 .card-img.dissolving img{opacity:0}
+
+/* ============================================================
+   质感升级 · Peekdesign 做法，翻成暖白粉调子（2026-11-19）
+   原则：底色平、不抢戏，色彩只留给图片与一个粉色；
+   不用渐变（用户定过），质感靠纸纹、细线、分层柔影、
+   等宽小标签与 150–200ms 的轻微悬停来给。
+   ============================================================ */
+:root{
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --shadow-sm:0 1px 2px rgba(60,40,20,.05),0 4px 12px rgba(188,148,96,.10);
+  --shadow-md:0 1px 2px rgba(60,40,20,.05),0 10px 28px rgba(188,148,96,.14);
+  --shadow-lg:0 1px 2px rgba(60,40,20,.06),0 16px 40px rgba(188,148,96,.20);
+}
+/* 平底 + 极淡纸纹：3.5% 透明度的 SVG 噪点，全站一层 */
+body{background:#faf7f0;background-attachment:scroll}
+body::before{content:"";position:fixed;inset:0;z-index:70;pointer-events:none;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* 渐变全部改纯色 */
+.latest .badge{background:#e0528a}
+.thesis{background:#fff0f5}
+.flow li::before{background:#e0528a}
+.bar-row .bar{background:#e8dcc8}
+.bar-row.hl .bar{background:#e0528a}
+/* 等宽小标签：档案感，字距拉宽，只用在英文/数字标签上 */
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:#c2437c;margin:0 0 .45rem}
+/* 导航吸顶：滚下去也不丢，像 Peek 的吸顶筛选条 */
+.topnav{position:sticky;top:12px;z-index:40;
+  box-shadow:0 1px 2px rgba(60,40,20,.05),0 8px 24px rgba(180,120,160,.12)}
+.topnav a{transition:color .15s ease}
+/* 卡片：白框 + 细线 + 分层柔影，悬停轻抬 3px */
+.card{border:1px solid var(--line);box-shadow:var(--shadow-md);
+  transition:transform .18s ease,box-shadow .18s ease}
+.card.split{padding:10px}
+.card.split:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.card.split .card-img{border-radius:12px;overflow:hidden}
+.card.split .card-img img{transition:transform .35s ease,opacity .35s ease}
+.card.split:hover .card-img img{transform:scale(1.04)}
+.card h2{letter-spacing:-.01em;font-weight:800}
+.card.split .card-body{padding:1.1rem 1.2rem}
+/* 存档行：日期等宽 + 悬停底色，行与行只用 1px 细线分 */
+.archive li{transition:background .15s ease;border-radius:8px;padding-left:.5rem;padding-right:.5rem}
+.archive li:hover{background:#fdf0f5}
+.archive .date{font-family:var(--mono);font-size:.8rem;letter-spacing:.02em;
+  font-variant-numeric:tabular-nums}
+/* 首屏头像：白圈 + 粉色细环 + 柔影，双层描边 */
+.hero-full img.avatar{outline:1px solid rgba(224,82,138,.4);outline-offset:5px;
+  box-shadow:0 1px 2px rgba(60,40,20,.06),0 16px 36px rgba(242,123,167,.30)}
+/* 按钮与表单：150ms 微交互，按下回弹，聚焦粉色光环 */
+.btn{transition:transform .15s ease,box-shadow .15s ease,background .15s ease;
+  box-shadow:var(--shadow-sm)}
+.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+.btn:active{transform:translateY(0) scale(.98)}
+.form-card input[type="date"],.form-card input[type="text"],.form-card input[type="password"],
+.form-card textarea{transition:border-color .15s ease,box-shadow .15s ease}
+.form-card input:focus,.form-card textarea:focus{border-color:#e0528a;outline:none;
+  box-shadow:0 0 0 3px rgba(224,82,138,.15)}
+/* 复盘/日记条目：相框卡片 */
+.entry{background:#fffdf8;border:1px solid var(--line);border-radius:14px;
+  padding:1rem 1.15rem;margin-top:1rem;box-shadow:var(--shadow-sm)}
+.lock{background:#fffdf8;border:1px solid var(--line);border-radius:20px;
+  padding:2rem 1.5rem;box-shadow:var(--shadow-md)}
+/* 播放器：浮岛，细线 + 分层柔影 */
+.player{border:1px solid var(--line);border-radius:20px;
+  box-shadow:0 1px 2px rgba(60,40,20,.06),0 16px 36px rgba(188,148,96,.26)}
+.player-fab{box-shadow:0 1px 2px rgba(60,40,20,.06),0 10px 24px rgba(224,82,138,.4)}
+@media (hover:none){
+  .card.split:hover{transform:none}
+  .card.split:hover .card-img img{transform:none}
+  .btn:hover{transform:none}
+}
