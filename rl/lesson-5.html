@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 5 课 · Q-Learning · Jocehi 的 RL 精讲</title>
+<link rel="stylesheet" href="../assets/space-rl.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
+</head>
+<body>
+<div class="wrap">
+<nav class="topnav"><b>Jocehi</b><a href="../index.html">首页</a><a href="../papers.html">论文精读</a><a href="../rl.html">RL 精讲</a><a href="../briefing.html">每日简报</a><a class="home" href="../index.html">← 返回首页</a></nav>
+<h1>第 5 课 · Q-Learning</h1>
+<p class="meta">Q-Learning · RL 算法每日精讲 · 2026-11-19 · 值函数方法 · 入门 · 约 30 分钟</p>
+<p class="meta">前置知识：时序差分 TD 学习</p>
+<div class="thesis">用下一状态最大动作值自举更新当前值，无模型学最优策略。</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-5-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · Q-Learning · 5 分 34 秒</p>
+</div>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>本课考虑无模型的马尔可夫决策过程控制问题：智能体事先不知道状态转移概率和奖励函数，只能通过与环境反复交互获得经验来学习最优策略。在每个时刻，环境处于某个状态，智能体选择一个动作，环境返回即时奖励并转移到下一状态，目标是最大化从当前状态出发的折扣累积奖励期望。记最优动作价值为 $Q^*(s,a)$，它表示在状态 $s$ 执行动作 $a$ 后再按最优策略行动所能获得的期望折扣回报，满足 $Q^*(s,a)=\max_\pi Q^\pi(s,a)$，其中 $Q^\pi(s,a)=\mathbb{E}_\pi[G_t \mid S_t=s, A_t=a]$，$G_t=\sum_{k=0}^{\infty}\gamma^k R_{t+k+1}$，$\gamma$ 为折扣因子。适用场景是状态与动作均为离散且规模适中的任务，例如网格世界、棋盘游戏、简单机器人导航与调度控制；状态或动作空间过大时，表格形式不再适用，需要函数近似。输入是交互产生的样本 $(s,a,r,s')$，即当前状态 $s$、所选动作 $a$、即时奖励 $r$ 与下一状态 $s'$，以及折扣因子 $\gamma$、学习率 $\alpha$ 与探索参数 $\epsilon$；不需要预先知道模型，也不需要等到回合结束。输出是学到的动作价值函数 $Q(s,a)$，以及由它导出的贪心策略，即在每个状态 $s$ 下选择使 $Q(s,a)$ 最大的动作 $a$。只要能反复采样交互数据，就可以直接估计最优动作价值并改进策略。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">② 核心思想</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>Q-Learning 直接学习最优动作价值 $Q^*(s,a)$，而不先学习任意策略的价值；一旦 $Q(s,a)$ 收敛到 $Q^*(s,a)$，在每个状态 $s$ 取 $\arg\max_a Q(s,a)$ 即得到最优策略。</li>
+<li>它是时序差分方法在动作价值上的推广：用下一状态的最优动作价值 $\max_{a'} Q(s',a')$ 作为自举目标，只需一步样本 $(s,a,r,s')$ 即可更新，不必等到回合结束。</li>
+<li>它是异策略学习的典型例子：行为策略可以是探索性的 $\epsilon$ 贪心策略，用于产生数据；而目标策略是关于当前 $Q(s,a)$ 的贪心策略，用于定义更新目标，两者可以不同。</li>
+<li>更新规则是 $Q(s,a) \leftarrow Q(s,a)+\alpha[r+\gamma \max_{a'} Q(s',a')-Q(s,a)]$，其中 $\alpha$ 为学习率，$\gamma$ 为折扣因子，方括号内是时序差分误差，目标 $r+\gamma \max_{a'} Q(s',a')$ 不依赖实际执行的下一动作。</li>
+<li>在每个状态 $s$ 与动作 $a$ 都被无限次访问、学习率 $\alpha$ 适当衰减等条件下，表格型 Q-Learning 能以概率 $1$ 收敛到 $Q^*(s,a)$；实践中需要充分探索与合理的学习率调度来逼近这一理论保证。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">③ 与已学方法对比</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>与第2课动态规划相比，Q-Learning 不需要已知状态转移概率和奖励函数这一模型，可以直接从交互样本中学习最优动作价值，适用范围更广；代价是需要大量采样，收敛速度通常慢于已知模型时的值迭代，且只能渐近收敛。与第3课 Monte Carlo 方法相比，Q-Learning 不必等到回合结束才更新，可以每步用 $r+\gamma \max_{a'} Q(s',a')$ 自举，适用于长回合与连续任务，学习效率更高；代价是自举会引入偏差，且最大化操作会带来高估偏差。与第4课时序差分学习相比，Q-Learning 的更新目标使用下一状态的最大动作价值而非实际下一动作的价值，因而是异策略的，能直接学习最优策略而非行为策略的价值；代价是探索不足时某些 $Q(s,a)$ 长期得不到更新，收敛对探索策略与学习率 $\alpha$ 的选择更敏感。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">④ 学习流程</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="agent-env" role="img" aria-label="智能体与环境交互循环"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrA" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6472"/></marker></defs><rect x="20" y="45" width="170" height="80" rx="12" fill="#d97706"/><text x="105" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">智能体 Agent</text><text x="105" y="103" text-anchor="middle" font-size="12" fill="#ffedd5">策略 π · 价值 V</text><rect x="450" y="45" width="170" height="80" rx="12" fill="#0f766e"/><text x="535" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">环境 Environment</text><text x="535" y="103" text-anchor="middle" font-size="12" fill="#ccfbf1">状态 s · 奖励 r</text><path d="M195,65 L445,65" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="55" text-anchor="middle" font-size="12" fill="#5b6472">动作 a</text><path d="M445,105 L195,105" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="125" text-anchor="middle" font-size="12" fill="#5b6472">观测 s′ · 奖励 r</text></svg></div>
+<ol class="flow">
+<li><span class="chip kind-observe">观察</span><b>观察初始状态</b>在回合开始前将所有状态 $s$ 与动作 $a$ 的 $Q(s,a)$ 初始化为 $0$，然后观测环境的初始状态 $s$，将其作为当前状态输入下一步。</li>
+<li><span class="chip kind-decide">决策</span><b>贪心选择动作</b>在当前状态 $s$ 下按 $\epsilon$ 贪心策略选动作：以概率 $\epsilon$ 均匀随机探索，以概率 $1-\epsilon$ 选择 $a=\arg\max_a Q(s,a)$；输出待执行的动作 $a$。</li>
+<li><span class="chip kind-act">行动</span><b>执行动作</b>将选定的动作 $a$ 作用于环境，智能体执行该动作并等待环境转移，输出是环境即将返回的奖励与下一状态。</li>
+<li><span class="chip kind-feedback">反馈</span><b>观测奖励状态</b>环境返回即时奖励 $r$ 并转移到下一状态 $s'$，智能体观测到样本 $(s,a,r,s')$，其中 $s$ 为当前状态，$a$ 为刚执行的动作。</li>
+<li><span class="chip kind-compute">计算</span><b>计算 TD 误差</b>用下一状态的最优估计构造自举目标 $y=r+\gamma \max_{a'} Q(s',a')$，若 $s'$ 为终止状态则 $y=r$，再计算时序差分误差 $\delta=y-Q(s,a)$；输入为样本 $(s,a,r,s')$，输出为 $y$ 与 $\delta$。</li>
+<li><span class="chip kind-update">更新</span><b>更新动作价值</b>按学习率 $\alpha$ 沿误差方向修正当前估计，更新为 $Q(s,a)\leftarrow Q(s,a)+\alpha\delta$，即向目标 $y$ 移动一小步；输出为更新后的 $Q(s,a)$。</li>
+<li><span class="chip kind-loop">循环</span><b>转移并判断循环</b>令当前状态 $s\leftarrow s'$，若 $s'$ 不是终止状态则回到选动作步骤继续本回合，否则结束本回合并开始下一回合，直到完成全部回合。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑤ 关键公式</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="formula-card">
+<h4>贝尔曼最优方程</h4>
+<div>$$Q^*(s,a) = \mathbb{E}\left[ R_{t+1} + \gamma \max_{a'} Q^*(S_{t+1}, a') \mid S_t = s, A_t = a \right]$$</div>
+<p>这是最优动作价值 $Q^*(s,a)$ 必须满足的自洽条件：它等于即时奖励 $R_{t+1}$ 的期望加上折扣后的下一状态最优价值。下一状态的最优价值取 $\max_{a'} Q^*(S_{t+1}, a')$，即在下一状态选最优动作的价值，这正体现了最优性而不依赖任意固定策略 $\pi$。</p>
+<ul>
+<li>$Q^*(s,a)$：在状态 $s$ 执行动作 $a$ 后再按最优策略行动的期望折扣回报</li>
+<li>$R_{t+1}$：执行动作后环境返回的即时奖励</li>
+<li>$\gamma$：折扣因子，取值在 $0$ 到 $1$ 之间，越接近 $1$ 越重视未来奖励</li>
+<li>$S_{t+1}$：执行动作后转移到的下一状态</li>
+<li>$\max_{a'} Q^*(S_{t+1}, a')$：在下一状态 $S_{t+1}$ 上对所有下一动作 $a'$ 取最优动作价值的最大值</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>Q-Learning 更新规则</h4>
+<div>$$Q(s,a) \leftarrow Q(s,a) + \alpha\big[r + \gamma \max_{a'} Q(s',a') - Q(s,a)\big]$$</div>
+<p>这是本课的核心更新式：用单步样本 $(s,a,r,s')$ 构造的自举目标 $r+\gamma \max_{a'} Q(s',a')$ 减去当前估计 $Q(s,a)$ 得到时序差分误差，再按学习率 $\alpha$ 做一步修正。目标中的 $\max_{a'} Q(s',a')$ 取的是关于当前 $Q$ 的贪心动作价值，因此更新不依赖行为策略实际执行的下一动作，体现了异策略学习。</p>
+<ul>
+<li>$Q(s,a)$：当前对状态 $s$ 下动作 $a$ 的动作价值估计</li>
+<li>$\alpha$：学习率，控制每步向目标修正的幅度</li>
+<li>$r$：本步观测到的即时奖励</li>
+<li>$\gamma$：折扣因子，用于折扣下一状态的最优动作价值</li>
+<li>$\max_{a'} Q(s',a')$：在下一状态 $s'$ 上对所有动作 $a'$ 取当前动作价值的最大值</li>
+<li>$s'$：执行动作 $a$ 后转移到的下一状态</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>时序差分误差</h4>
+<div>$$\delta = r + \gamma \max_{a'} Q(s',a') - Q(s,a)$$</div>
+<p>时序差分误差 $\delta$ 是自举目标与当前估计 $Q(s,a)$ 之差，它同时包含了新观测到的奖励 $r$ 与下一状态价值估计带来的信息。当 $\delta$ 为正时，说明当前估计偏低，应上调 $Q(s,a)$；当 $\delta$ 为负时则应下调，更新幅度由学习率 $\alpha$ 与 $\delta$ 共同决定。</p>
+<ul>
+<li>$\delta$：时序差分误差，即目标与当前估计之差</li>
+<li>$r$：本步观测到的即时奖励</li>
+<li>$\gamma$：折扣因子</li>
+<li>$\max_{a'} Q(s',a')$：下一状态 $s'$ 的最优动作价值估计</li>
+<li>$Q(s,a)$：当前对状态 $s$ 下动作 $a$ 的动作价值估计</li>
+</ul>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑥ 数学推导</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol class="mathnotes">
+<li>
+<p>从折扣回报的定义出发，回报 $G_t$ 是从 $t$ 时刻起未来奖励的折扣和，它决定了动作价值的含义。</p>
+</li>
+<li>
+<p>对策略 $\pi$，动作价值 $Q^\pi(s,a)$ 定义为在状态 $s$ 执行动作 $a$ 后按 $\pi$ 行动所得 $G_t$ 的条件期望。</p>
+</li>
+<li>
+<p>最优动作价值 $Q^*(s,a)$ 是对所有策略取最大值，即 $Q^*(s,a)=\max_\pi Q^\pi(s,a)$，它刻画了每个状态动作对能达到的最好期望回报。</p>
+</li>
+<li>
+<p>把 $G_t$ 展开一步可得 $G_t=R_{t+1}+\gamma G_{t+1}$，其中 $R_{t+1}$ 是即时奖励，$\gamma$ 是折扣因子，$G_{t+1}$ 是下一时刻的回报。</p>
+</li>
+<li>
+<p>对上式两边在最优策略下取期望，并把下一状态的最优回报用最优动作价值表示，就得到贝尔曼最优方程。</p>
+<div>$$Q^*(s,a)=\mathbb{E}\left[R_{t+1}+\gamma \max_{a'}Q^*(S_{t+1},a')\mid S_t=s,A_t=a\right]$$</div></li>
+<li>
+<p>该方程的含义是：最优价值等于即时奖励的期望加上折扣后的下一状态最优价值，下一状态的最优价值由 $\max_{a'}Q^*(s',a')$ 给出，与实际执行的下一动作无关。</p>
+</li>
+<li>
+<p>直接求解该方程需要知道转移概率和奖励期望，属于有模型方法；无模型时只能用一次交互样本 $(s,a,r,s')$ 来估计方程右端。</p>
+</li>
+<li>
+<p>用当前估计 $Q(s',a')$ 代替未知的 $Q^*(s',a')$，并用单步样本代替期望，就得到单步自举目标 $y=r+\gamma \max_{a'}Q(s',a')$，若 $s'$ 为终止状态则 $y=r$。</p>
+</li>
+<li>
+<p>目标 $y$ 与当前估计 $Q(s,a)$ 之差就是时序差分误差 $\delta=y-Q(s,a)$，它衡量了当前估计需要修正的方向和幅度。</p>
+</li>
+<li>
+<p>沿误差方向以学习率 $\alpha$ 做一步小修正，就得到 Q-Learning 更新规则。</p>
+<div>$$Q(s,a)\leftarrow Q(s,a)+\alpha\left[r+\gamma \max_{a'}Q(s',a')-Q(s,a)\right]$$</div></li>
+<li>
+<p>数值例子：设当前 $Q(s,a)=0$，$\alpha=0.1$，$\gamma=0.9$，某步样本的奖励为 $r=1$，下一状态的最优估计为 $\max_{a'}Q(s',a')=2$。</p>
+</li>
+<li>
+<p>先算目标 $y=1+0.9\times 2=2.8$，再算误差 $\delta=2.8-0=2.8$，更新后 $Q(s,a)=0+0.1\times 2.8=0.28$。</p>
+</li>
+<li>
+<p>这一步只把 $Q(s,a)$ 从 $0$ 推向目标 $2.8$ 的一小步；反复采样并用 $\epsilon$ 贪心策略保证各状态动作都被访问，$Q(s,a)$ 才能逐步逼近 $Q^*(s,a)$。</p>
+</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑦ 伪代码</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="pseudo">
+<h4>算法：表格型 Q-Learning</h4>
+<div class="step"><span class="stepnum">·</span> 输入：状态集合 $\mathcal{S}$，动作集合 $\mathcal{A}$，折扣因子 $\gamma$，学习率 $\alpha$，探索参数 $\epsilon$</div>
+<div class="step"><span class="stepnum">·</span> 初始化：对所有状态 $s$ 和动作 $a$，任意初始化 $Q(s,a)$，例如全部置为 $0$</div>
+<div class="step"><span class="stepnum">·</span> 对每个回合，重复以下步骤：</div>
+<div class="step"><span class="stepnum">·</span> 初始化当前状态 $s$</div>
+<div class="step"><span class="stepnum">·</span> 当状态 $s$ 不是终止状态时，重复以下步骤：</div>
+<div class="step"><span class="stepnum">·</span> 按 $\epsilon$ 贪心策略，根据 $Q(s,a)$ 选择动作 $a$</div>
+<div class="step"><span class="stepnum">·</span> 执行动作 $a$，观测即时奖励 $r$ 和下一状态 $s'$</div>
+<div class="step"><span class="stepnum">·</span> 计算目标 $y=r+\gamma \max_{a'} Q(s',a')$；若 $s'$ 为终止状态，则令 $y=r$</div>
+<div class="step"><span class="stepnum">·</span> 更新 $Q(s,a) \leftarrow Q(s,a)+\alpha[y-Q(s,a)]$</div>
+<div class="step"><span class="stepnum">·</span> 令 $s \leftarrow s'$</div>
+<div class="step"><span class="stepnum">·</span> 输出：学到的 $Q(s,a)$，以及贪心策略 $\pi(s)=\arg\max_a Q(s,a)$</div>
+</div>
+<div class="pseudo">
+<h4>子算法：$\epsilon$ 贪心动作选择</h4>
+<div class="step"><span class="stepnum">·</span> 输入：当前状态 $s$，动作价值 $Q(s,a)$，探索参数 $\epsilon$</div>
+<div class="step"><span class="stepnum">·</span> 以概率 $\epsilon$ 从所有动作中均匀随机选择动作 $a$</div>
+<div class="step"><span class="stepnum">·</span> 以概率 $1-\epsilon$ 选择 $a=\arg\max_a Q(s,a)$</div>
+<div class="step"><span class="stepnum">·</span> 返回动作 $a$</div>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑧ Python 代码（可运行）</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<pre class="code"><button class="copybtn">复制代码</button><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75</span><code><span class="tok-kw">import</span> numpy <span class="tok-kw">as</span> np
+
+<span class="tok-com"># 4x4 GridWorld：起点 (0,0)，终点 (3,3) 奖励 +1，撞墙原地不动，每步 -0.01</span>
+ROWS, COLS = <span class="tok-num">4</span>, <span class="tok-num">4</span>
+START, GOAL = (<span class="tok-num">0</span>, <span class="tok-num">0</span>), (<span class="tok-num">3</span>, <span class="tok-num">3</span>)
+ACTIONS = [(-<span class="tok-num">1</span>, <span class="tok-num">0</span>), (<span class="tok-num">1</span>, <span class="tok-num">0</span>), (<span class="tok-num">0</span>, -<span class="tok-num">1</span>), (<span class="tok-num">0</span>, <span class="tok-num">1</span>)]  <span class="tok-com"># 上、下、左、右</span>
+ACTION_SYMBOLS = [<span class="tok-str">"↑"</span>, <span class="tok-str">"↓"</span>, <span class="tok-str">"←"</span>, <span class="tok-str">"→"</span>]
+N_ACTIONS = <span class="tok-bi">len</span>(ACTIONS)
+
+<span class="tok-kw">def</span> <span class="tok-fn">step</span>(state, action):
+    <span class="tok-str">"""执行动作，返回 (下一状态, 奖励, 是否终止)"""</span>
+    r, c = state
+    dr, dc = ACTIONS[action]
+    <span class="tok-com"># 撞墙时用 min/max 截断坐标，智能体原地不动</span>
+    nr = <span class="tok-bi">min</span>(<span class="tok-bi">max</span>(r + dr, <span class="tok-num">0</span>), ROWS - <span class="tok-num">1</span>)
+    nc = <span class="tok-bi">min</span>(<span class="tok-bi">max</span>(c + dc, <span class="tok-num">0</span>), COLS - <span class="tok-num">1</span>)
+    next_state = (nr, nc)
+    <span class="tok-kw">if</span> next_state == GOAL:
+        <span class="tok-kw">return</span> next_state, <span class="tok-num">1.0</span>, <span class="tok-kw">True</span>
+    <span class="tok-kw">return</span> next_state, -<span class="tok-num">0.01</span>, <span class="tok-kw">False</span>  <span class="tok-com"># 小负奖励，鼓励尽快到达终点</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">epsilon_greedy</span>(Q, state, epsilon):
+    <span class="tok-str">"""epsilon-贪心：以 epsilon 探索，以 1-epsilon 利用"""</span>
+    <span class="tok-kw">if</span> np.random.<span class="tok-fn">rand</span>() &lt; epsilon:
+        <span class="tok-kw">return</span> np.random.<span class="tok-fn">randint</span>(N_ACTIONS)  <span class="tok-com"># 随机探索，保证各 (s,a) 被访问</span>
+    <span class="tok-kw">return</span> <span class="tok-bi">int</span>(np.<span class="tok-fn">argmax</span>(Q[state]))  <span class="tok-com"># 贪心利用当前最优动作</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">run_greedy_episode</span>(Q, max_steps=<span class="tok-num">50</span>):
+    <span class="tok-str">"""用贪心策略走一回合，返回是否到达终点（用于评估）"""</span>
+    state = START
+    <span class="tok-kw">for</span> _ <span class="tok-kw">in</span> <span class="tok-bi">range</span>(max_steps):
+        action = <span class="tok-bi">int</span>(np.<span class="tok-fn">argmax</span>(Q[state]))
+        state, _, done = <span class="tok-fn">step</span>(state, action)
+        <span class="tok-kw">if</span> done:
+            <span class="tok-kw">return</span> <span class="tok-kw">True</span>
+    <span class="tok-kw">return</span> <span class="tok-kw">False</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">main</span>():
+    np.random.<span class="tok-fn">seed</span>(<span class="tok-num">0</span>)
+    gamma, alpha = <span class="tok-num">0.99</span>, <span class="tok-num">0.1</span>  <span class="tok-com"># 折扣因子与学习率</span>
+    epsilon = <span class="tok-num">0.2</span>  <span class="tok-com"># 初始探索率，训练中逐渐衰减</span>
+    n_episodes = <span class="tok-num">2000</span>
+    Q = np.<span class="tok-fn">zeros</span>((ROWS, COLS, N_ACTIONS))  <span class="tok-com"># 表格型 Q(s,a)，全部初始化为 0</span>
+
+    <span class="tok-kw">for</span> episode <span class="tok-kw">in</span> <span class="tok-bi">range</span>(n_episodes):
+        state = START
+        <span class="tok-kw">while</span> <span class="tok-kw">True</span>:
+            action = <span class="tok-fn">epsilon_greedy</span>(Q, state, epsilon)
+            next_state, reward, done = <span class="tok-fn">step</span>(state, action)
+            <span class="tok-com"># 异策略目标：max_a' Q(s',a')，不依赖实际执行的下一动作</span>
+            target = reward <span class="tok-kw">if</span> done <span class="tok-kw">else</span> reward + gamma * np.<span class="tok-fn">max</span>(Q[next_state])
+            <span class="tok-com"># Q-Learning 更新：沿 TD 误差方向移动 alpha 步</span>
+            Q[state][action] += alpha * (target - Q[state][action])
+            state = next_state
+            <span class="tok-kw">if</span> done:
+                <span class="tok-kw">break</span>
+        <span class="tok-com"># 探索率衰减：前期多探索，后期多利用，逼近收敛条件</span>
+        epsilon = <span class="tok-bi">max</span>(<span class="tok-num">0.01</span>, epsilon * <span class="tok-num">0.999</span>)
+
+    <span class="tok-com"># 打印贪心策略：每个状态取 argmax_a Q(s,a)</span>
+    policy = np.<span class="tok-fn">array</span>(
+        [[ACTION_SYMBOLS[<span class="tok-bi">int</span>(np.<span class="tok-fn">argmax</span>(Q[r, c]))] <span class="tok-kw">for</span> c <span class="tok-kw">in</span> <span class="tok-bi">range</span>(COLS)] <span class="tok-kw">for</span> r <span class="tok-kw">in</span> <span class="tok-bi">range</span>(ROWS)]
+    )
+    policy[GOAL] = <span class="tok-str">"★"</span>
+    <span class="tok-bi">print</span>(<span class="tok-str">"学到的最优策略 (★为终点):"</span>)
+    <span class="tok-kw">for</span> row <span class="tok-kw">in</span> policy:
+        <span class="tok-bi">print</span>(<span class="tok-str">" "</span>.<span class="tok-fn">join</span>(row))
+    <span class="tok-bi">print</span>(<span class="tok-str">"\n起点 (0,0) 的 Q 值 [上, 下, 左, 右]:"</span>)
+    <span class="tok-bi">print</span>(np.<span class="tok-fn">round</span>(Q[START], <span class="tok-num">3</span>))
+    <span class="tok-com"># 贪心评估：100 回合中有多少回合能到达终点</span>
+    success = <span class="tok-bi">sum</span>(<span class="tok-fn">run_greedy_episode</span>(Q) <span class="tok-kw">for</span> _ <span class="tok-kw">in</span> <span class="tok-bi">range</span>(<span class="tok-num">100</span>))
+    <span class="tok-bi">print</span>(f<span class="tok-str">"\n贪心策略 100 回合成功到达终点: {success}/100"</span>)
+
+<span class="tok-kw">if</span> __name__ == <span class="tok-str">"__main__"</span>:
+    <span class="tok-fn">main</span>()</code></pre>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑨ 代码讲解</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>环境与转移函数：用 $4 \times 4$ 网格定义状态空间，起点为 $(0,0)$，终点为 $(3,3)$；`step` 根据动作移动坐标并用截断处理撞墙（原地不动），到达终点返回奖励 $1.0$ 并终止，否则返回奖励 $-0.01$，用小负奖励鼓励尽快到达终点。</li>
+<li>行为策略：以概率 $\epsilon$ 随机选择动作进行探索，以概率 $1-\epsilon$ 选择当前 $Q(s,a)$ 最大的贪心动作进行利用；随机探索保证各个 $(s,a)$ 都有机会被访问，是逼近收敛条件的重要前提。</li>
+<li>贪心评估 `run_greedy_episode`：评估时不再探索，始终取 $\arg\max_a Q(s,a)$ 对应的动作，最多走 $50$ 步，返回是否到达终点；它与训练用的探索策略分开，用于检验学到的 $Q(s,a)$ 是否已能导出有效策略。</li>
+<li>初始化：$Q(s,a)$ 表格初始化为全 $0$，形状为 $4 \times 4 \times 4$，对应每个状态的 $4$ 个动作；同时设定折扣因子 $\gamma = 0.99$、学习率 $\alpha = 0.1$、初始探索率 $\epsilon = 0.2$，以及总训练回合数 $2000$。</li>
+<li>核心更新循环：每步先由行为策略选出动作 $a$，执行后得到样本 $(s,a,r,s')$；计算异策略目标 $r + \gamma \max_{a'} Q(s',a')$，若 $s'$ 为终点则目标退化为 $r$，再按 $Q(s,a) \leftarrow Q(s,a) + \alpha [r + \gamma \max_{a'} Q(s',a') - Q(s,a)]$ 更新，其中方括号内为时序差分误差，目标不依赖实际执行的下一动作 $a'$。</li>
+<li>探索率衰减与策略提取：每回合结束后按 $\epsilon \leftarrow \max(0.01, 0.999 \epsilon)$ 衰减，前期多探索、后期多利用；训练结束后在每个状态 $s$ 取 $\arg\max_a Q(s,a)$ 得到贪心策略，终点处用特殊标记，并打印起点 $(0,0)$ 的 $Q$ 值。</li>
+<li>贪心评估结果：用学到的贪心策略连续运行 $100$ 回合，统计成功到达终点的回合数；若 $100$ 回合中几乎全部成功，说明 $Q(s,a)$ 已基本收敛到 $Q^*(s,a)$，策略已接近最优。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑩ 超参数</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<table class="data"><tr><th>参数</th><th>常用取值</th><th>说明</th></tr>
+<tr><td>学习率 $\alpha$</td><td>$0.1$</td><td>控制每次更新沿时序差分误差移动的步长；过大易震荡发散，过小则 $Q(s,a)$ 收敛过慢，常取 $0.05 \sim 0.2$，也可随训练衰减。</td></tr>
+<tr><td>折扣因子 $\gamma$</td><td>$0.99$</td><td>权衡即时奖励 $r$ 与未来奖励；越接近 $1$ 越看重长远回报，但过大会使 $Q(s,a)$ 传播变慢、训练更不稳定，网格世界等短程任务常取 $0.9 \sim 0.99$。</td></tr>
+<tr><td>探索率 $\epsilon$（初始值与下限）</td><td>$0.2$，下限 $0.01$</td><td>控制 $\epsilon$-贪心策略中随机探索的概率；初始值过小会导致部分 $(s,a)$ 长期未被访问，初始值过大则利用不足；本课按每回合乘 $0.999$ 衰减至 $0.01$，兼顾探索与收敛。</td></tr>
+<tr><td>训练回合数</td><td>$2000$</td><td>表格型 $Q(s,a)$ 需要足够样本才能使每个 $(s,a)$ 被多次访问；回合数过少时 $Q(s,a)$ 未收敛，贪心策略成功率偏低，可先观察成功率是否随回合数上升再决定是否增加。</td></tr>
+<tr><td>每步奖励与终止奖励</td><td>每步 $-0.01$，到达终点 $1.0$</td><td>小负奖励 $-0.01$ 鼓励智能体尽快到达终点，避免原地打转；若把每步奖励设为 $0$，则多走几步与少走几步的 $Q(s,a)$ 差异很小，学习最短路径会变慢。</td></tr>
+</table>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑪ 常见坑</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>把目标写成实际下一动作的 $Q(s',a')$ 而不是 $\max_{a'} Q(s',a')$：这是把本课算法写成了 SARSA；检查更新行是否用了 $\max$，且目标 $r + \gamma \max_{a'} Q(s',a')$ 不依赖下一时刻实际执行的动作。</li>
+<li>终点处忘记去掉自举项：到达终点 $s'$ 后仍加 $\gamma \max_{a'} Q(s',a')$ 会把不存在的未来价值算进去；应按代码分支，到达终点时目标直接取 $r$，即 $1.0$。</li>
+<li>探索不足或过早把 $\epsilon$ 衰减到 $0$：若 $\epsilon$ 太小，某些 $(s,a)$ 很少被访问，$Q(s,a)$ 估计偏差大，贪心策略可能卡在局部路径；保持下限 $0.01$，并检查起点 $(0,0)$ 各动作的 $Q$ 值是否都有更新、成功率是否随训练上升。</li>
+<li>学习率 $\alpha$ 过大导致 $Q(s,a)$ 震荡：若训练后期成功率忽高忽低或 $Q$ 值来回跳变，先把 $\alpha$ 从 $0.1$ 降到 $0.05$ 或 $0.01$ 再试；不要同时改 $\alpha$、$\gamma$ 和 $\epsilon$，一次只调一个超参数，便于定位问题。</li>
+<li>用训练中的探索策略评估效果：带 $\epsilon$ 探索的回合成功率会低于真实策略水平；评估时应像 `run_greedy_episode` 那样用纯贪心策略，即始终取 $\arg\max_a Q(s,a)$，并固定随机种子复现结果。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑫ 练习题</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p class="qa-q"><b>练习题 1</b> Q-Learning 的更新规则为 $Q(s,a) \leftarrow Q(s,a)+\alpha[r+\gamma \max_{a'} Q(s',a')-Q(s,a)]$。请解释：(1)其中的行为策略与目标策略分别是什么，二者为什么可以不同？(2)更新目标中的 $\max_{a'} Q(s',a')$ 起什么作用，为什么它不依赖于下一步实际执行的动作 $a'$？(3)由此为什么说 Q-Learning 直接学习的是最优动作价值 $Q^*(s,a)$，而不是某个固定策略 $\pi$ 下的动作价值 $Q^\pi(s,a)$？</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>要点是：Q-Learning 的更新目标由贝尔曼最优方程决定，而不是由实际执行的下一动作决定，因此学习目标与产生数据的行为可以分离。</p>
+<p>(1)异策略的含义。行为策略是用来与环境交互、产生样本 $(s,a,r,s')$ 的策略，在本课中是 $\epsilon$-贪心策略：以概率 $\epsilon$ 随机探索，以概率 $1-\epsilon$ 选择当前贪心的动作。目标策略是被学习、被评估的策略，它是关于当前 $Q(s,a)$ 的贪心策略，即在状态 $s$ 选择 $\arg\max_a Q(s,a)$ 的策略。两者可以不同，因为更新并不要求下一动作来自目标策略；探索性的行为策略只负责让各个 $(s,a)$ 都被充分访问，而目标策略只负责定义什么是最优。</p>
+<p>(2)$\max_{a'} Q(s',a')$ 的作用。最优动作价值满足贝尔曼最优方程 $Q^*(s,a)=\mathbb{E}[R_{t+1}+\gamma \max_{a'} Q^*(S_{t+1},a')\mid S_t=s,A_t=a]$，其中下一状态的最优价值就是 $\max_{a'} Q^*(s',a')$。Q-Learning 用当前估计代替未知的 $Q^*(s,a)$，用一步样本代替期望，得到自举目标 $y=r+\gamma \max_{a'} Q(s',a')$，若 $s'$ 为终止状态则 $y=r$。这里的 $\max_{a'}$ 是对下一状态所有可能动作取最优，而不是取下一步实际执行的那个动作 $a'$ 对应的 $Q(s',a')$；因此即使行为策略下一步随机选了一个较差动作，更新目标仍然指向在 $s'$ 处最优地行动所能得到的价值。时序差分误差为 $\delta=y-Q(s,a)$，更新 $Q(s,a)\leftarrow Q(s,a)+\alpha\delta$ 就是沿 $\delta$ 方向把 $Q(s,a)$ 向 $y$ 移动一小步。</p>
+<p>(3)为什么直接学最优价值。若把 $\max_{a'} Q(s',a')$ 换成实际下一动作的 $Q(s',a')$，得到的就是同策略的更新，学到的是行为策略 $\pi$ 下的 $Q^\pi(s,a)$；而 Q-Learning 始终用 $\max_{a'}$，相当于始终假设从 $s'$ 起按最优方式行动，因此它的不动点就是贝尔曼最优方程的解 $Q^*(s,a)$，而不是 $Q^\pi(s,a)$。当每个 $(s,a)$ 都被无限次访问、学习率 $\alpha$ 适当衰减时，表格型 Q-Learning 能以概率 $1$ 收敛到 $Q^*(s,a)$。收敛后，最优策略可直接由 $\pi^*(s)=\arg\max_a Q^*(s,a)$ 得到，无须再单独学习或评估一个策略。</p>
+</div></details>
+<p class="qa-q"><b>练习题 2</b> 设有一个确定性的两步链式任务：智能体从 $s_0$ 执行 $a_0$ 到达 $s_1$，奖励 $r=0$；再从 $s_1$ 执行 $a_1$ 到达终止状态，奖励 $r=1$。设折扣因子 $\gamma=0.9$，学习率 $\alpha=0.5$，初始时所有 $Q(s,a)$ 均为 $0$，且 $s_1$ 处除 $a_1$ 外其他动作的 $Q$ 值始终为 $0$。假设智能体在第 $1$ 回合和第 $2$ 回合都走完全相同的轨迹：先是 $(s_0,a_0,r=0,s_1)$，再是 $(s_1,a_1,r=1)$ 并到达终止状态，并按 Q-Learning 规则在线逐样本更新。</p>
+<p class="qa-q">（1）计算第 $1$ 回合中 $Q(s_0,a_0)$ 和 $Q(s_1,a_1)$ 的两次更新：分别写出目标 $y$、时序差分误差 $\delta$ 和更新后的 $Q$ 值，并说明第 $2$ 步为何不能用 $y=r+\gamma \max_{a'} Q(s',a')$ 计算目标。</p>
+<p class="qa-q">（2）计算第 $2$ 回合第 $1$ 步对 $Q(s_0,a_0)$ 的更新，写出 $y$、$\delta$ 和更新后的 $Q(s_0,a_0)$。</p>
+<p class="qa-q">（3）由贝尔曼最优方程求 $Q^*(s_1,a_1)$ 与 $Q^*(s_0,a_0)$，并结合（1）（2）的结果解释：为什么经过这两回合后 $Q(s_0,a_0)$ 仍远小于 $Q^*(s_0,a_0)$？</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>先写出本题要用的通用更新式。对非终止的下一步 $s'$，目标为 $y=r+\gamma \max_{a'} Q(s',a')$；若 $s'$ 为终止状态，则没有下一状态可自举，目标为 $y=r$。时序差分误差为 $\delta=y-Q(s,a)$，更新为 $Q(s,a)\leftarrow Q(s,a)+\alpha\delta$。本题中 $\alpha=0.5$，$\gamma=0.9$，初始时所有 $Q(s,a)$ 均为 $0$。</p>
+<p>（1）第 $1$ 回合第 $1$ 步：样本为 $(s_0,a_0,r=0,s_1)$，$s_1$ 非终止，当前 $Q(s_0,a_0)=0$。
+此时 $s_1$ 处所有动作的 $Q$ 值都还是 $0$，故 $\max_{a'} Q(s_1,a')=0$。目标为 $y=0+0.9\times 0=0$，误差为 $\delta=0-0=0$，更新为 $Q(s_0,a_0)\leftarrow 0+0.5\times 0=0$，即 $Q(s_0,a_0)$ 保持为 $0$。这一步学不到任何关于终点奖励的信息，因为自举来源 $\max_{a'} Q(s_1,a')$ 还是 $0$。</p>
+<p>第 $1$ 回合第 $2$ 步：样本为 $(s_1,a_1,r=1)$，且到达终止状态，当前 $Q(s_1,a_1)=0$。
+终止状态没有下一状态，也就没有 $\max_{a'} Q(s',a')$ 可用，因此不能用 $y=r+\gamma \max_{a'} Q(s',a')$ 计算目标，而应直接取 $y=r=1$。误差为 $\delta=1-0=1$，更新为 $Q(s_1,a_1)\leftarrow 0+0.5\times 1=0.5$。</p>
+<p>所以第 $1$ 回合结束后，$Q(s_0,a_0)=0$，$Q(s_1,a_1)=0.5$。</p>
+<p>（2）第 $2$ 回合第 $1$ 步：样本仍为 $(s_0,a_0,r=0,s_1)$，$Q(s_0,a_0)$ 仍为 $0$，但 $s_1$ 处的估计已经变了：$\max_{a'} Q(s_1,a')=\max\{0.5,0,\cdots\}=0.5$，其中 $0.5$ 是 $a_1$ 对应的值，其余动作仍为 $0$。
+目标为 $y=0+0.9\times 0.5=0.45$，误差为 $\delta=0.45-0=0.45$，更新为 $Q(s_0,a_0)\leftarrow 0+0.5\times 0.45=0.225$。</p>
+<p>所以此时 $Q(s_0,a_0)=0.225$，而 $Q(s_1,a_1)$ 在这一步尚未再次更新，仍为 $0.5$。</p>
+<p>（3）由贝尔曼最优方程求最优值。$s_1$ 执行 $a_1$ 后立即得到奖励 $1$ 并终止，没有后续回报，故 $Q^*(s_1,a_1)=1$。$s_0$ 执行 $a_0$ 后即时奖励为 $0$，下一状态 $s_1$ 的最优值为 $1$，故 $Q^*(s_0,a_0)=0+\gamma\times 1=0+0.9\times 1=0.9$。</p>
+<p>比较可知，经过两回合后 $Q(s_0,a_0)=0.225$ 仍远小于 $Q^*(s_0,a_0)=0.9$。原因有两点：第一，自举价值只能向后传播一步，第 $1$ 回合更新 $Q(s_0,a_0)$ 时 $Q(s_1,a_1)$ 还没有学到终点奖励，目标 $y=0$；只有到第 $2$ 回合，$Q(s_1,a_1)=0.5$ 才能作为自举来源传给 $Q(s_0,a_0)$。第二，每次更新只向目标移动 $\alpha=0.5$ 的比例，而且第 $2$ 回合的目标 $y=0.45$ 本身也还是用未收敛的估计 $0.5$ 算出的，低于真正的 $0.9$，所以一次更新只能得到 $0.225$。反复采样后，$Q(s_1,a_1)$ 将逐步趋近于 $1$，$Q(s_0,a_0)$ 的目标将逐步趋近于 $0.9$，$Q(s_0,a_0)$ 也随之逐步趋近于 $0.9$。</p>
+</div></details>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">参考文献</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>Watkins &amp; Dayan 1992, Q-Learning</li>
+<li>Sutton &amp; Barto 2018, Reinforcement Learning: An Introduction, 第6章</li>
+<li>Mnih et al. 2013, Playing Atari with Deep Reinforcement Learning, arXiv:1312.5602</li>
+</ol>
+</div></details>
+<div class="pager">
+<a href="lesson-4.html">← 上一课：时序差分 TD 学习</a>
+<a href="../rl.html">← 返回 RL 精讲目录</a>
+<span>第 6 课 · SARSA 与 Expected SARSA（即将更新）</span>
+</div>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="../assets/effects.js"></script>
+</body>
+</html>
