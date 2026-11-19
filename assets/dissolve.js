@@ -1,10 +1,13 @@
-/* 溶解特效：聚拢 (Gather) / 花瓣雨 (Rain) / 轻尘 (Dust)
+/* 溶解特效：聚拢 (Gather) / 签名书写 (Signature) / 点按爆裂 (Snap)
  * 参考 dissolve（React Native 库）的 Canvas 2D 移植思路：
  * 把目标（头像、名字、卡片图）先画到离屏画布采样成颗粒，
  * 再用一帧一画布的方式驱动颗粒运动。无依赖，纯 Canvas 2D。
  * 只在首页生效；prefers-reduced-motion 时全部跳过，原样显示。
  * 安全兜底：任何一步出错或超时，都会把真实内容恢复显示，
- * 绝不会让头像、名字或卡片图一直藏着。 */
+ * 绝不会让头像、名字或卡片图一直藏着。
+ * 说明：dissolve 的 SignaturePad 本身是手写输入板（用户自己写字），
+ * 不是名字自动书写动画；这里的名字书写是按它的演示效果做的
+ * 等价实现——名字按笔顺由颗粒依次显现，粉色笔尖跟随书写。 */
 (function () {
   'use strict';
 
@@ -120,7 +123,7 @@
   /* ---------- 颗粒动画 ---------- */
   /* items: [{x0,y0,x1,y1,delay,dur,r,g,b,size,a0,a1,sway,ease}]
    * 返回 Promise；动画结束时 resolve。 */
-  function animate(layer, items, totalMs) {
+  function animate(layer, items, totalMs, onFrame) {
     return new Promise(function (resolve) {
       var ctx = layer.ctx, w = layer.w, h = layer.h;
       var start = 0, raf = 0, done = false;
@@ -151,6 +154,7 @@
           ctx.fillStyle = 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + a.toFixed(3) + ')';
           ctx.fillRect(x - p.size / 2, y - p.size / 2, p.size, p.size);
         }
+        if (onFrame) { try { onFrame(ctx, now, items); } catch (e) {} }
         if (now < totalMs && alive) {
           raf = requestAnimationFrame(tick);
         } else {
@@ -224,7 +228,8 @@
       W = hero.clientWidth; H = hero.clientHeight;
       var aRect = avatar.getBoundingClientRect();
       var nRect = name.getBoundingClientRect();
-      var parts = [];
+      var avatarParts = [];
+      var nameParts = [];
 
       /* 头像：圆形区域内采样，颗粒带照片原色 */
       if (avatar.naturalWidth > 0) {
@@ -234,23 +239,17 @@
         sampled.forEach(function (p) {
           var dx = p.x - cx, dy = p.y - cy;
           if (dx * dx + dy * dy > rr * rr) return;
-          parts.push({
+          avatarParts.push({
             x: aRect.left - heroRect.left + p.x,
             y: aRect.top - heroRect.top + p.y,
             r: p.r, g: p.g, b: p.b
           });
         });
       }
-      /* 名字：按实际字号与字体采样笔画 */
-      var nameParts = sampleText('Jocehi', fontPx, fontFamily, fontColor, 2);
+      /* 名字：按实际字号与字体采样笔画，换算到名字中心 */
+      var rawName = sampleText('Jocehi', fontPx, fontFamily, fontColor, 2);
       var nCx = nRect.left - heroRect.left + nRect.width / 2;
       var nCy = nRect.top - heroRect.top + nRect.height / 2;
-      nameParts.forEach(function (p) {
-        parts.push({
-          x: 0, y: 0, r: p.r, g: p.g, b: p.b, _sx: p.x, _sy: p.y
-        });
-      });
-      /* 名字颗粒换算：采样画布以文字中心为原点 */
       var textW = 0, textH = 0;
       (function () {
         var meas = document.createElement('canvas').getContext('2d');
@@ -258,25 +257,28 @@
         textW = meas.measureText('Jocehi').width;
         textH = fontPx * 1.5;
       })();
-      parts.forEach(function (p) {
-        if (p._sx !== undefined) {
-          p.x = nCx + (p._sx - (textW / 2 + 10));
-          p.y = nCy + (p._sy - (textH / 2 + 10));
-          delete p._sx; delete p._sy;
-        }
+      rawName.forEach(function (p) {
+        nameParts.push({
+          x: nCx + (p.x - (textW / 2 + 10)),
+          y: nCy + (p.y - (textH / 2 + 10)),
+          r: p.r, g: p.g, b: p.b
+        });
       });
 
-      if (parts.length < 80) { abort(); return; }
+      if (avatarParts.length + nameParts.length < 80) { abort(); return; }
       /* 颗粒太多时均匀抽稀，上限 6000（与 dissolve 库一致） */
-      if (parts.length > 6000) {
-        var step = parts.length / 6000;
-        var slim = [];
-        for (var i = 0; i < parts.length; i += step) slim.push(parts[Math.floor(i)]);
-        parts = slim;
+      function thin(arr, max) {
+        if (arr.length <= max) return arr;
+        var step = arr.length / max, out = [];
+        for (var i = 0; i < arr.length; i += step) out.push(arr[Math.floor(i)]);
+        return out;
       }
+      avatarParts = thin(avatarParts, 4000);
+      nameParts = thin(nameParts, 2000);
 
       var layer = makeCanvas(hero, W, H);
-      var items = parts.map(function (p) {
+      /* 头像：聚拢 */
+      var gatherItems = avatarParts.map(function (p) {
         var ang = rand(0, Math.PI * 2);
         var dist = rand(60, Math.max(140, Math.min(W, H) * 0.45));
         return {
@@ -288,7 +290,37 @@
           a0: 0, a1: 1, sway: 0, ease: easeOutCubic
         };
       });
-      animate(layer, items, 1700).then(function () {
+      /* 名字：按从左到右的笔顺依次显现（签名书写） */
+      nameParts.forEach(function (p) { p._k = p.x + 0.2 * p.y + rand(0, 25); });
+      nameParts.sort(function (a, b) { return a._k - b._k; });
+      var writeItems = nameParts.map(function (p, i) {
+        return {
+          x0: p.x, y0: p.y, x1: p.x, y1: p.y,
+          delay: (i / Math.max(1, nameParts.length)) * 1400, dur: 200,
+          r: p.r, g: p.g, b: p.b, size: rand(2, 3.4),
+          a0: 0, a1: 1, sway: 0, ease: easeOutCubic
+        };
+      });
+      /* 粉色笔尖：跟随当前书写位置 */
+      function drawPen(ctx, now) {
+        if (now > 1600) return;
+        var cur = null;
+        for (var i = writeItems.length - 1; i >= 0; i--) {
+          if (writeItems[i].delay <= now) { cur = writeItems[i]; break; }
+        }
+        if (!cur) return;
+        ctx.save();
+        ctx.shadowColor = 'rgba(224,82,138,0.9)';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#e0528a';
+        ctx.beginPath();
+        ctx.arc(cur.x1, cur.y1, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      animate(layer, gatherItems.concat(writeItems), 1800, function (ctx, now) {
+        drawPen(ctx, now);
+      }).then(function () {
         if (aborted) { removeCanvas(layer); return; }
         showEl(avatar);
         showEl(name);
@@ -297,51 +329,8 @@
     }
   }
 
-  /* ---------- 2. 卡片花瓣雨 Rain：滚入视野时颗粒落下拼成卡片图 ---------- */
-  function rainCard(card) {
-    var img = card.querySelector('img');
-    if (!img) return Promise.resolve();
-    card.dataset.busy = '1';
-    return waitForImg(img, 2000).then(function (ok) {
-      if (!ok || !img.naturalWidth) { delete card.dataset.busy; return; }
-      var w = card.clientWidth, h = card.clientHeight;
-      if (w < 10 || h < 10) { delete card.dataset.busy; return; }
-      var parts = sampleCover(img, w, h, 5, 0.65);
-      if (parts.length < 60) { delete card.dataset.busy; return; }
-      if (parts.length > 6000) {
-        var step = parts.length / 6000;
-        var slim = [];
-        for (var i = 0; i < parts.length; i += step) slim.push(parts[Math.floor(i)]);
-        parts = slim;
-      }
-      card.classList.add('dissolving');
-      var layer = makeCanvas(card, w, h);
-      var items = parts.map(function (p) {
-        /* 底部先落定：延迟按目标行从下往上递增 */
-        var rowDelay = (1 - p.y / h) * 500;
-        return {
-          x0: p.x + rand(-8, 8),
-          y0: p.y - rand(140, 320),
-          x1: p.x, y1: p.y,
-          delay: rowDelay + rand(0, 120), dur: rand(900, 1150),
-          r: p.r, g: p.g, b: p.b, size: rand(3, 5),
-          a0: 0, a1: 1, sway: rand(2, 7), ease: easeInOut
-        };
-      });
-      return animate(layer, items, 1850).then(function () {
-        removeCanvas(layer);
-        card.classList.remove('dissolving');
-        card.dataset.rained = '1';
-        delete card.dataset.busy;
-      });
-    }).catch(function () {
-      card.classList.remove('dissolving');
-      delete card.dataset.busy;
-    });
-  }
-
-  /* ---------- 3. 点图轻尘 Dust：化作细尘飘散，再聚回来 ---------- */
-  function dustCard(card) {
+  /* ---------- 2. 卡片点按爆裂 Snap：颗粒从点击点向外爆裂，再聚回来 ---------- */
+  function snapCard(card, ox, oy) {
     var img = card.querySelector('img');
     if (!img || !img.naturalWidth) return Promise.resolve();
     card.dataset.busy = '1';
@@ -357,31 +346,31 @@
     }
     card.classList.add('dissolving');
     var layer = makeCanvas(card, w, h);
-    /* 离场：向上、向右轻飘散去并淡出 */
+    var maxD = Math.max(w, h);
+    /* 离场：颗粒从点击点向外爆裂，越靠近点击点越先飞出 */
     var outItems = parts.map(function (p) {
+      var dx = p.x - ox, dy = p.y - oy;
+      var d = Math.sqrt(dx * dx + dy * dy) || 1;
+      var push = rand(70, 220);
       return {
         x0: p.x, y0: p.y,
-        x1: p.x + rand(20, 110), y1: p.y - rand(60, 190),
-        delay: rand(0, 220), dur: rand(900, 1250),
-        r: p.r, g: p.g, b: p.b, size: rand(2.5, 4.5),
-        a0: 1, a1: 0, sway: rand(2, 8), ease: easeInOut
+        x1: p.x + (dx / d) * push, y1: p.y + (dy / d) * push,
+        delay: (d / maxD) * 380 + rand(0, 60), dur: rand(800, 1200),
+        r: p.r, g: p.g, b: p.b, size: rand(2, 4),
+        a0: 1, a1: 0, sway: 0, ease: easeInOut
       };
     });
-    return animate(layer, outItems, 1500).then(function () {
-      /* 回场：从四周聚拢拼回原图 */
-      var inItems = parts.map(function (p) {
-        var ang = rand(0, Math.PI * 2);
-        var dist = rand(50, 160);
+    return animate(layer, outItems, 1600).then(function () {
+      /* 回场：从爆裂后的位置聚拢拼回原图 */
+      var inItems = outItems.map(function (p) {
         return {
-          x0: clamp(p.x + Math.cos(ang) * dist, -20, w + 20),
-          y0: clamp(p.y + Math.sin(ang) * dist, -20, h + 20),
-          x1: p.x, y1: p.y,
-          delay: rand(0, 280), dur: rand(800, 1100),
-          r: p.r, g: p.g, b: p.b, size: rand(2.5, 4.5),
+          x0: p.x1, y0: p.y1, x1: p.x0, y1: p.y0,
+          delay: rand(0, 250), dur: rand(800, 1100),
+          r: p.r, g: p.g, b: p.b, size: p.size,
           a0: 0, a1: 1, sway: 0, ease: easeOutCubic
         };
       });
-      return animate(layer, inItems, 1400);
+      return animate(layer, inItems, 1500);
     }).then(function () {
       removeCanvas(layer);
       card.classList.remove('dissolving');
@@ -397,24 +386,13 @@
   heroGather();
 
   var cards = Array.prototype.slice.call(document.querySelectorAll('.card.split .card-img'));
-  if (cards.length && 'IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) return;
-        var card = entry.target;
-        io.unobserve(card);
-        if (!card.dataset.rained && !card.dataset.busy) rainCard(card);
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -4% 0px' });
-    cards.forEach(function (card) { io.observe(card); });
-  } else {
-    cards.forEach(function (card) { card.dataset.rained = '1'; });
-  }
-
   cards.forEach(function (card) {
-    card.addEventListener('click', function () {
-      if (card.dataset.busy || !card.dataset.rained) return;
-      dustCard(card);
+    card.addEventListener('click', function (e) {
+      if (card.dataset.busy) return;
+      var rect = card.getBoundingClientRect();
+      var ox = (e.clientX || 0) - rect.left;
+      var oy = (e.clientY || 0) - rect.top;
+      snapCard(card, ox, oy);
     });
   });
 })();
