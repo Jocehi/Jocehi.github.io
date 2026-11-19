@@ -1,0 +1,5 @@
+node_modules/
+.npmcache/
+.tmpdir/
+.chrome-profile/
+test/shots/
