@@ -227,3 +227,10 @@ body.has-player{padding-bottom:6rem}
 .lock-icon{font-size:3rem}
 .lock h1{margin:.5rem 0}
 .lock input[type="password"]{width:100%;box-sizing:border-box;border:1px solid #e5d9c8;border-radius:10px;padding:.6rem .8rem;font:inherit;text-align:center;margin:.8rem 0}
+
+/* ---- 溶解特效：Gather / Rain / Dust（Canvas 2D 颗粒） ---- */
+.dissolve-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+.hero-full .dissolve-canvas{position:absolute;inset:0;z-index:2}
+.card.split .card-img img{transition:opacity .35s ease}
+.card-img{cursor:pointer}
+.card-img.dissolving img{opacity:0}
