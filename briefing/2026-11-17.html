@@ -35,6 +35,16 @@ a{color:var(--teal);word-break:break-all}
 .note{background:var(--teal-bg);border-radius:12px;padding:14px 18px;font-size:14px;color:var(--muted)}
 footer{margin-top:36px;border-top:1px solid var(--line);padding-top:14px;font-size:13px;color:var(--muted)}
 @media print{body{background:#fff}article{box-shadow:none;break-inside:avoid}}
+
+/* 质感升级 · Peekdesign 做法，翻成简报页调子（2026-11-19）：纸纹、细线、分层柔影、轻微悬停；颜色与版式不动 */
+body::before{content:"";position:fixed;inset:0;z-index:70;pointer-events:none;opacity:.03;
+background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+h1{letter-spacing:-.015em}
+article{transition:transform .18s ease,box-shadow .18s ease}
+article:hover{transform:translateY(-2px);box-shadow:0 1px 2px rgba(23,32,43,.05),0 16px 34px rgba(23,32,43,.12)}
+.fig img{padding:6px;background:#fff;box-shadow:0 1px 2px rgba(23,32,43,.05),0 8px 22px rgba(23,32,43,.08)}
+.meta span{font-variant-numeric:tabular-nums}
+@media (hover:none){article:hover{transform:none}}
 </style>
 </head>
 <body>
