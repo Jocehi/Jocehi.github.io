@@ -123,7 +123,7 @@
 <p>在 interactive world model 的脉络里，MuZero 与上一篇精读的 Dreamer 代表了同一时期、目标相近但路线对立的两个分支：两者都学一个隐状态动力学并在其中做规划，都不再要求模型逐像素复现真实世界，但 Dreamer 仍保留对观测的重构与对未来隐状态的预测（RSSM 的生成式路线），把世界模型当作可想象的模拟器；而 MuZero 更进一步，连重构与状态语义都彻底抛弃，只保留奖励、策略、价值这三个与规划直接相关的预测目标，属于价值等价模型路线，是 Predictron 与价值预测网络思想在 AlphaZero 搜索框架下的完整落地。需要如实说明时间关系：MuZero 于 2019 年 11 月提交，略早于 Dreamer 的正式发表，因此它不是 Dreamer 的后继改进，而是同期平行发展的另一条主线；两者此后共同塑造了世界模型的两大范式——生成式重构路线与价值等价路线，而 MuZero 证明了后者可以在最难的规划任务上与完美模拟器一较高下。</p>
 <section class="notes"><h2>我的笔记</h2><textarea id="paper-notes" placeholder="写下你的想法、疑问或灵感……"></textarea><div><button id="save-notes" type="button">保存笔记</button><span class="saved" id="notes-saved"></span></div></section>
 
-<div class="pager"><a href="dreamer.html">← 上一篇：Dreamer</a><a href="../papers.html">全部精读</a><span></span></div>
+<div class="pager"><a href="dreamer.html">← 上一篇：Dreamer</a><a href="../papers.html">全部精读</a><a href="dreamerv2.html">下一篇：DreamerV2 →</a></div>
 <footer>Jocehi 的论文精读 · Interactive World Model 系列</footer>
 </article>
 <aside class="sidebar"><h3>全部精读</h3><ol><li><a href="world-models.html"><span class="daynum">Day 1</span>World Models</a></li><li><a href="planet.html"><span class="daynum">Day 2</span>Learning Latent Dynamics for Planning from Pixels</a></li><li><a href="dreamer.html"><span class="daynum">Day 3</span>Dream to Control: Learning Behaviors by Latent Imagination</a></li><li><a href="muzero.html" class="active"><span class="daynum">Day 4</span>Mastering Atari, Go, Chess and Shogi by Planning with a Learned Model</a></li></ol></aside>
