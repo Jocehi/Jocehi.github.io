@@ -305,3 +305,29 @@ body::before{content:"";position:fixed;inset:0;z-index:70;pointer-events:none;op
   .card.split:hover .card-img img{transform:none}
   .btn:hover{transform:none}
 }
+
+/* ============================================================
+   质感升级第 2 轮 · Peek Info 窄栏 / Studio 半调 / Plugin 终端（2026-11-19）
+   ============================================================ */
+.dots{width:96px;height:28px;opacity:.35;
+  background-image:radial-gradient(circle,#e0528a 1.4px,transparent 1.5px);
+  background-size:14px 14px;background-repeat:repeat}
+/* Info 式窄栏：标题左对齐、导语略窄、正文 620px 居中、等宽眉题 */
+.info-lede{max-width:540px;font-size:1.05rem;color:var(--muted);line-height:1.7;margin:.6rem 0 0}
+.info-rule{border:0;border-top:1px solid var(--line);margin:1.6rem 0 0}
+.info-col{max-width:620px;margin:0 auto;padding:2rem 0}
+.info-sec{margin:0 0 4.5rem}
+.info-sec h2{border-bottom:0;padding-bottom:0;margin:0 0 .6rem;font-size:1.15rem}
+.info-sec .eyebrow{margin-bottom:.5rem}
+.info-sec p{line-height:1.7;color:#333a4d}
+/* 代码块终端顶栏（与 RL 页同款） */
+pre.code{padding-top:2.7rem}
+pre.code::before{content:"";position:absolute;top:0;left:0;right:0;height:2.1rem;
+  background-color:#262a38;border-bottom:1px solid #343a4d;border-radius:12px 12px 0 0;
+  background-image:radial-gradient(circle at 18px 50%,#ff5f57 5px,transparent 5.5px),
+    radial-gradient(circle at 38px 50%,#febc2e 5px,transparent 5.5px),
+    radial-gradient(circle at 58px 50%,#28c840 5px,transparent 5.5px);
+  background-repeat:no-repeat}
+pre.code::after{content:"code";position:absolute;top:.55rem;left:78px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:12px;color:#8b93a7}

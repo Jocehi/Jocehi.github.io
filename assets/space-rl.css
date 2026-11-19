@@ -222,3 +222,68 @@ figure{padding:.55rem;box-shadow:0 1px 2px rgba(26,35,50,.04),0 8px 22px rgba(26
 .tabs a{transition:transform .15s ease,border-color .15s ease}
 .tabs a:hover{transform:translateY(-1px)}
 @media (hover:none){.lesson-card:hover{transform:none}}
+
+/* ============================================================
+   质感升级第 2 轮 · Peek 详情页 / Launch 筛选 / Plugin 终端（2026-11-19）
+   ============================================================ */
+.dots{width:96px;height:28px;opacity:.35;
+  background-image:radial-gradient(circle,#d97706 1.4px,transparent 1.5px);
+  background-size:14px 14px;background-repeat:repeat}
+.filter-bar{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:.4rem;margin:1.2rem 0 .4rem}
+.filter-pill{border:0;background:transparent;color:var(--dim);cursor:pointer;
+  font:inherit;font-size:.9rem;font-weight:600;border-radius:10px;
+  padding:.45rem .9rem;height:36px;transition:background .15s ease,color .15s ease}
+.filter-pill:hover{color:var(--text)}
+.filter-pill.active{background:var(--surface2);color:var(--text)}
+.filter-search{flex:1;min-width:150px;height:36px;border:1px solid var(--border);
+  border-radius:10px;padding:.3rem .8rem;font:inherit;font-size:.9rem;
+  background:var(--surface);color:var(--text)}
+.filter-search:focus{border-color:var(--accent);outline:none;
+  box-shadow:0 0 0 3px rgba(217,119,6,.18)}
+.filter-count{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;letter-spacing:.08em;color:var(--dim);margin:.5rem 0 0}
+.filter-empty{color:var(--dim);font-size:.95rem}
+/* 规格卡：正文上方，mono 键值行 + 深色全宽复制按钮 */
+.spec-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:1rem 1.1rem;margin:1.25rem 0;
+  box-shadow:0 1px 2px rgba(26,35,50,.04),0 8px 22px rgba(26,35,50,.05)}
+.spec-head{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 .6rem}
+.spec-card dl{margin:0}
+.spec-row{display:flex;gap:.8rem;padding:.45rem 0;border-top:1px solid var(--border);
+  font-size:.9rem;line-height:1.5}
+.spec-row:first-child{border-top:0}
+.spec-row dt{flex:0 0 5rem;color:var(--dim);
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding-top:.15rem}
+.spec-row dd{margin:0;min-width:0;overflow-wrap:break-word}
+.spec-copy{display:block;width:100%;margin-top:.8rem;background:#1a2332;color:#fff;
+  border:0;border-radius:999px;padding:.55rem 1rem;font:inherit;font-size:.9rem;
+  font-weight:700;cursor:pointer;transition:transform .15s ease,background .15s ease}
+.spec-copy:hover{transform:translateY(-1px);background:#000}
+.spec-copy:active{transform:scale(.98)}
+/* 讲解视频时长 pill：黑底白字等宽 */
+.dur{display:inline-block;background:#1a2332;color:#fff;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;font-weight:700;border-radius:6px;padding:.1rem .45rem;margin-left:.4rem}
+/* 代码块终端顶栏：三色圆点 + python 标签，复制按钮正好落在顶栏里 */
+pre.code{padding:2.7rem 1rem 1rem 3.4rem}
+pre.code::before{content:"";position:absolute;top:0;left:0;right:0;height:2.1rem;
+  background-color:#262a38;border-bottom:1px solid #343a4d;border-radius:12px 12px 0 0;
+  background-image:radial-gradient(circle at 18px 50%,#ff5f57 5px,transparent 5.5px),
+    radial-gradient(circle at 38px 50%,#febc2e 5px,transparent 5.5px),
+    radial-gradient(circle at 58px 50%,#28c840 5px,transparent 5.5px);
+  background-repeat:no-repeat}
+pre.code::after{content:"python";position:absolute;top:.55rem;left:78px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:12px;color:#8b93a7}
+pre.code .ln-col{top:2.7rem}
+/* 分页改成卡片 */
+.pager a{border-radius:14px;padding:.9rem 1.1rem;
+  box-shadow:0 1px 2px rgba(26,35,50,.04),0 8px 22px rgba(26,35,50,.05);
+  transition:transform .18s ease,box-shadow .18s ease}
+.pager a:hover{transform:translateY(-2px);text-decoration:none;
+  box-shadow:0 1px 2px rgba(26,35,50,.05),0 14px 30px rgba(26,35,50,.09)}
