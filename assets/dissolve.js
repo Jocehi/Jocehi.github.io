@@ -1,13 +1,11 @@
-/* 溶解特效：聚拢 (Gather) / 签名书写 (Signature) / 点按爆裂 (Snap)
+/* 溶解特效：聚拢 (Gather) / 点按爆裂 (Snap)
  * 参考 dissolve（React Native 库）的 Canvas 2D 移植思路：
  * 把目标（头像、名字、卡片图）先画到离屏画布采样成颗粒，
  * 再用一帧一画布的方式驱动颗粒运动。无依赖，纯 Canvas 2D。
  * 只在首页生效；prefers-reduced-motion 时全部跳过，原样显示。
  * 安全兜底：任何一步出错或超时，都会把真实内容恢复显示，
  * 绝不会让头像、名字或卡片图一直藏着。
- * 说明：dissolve 的 SignaturePad 本身是手写输入板（用户自己写字），
- * 不是名字自动书写动画；这里的名字书写是按它的演示效果做的
- * 等价实现——名字按笔顺由颗粒依次显现，粉色笔尖跟随书写。 */
+ * 首屏：头像与名字都用聚拢（颗粒从四周汇聚拼成）；卡片图点按爆裂。 */
 (function () {
   'use strict';
 
@@ -33,6 +31,7 @@
   }
   function showEl(el) {
     if (!el) return;
+    el.style.transition = 'opacity .7s ease';
     el.style.opacity = '1';
     var i = hiddenEls.indexOf(el);
     if (i >= 0) hiddenEls.splice(i, 1);
@@ -290,41 +289,24 @@
           a0: 0, a1: 1, sway: 0, ease: easeOutCubic
         };
       });
-      /* 名字：按从左到右的笔顺依次显现（签名书写） */
-      nameParts.forEach(function (p) { p._k = p.x + 0.2 * p.y + rand(0, 25); });
-      nameParts.sort(function (a, b) { return a._k - b._k; });
-      var writeItems = nameParts.map(function (p, i) {
+      /* 名字：和头像一样的聚拢 */
+      var nameItems = nameParts.map(function (p) {
+        var ang = rand(0, Math.PI * 2);
+        var dist = rand(60, Math.max(140, Math.min(W, H) * 0.45));
         return {
-          x0: p.x, y0: p.y, x1: p.x, y1: p.y,
-          delay: (i / Math.max(1, nameParts.length)) * 1400, dur: 200,
-          r: p.r, g: p.g, b: p.b, size: rand(2, 3.4),
+          x0: clamp(p.x + Math.cos(ang) * dist, -20, W + 20),
+          y0: clamp(p.y + Math.sin(ang) * dist, -20, H + 20),
+          x1: p.x, y1: p.y,
+          delay: rand(0, 350), dur: rand(850, 1250),
+          r: p.r, g: p.g, b: p.b, size: rand(2.2, 3.6),
           a0: 0, a1: 1, sway: 0, ease: easeOutCubic
         };
       });
-      /* 粉色笔尖：跟随当前书写位置 */
-      function drawPen(ctx, now) {
-        if (now > 1600) return;
-        var cur = null;
-        for (var i = writeItems.length - 1; i >= 0; i--) {
-          if (writeItems[i].delay <= now) { cur = writeItems[i]; break; }
-        }
-        if (!cur) return;
-        ctx.save();
-        ctx.shadowColor = 'rgba(224,82,138,0.9)';
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = '#e0528a';
-        ctx.beginPath();
-        ctx.arc(cur.x1, cur.y1, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-      animate(layer, gatherItems.concat(writeItems), 1800, function (ctx, now) {
-        drawPen(ctx, now);
-      }).then(function () {
+      animate(layer, gatherItems.concat(nameItems), 1700).then(function () {
         if (aborted) { removeCanvas(layer); return; }
         showEl(avatar);
         showEl(name);
-        fadeOutCanvas(layer, 300);
+        fadeOutCanvas(layer, 700);
       });
     }
   }
@@ -372,8 +354,10 @@
       });
       return animate(layer, inItems, 1500);
     }).then(function () {
-      removeCanvas(layer);
+      /* 收尾交叉淡化：图先淡入，画布再淡出，淡完才移除 */
       card.classList.remove('dissolving');
+      return fadeOutCanvas(layer, 600);
+    }).then(function () {
       delete card.dataset.busy;
     }).catch(function () {
       removeCanvas(layer);
