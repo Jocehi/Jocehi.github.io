@@ -19,7 +19,7 @@
 <div class="thesis">用下一状态最大动作值自举更新当前值，无模型学最优策略。</div>
 <div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
 <video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-5-explainer.mp4"></video>
-<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · Q-Learning · 4 分 56 秒</p>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · Q-Learning · 7 分 31 秒</p>
 </div>
 <details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
 <p>本课考虑无模型的马尔可夫决策过程控制问题：智能体事先不知道状态转移概率和奖励函数，只能通过与环境反复交互获得经验来学习最优策略。在每个时刻，环境处于某个状态，智能体选择一个动作，环境返回即时奖励并转移到下一状态，目标是最大化从当前状态出发的折扣累积奖励期望。记最优动作价值为 $Q^*(s,a)$，它表示在状态 $s$ 执行动作 $a$ 后再按最优策略行动所能获得的期望折扣回报，满足 $Q^*(s,a)=\max_\pi Q^\pi(s,a)$，其中 $Q^\pi(s,a)=\mathbb{E}_\pi[G_t \mid S_t=s, A_t=a]$，$G_t=\sum_{k=0}^{\infty}\gamma^k R_{t+k+1}$，$\gamma$ 为折扣因子。适用场景是状态与动作均为离散且规模适中的任务，例如网格世界、棋盘游戏、简单机器人导航与调度控制；状态或动作空间过大时，表格形式不再适用，需要函数近似。输入是交互产生的样本 $(s,a,r,s')$，即当前状态 $s$、所选动作 $a$、即时奖励 $r$ 与下一状态 $s'$，以及折扣因子 $\gamma$、学习率 $\alpha$ 与探索参数 $\epsilon$；不需要预先知道模型，也不需要等到回合结束。输出是学到的动作价值函数 $Q(s,a)$，以及由它导出的贪心策略，即在每个状态 $s$ 下选择使 $Q(s,a)$ 最大的动作 $a$。只要能反复采样交互数据，就可以直接估计最优动作价值并改进策略。</p>
