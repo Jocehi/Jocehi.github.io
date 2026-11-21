@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 7 课 · DQN 深度 Q 网络 · Jocehi 的 RL 精讲</title>
+<link rel="stylesheet" href="../assets/space-rl.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
+</head>
+<body>
+<div class="wrap">
+<nav class="topnav"><b>Jocehi</b><a href="../index.html">首页</a><a href="../papers.html">论文精读</a><a href="../rl.html">RL 精讲</a><a href="../briefing.html">每日简报</a><a class="home" href="../index.html">← 返回首页</a></nav>
+<h1>第 7 课 · DQN 深度 Q 网络</h1>
+<p class="meta">Deep Q-Network (DQN) · RL 算法每日精讲 · 2026-11-21 · 深度值函数 · 进阶 · 约 30 分钟</p>
+<p class="meta">前置知识：Q-Learning、神经网络基础、经验回放概念</p>
+<div class="thesis">用神经网络拟合$Q$值，经验回放加目标网络稳定训练。</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · DQN 深度 Q 网络 · 制作中，完成后将更新到此处</p>
+</div>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>在第 5 课的表格 $Q$-Learning 中，智能体需要为每一个状态 $s$ 和动作 $a$ 维护一个 $Q(s, a)$ 的数值，并通过不断试错逼近最优动作价值函数 $Q^*(s, a)$。当状态是游戏画面、连续传感器读数或高维特征向量时，状态数量会爆炸甚至无限，表格既存不下也无法泛化到从未见过的相似状态，表格方法因此失效。DQN 要解决的正是这类高维、连续状态下的最优控制问题，其适用场景是：环境可建模为马尔可夫决策过程，智能体能反复与环境交互并获得奖励 $r$，动作空间是离散且有限的，状态可以表示为向量或图像等固定维度的输入。DQN 的输入是当前状态 $s$，例如一帧游戏画面或传感器向量；输出是该状态下所有离散动作的 $Q$ 值估计，即 $Q(s, a; \theta)$，其中 $\theta$ 为神经网络参数，智能体据此选择 $Q$ 值最大的动作执行。训练目标是让网络输出逼近满足贝尔曼最优方程的真实动作价值，从而在不需要环境模型的情况下学到近似最优策略。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">② 核心思想</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>用深度神经网络作为函数近似器，输入状态 $s$，输出所有动作的 $Q(s, a; \theta)$，从而把表格 $Q$ 值推广到高维连续状态。</li>
+<li>以贝尔曼最优方程构造 $TD$ 目标 $y = r + \gamma \max_{a'} Q(s', a'; \theta^{-})$，用当前网络预测与目标之间的均方误差作为损失进行训练。</li>
+<li>引入经验回放：把转移 $(s, a, r, s')$ 存入回放池，从中随机采样小批量数据训练，打破相邻样本的相关性并提高样本利用率。</li>
+<li>引入目标网络：用参数为 $\theta^{-}$ 的独立目标网络计算 $TD$ 目标，并每隔固定步数才把 $\theta$ 复制给 $\theta^{-}$，避免目标随网络更新而快速漂移。</li>
+<li>采用 $\epsilon$-贪心策略进行探索：以概率 $\epsilon$ 随机选择动作，以概率 $1 - \epsilon$ 选择当前 $Q$ 值最大的动作，在探索与利用之间取得平衡。</li>
+<li>通过随机梯度下降更新 $\theta$，最小化损失 $L(\theta) = \mathbb{E}[(y - Q(s, a; \theta))^2]$，使网络逐步逼近最优动作价值函数 $Q^*(s, a)$。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">③ 与已学方法对比</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>与第 5 课的表格 $Q$-Learning 相比，DQN 最大的进步是把 $Q$ 值从表格换成神经网络，从而能处理图像与连续状态等高维输入，并泛化到相似的未见状态，这是表格方法因状态爆炸而无法做到的。与第 6 课的 $SARSA$ 相比，DQN 仍属于离策略学习，使用 $\max_{a'} Q(s', a'; \theta^{-})$ 构造目标而不是实际执行的下一个动作，因此可以复用历史数据，样本效率更高。代价是训练更不稳定：函数近似、自举与离策略三者结合容易带来发散风险，需要经验回放与目标网络来缓解；同时 DQN 需要大量交互样本，调参更复杂，只能处理离散动作，且神经网络训练的计算成本远高于查表更新。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">④ 学习流程</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="agent-env" role="img" aria-label="智能体与环境交互循环"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrA" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6472"/></marker></defs><rect x="20" y="45" width="170" height="80" rx="12" fill="#d97706"/><text x="105" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">智能体 Agent</text><text x="105" y="103" text-anchor="middle" font-size="12" fill="#ffedd5">策略 π · 价值 V</text><rect x="450" y="45" width="170" height="80" rx="12" fill="#0f766e"/><text x="535" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">环境 Environment</text><text x="535" y="103" text-anchor="middle" font-size="12" fill="#ccfbf1">状态 s · 奖励 r</text><path d="M195,65 L445,65" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="55" text-anchor="middle" font-size="12" fill="#5b6472">动作 a</text><path d="M445,105 L195,105" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="125" text-anchor="middle" font-size="12" fill="#5b6472">观测 s′ · 奖励 r</text></svg></div>
+<ol class="flow">
+<li><span class="chip kind-observe">观察</span><b>初始化与观察</b>初始化在线网络参数 $\theta$，令目标网络参数 $\theta^{-} = \theta$，创建容量为 $N$ 的经验回放池 $\mathcal{D}$，并从环境得到初始状态 $s$，在线网络输出该状态下所有动作的 $Q(s, a; \theta)$。</li>
+<li><span class="chip kind-decide">决策</span><b>贪心选动作</b>采用 $\epsilon$-贪心策略：以概率 $\epsilon$ 随机选择动作 $a$，以概率 $1 - \epsilon$ 选择当前 $Q$ 值最大的动作 $a = \arg\max_{a} Q(s, a; \theta)$。</li>
+<li><span class="chip kind-act">行动</span><b>执行动作</b>在环境中执行动作 $a$，等待环境响应，为下一步接收奖励与新状态做准备。</li>
+<li><span class="chip kind-feedback">反馈</span><b>环境反馈</b>环境返回奖励 $r$、下一状态 $s'$ 与终止标志 $d$，并将转移 $(s, a, r, s', d)$ 存入回放池 $\mathcal{D}$。</li>
+<li><span class="chip kind-compute">计算</span><b>采样算目标</b>从 $\mathcal{D}$ 中随机采样一小批转移，用目标网络计算 $TD$ 目标 $y = r + \gamma (1 - d) \max_{a'} Q(s', a'; \theta^{-})$，并计算均方损失 $L(\theta) = (y - Q(s, a; \theta))^2$ 的批量平均。</li>
+<li><span class="chip kind-update">更新</span><b>梯度更新参数</b>用梯度下降更新在线网络，即 $\theta \leftarrow \theta - \alpha \nabla_{\theta} L(\theta)$，并每隔 $C$ 步令 $\theta^{-} = \theta$，把在线参数同步给目标网络。</li>
+<li><span class="chip kind-loop">循环</span><b>循环下一轮</b>令 $s = s'$，若 $d$ 为真则结束当前回合，否则回到第一步继续观察与决策，直至回合结束或达到最大步数。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑤ 关键公式</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="formula-card">
+<h4>贝尔曼最优方程</h4>
+<div>$$Q^*(s, a) = \mathbb{E}\left[r + \gamma \max_{a'} Q^*(s', a') \mid s, a\right]$$</div>
+<p>这是 DQN 的理论出发点：最优动作价值 $Q^*(s, a)$ 等于当前奖励 $r$ 加上折扣后的下一状态最优价值 $\gamma \max_{a'} Q^*(s', a')$ 的期望。它把“现在做 $a$ 有多好”分解为“立即奖励”与“未来最优回报”两部分。DQN 的训练目标就是让神经网络逼近满足该方程的 $Q^*(s, a)$。</p>
+<ul>
+<li>$Q^*(s, a)$：最优动作价值函数，表示在状态 $s$ 执行动作 $a$ 后按最优策略可获得的期望折扣回报。</li>
+<li>$r$：执行动作 $a$ 后环境给出的即时奖励。</li>
+<li>$\gamma$：折扣因子，取值在 $0$ 与 $1$ 之间，越接近 $1$ 越重视未来回报。</li>
+<li>$s'$：执行动作 $a$ 后转移到的下一状态。</li>
+<li>$a'$：在下一状态 $s'$ 下可选择的动作，取最大值时对应最优的下一动作。</li>
+<li>$\mathbb{E}[\cdot \mid s, a]$：条件期望，表示对环境转移与奖励的不确定性求平均。</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>TD 目标（目标网络）</h4>
+<div>$$y = r + \gamma (1 - d) \max_{a'} Q(s', a'; \theta^{-})$$</div>
+<p>这是用贝尔曼最优方程构造的单步 $TD$ 目标：把下一状态的最优价值估计 $\max_{a'} Q(s', a'; \theta^{-})$ 折扣后加上奖励 $r$，作为当前 $Q$ 值应逼近的监督信号。当 $d = 1$ 表示回合终止时，$(1 - d)$ 项会抹去未来价值，只保留 $r$。目标由参数冻结的目标网络 $\theta^{-}$ 计算，因此在一次更新内保持稳定。</p>
+<ul>
+<li>$y$：单步 $TD$ 目标，即当前 $Q$ 值应逼近的监督信号。</li>
+<li>$r$：即时奖励。</li>
+<li>$\gamma$：折扣因子，控制未来价值在目标中的权重。</li>
+<li>$d$：终止标志，$d = 1$ 表示回合终止，$d = 0$ 表示未终止。</li>
+<li>$Q(s', a'; \theta^{-})$：目标网络对下一状态 $s'$ 下动作 $a'$ 的价值估计。</li>
+<li>$\theta^{-}$：目标网络的参数，在固定步数内保持不变。</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>DQN 损失函数</h4>
+<div>$$L(\theta) = \mathbb{E}_{(s, a, r, s') \sim \mathcal{D}}\left[\left(y - Q(s, a; \theta)\right)^2\right]$$</div>
+<p>损失是 $TD$ 目标 $y$ 与在线网络预测 $Q(s, a; \theta)$ 之差的平方在回放池 $\mathcal{D}$ 上的期望，衡量当前网络与贝尔曼目标的差距。对小批量样本取平均即可得到可计算的经验损失。最小化该损失等价于让网络输出不断向满足贝尔曼最优方程的方向移动。</p>
+<ul>
+<li>$L(\theta)$：DQN 的损失函数，衡量网络预测与 $TD$ 目标之间的差距。</li>
+<li>$\theta$：在线网络的待训练参数。</li>
+<li>$y$：$TD$ 目标，由目标网络计算得到，在一次更新中视为常数。</li>
+<li>$Q(s, a; \theta)$：在线网络对状态 $s$ 下动作 $a$ 的价值预测。</li>
+<li>$\mathcal{D$：经验回放池，期望是对从 $\mathcal{D}$ 中随机采样的转移求平均。</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>梯度下降参数更新</h4>
+<div>$$\theta \leftarrow \theta - \alpha \nabla_{\theta} L(\theta)$$</div>
+<p>这是 DQN 的参数更新规则：沿损失 $L(\theta)$ 关于 $\theta$ 的负梯度方向，以学习率 $\alpha$ 为步长调整网络参数。每做一次小批量更新，$Q(s, a; \theta)$ 就向 $TD$ 目标 $y$ 靠近一步。反复更新后，网络逐步逼近最优动作价值函数 $Q^*(s, a)$。</p>
+<ul>
+<li>$\theta$：在线网络参数，更新后用于下一轮动作选择与价值预测。</li>
+<li>$\alpha$：学习率，控制每次梯度更新的步长。</li>
+<li>$\nabla_{\theta} L(\theta)$：损失 $L(\theta)$ 关于参数 $\theta$ 的梯度，指示损失上升最快的方向。</li>
+<li>$L(\theta)$：DQN 的均方 $TD$ 损失。</li>
+</ul>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑥ 数学推导</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol class="mathnotes">
+<li>
+<p>从表格 $Q$-Learning 出发，最优动作价值 $Q^*(s, a)$ 应满足贝尔曼最优方程，即当前动作的价值等于即时奖励加上折扣后的未来最优价值。</p>
+</li>
+<li>
+<p>当状态 $s$ 是高维图像或连续向量时，无法为每个 $s$ 建表，于是用神经网络 $Q(s, a; \theta)$ 近似 $Q^*(s, a)$，输入是 $s$，输出是全部离散动作的 $Q$ 值。</p>
+</li>
+<li>
+<p>把近似函数代入贝尔曼最优方程，得到可计算的单步 $TD$ 目标，关键在于用独立的目标网络 $Q(s', a'; \theta^{-})$ 估计下一状态的价值，而不是用正在更新的在线网络。</p>
+<div>$$y = r + \gamma (1 - d) \max_{a'} Q(s', a'; \theta^{-})$$</div></li>
+<li>
+<p>若 $d = 1$，回合已终止，未来价值为 $0$，目标退化为 $y = r$；若 $d = 0$，则保留折扣的未来价值 $\gamma \max_{a'} Q(s', a'; \theta^{-})$。</p>
+</li>
+<li>
+<p>定义 $TD$ 误差为目标与预测之差 $y - Q(s, a; \theta)$，对其平方并在回放池 $\mathcal{D}$ 中随机采样的小批量上取期望，就得到 DQN 的损失函数。</p>
+<div>$$L(\theta) = \mathbb{E}_{(s, a, r, s') \sim \mathcal{D}}\left[\left(y - Q(s, a; \theta)\right)^2\right]$$</div></li>
+<li>
+<p>经验回放的作用是把期望的分布从连续相关的轨迹换成回放池 $\mathcal{D}$ 中的均匀采样，从而打破相邻样本的相关性，并让同一条转移 $(s, a, r, s', d)$ 被多次利用。</p>
+</li>
+<li>
+<p>目标网络 $\theta^{-}$ 在 $C$ 步内保持不变，使 $y$ 在一次更新中成为相对固定的监督信号，避免在线网络与目标同时漂移导致的训练不稳定。</p>
+</li>
+<li>
+<p>对损失求关于 $\theta$ 的梯度并做一步随机梯度下降，更新规则为 $\theta \leftarrow \theta - \alpha \nabla_{\theta} L(\theta)$，这一步只改在线网络 $\theta$，不直接改 $\theta^{-}$。</p>
+</li>
+<li>
+<p>每隔 $C$ 步执行一次 $\theta^{-} = \theta$，把学到的新参数同步给目标网络，再开始下一轮相对稳定的拟合，如此交替进行，网络逐步逼近 $Q^*(s, a)$。</p>
+</li>
+<li>
+<p>数值例子：设某一步网络预测 $Q(s, a; \theta) = 1.0$，环境给出奖励 $r = 1$，下一状态的目标网络最大 $Q$ 值为 $\max_{a'} Q(s', a'; \theta^{-}) = 2.0$，折扣因子 $\gamma = 0.9$，且 $d = 0$，则目标为 $y = 1 + 0.9 \times 2.0 = 2.8$。</p>
+</li>
+<li>
+<p>数值例子（续）：此时 $TD$ 误差为 $y - Q(s, a; \theta) = 2.8 - 1.0 = 1.8$，单个样本的损失为 $1.8^2 = 3.24$，梯度下降会沿减小损失的方向增大 $Q(s, a; \theta)$，使其向 $2.8$ 靠近；若该步是终止步 $d = 1$，则 $y = r = 1$，误差变为 $0$，无需再学习未来价值。</p>
+</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑦ 伪代码</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="pseudo">
+<h4>初始化在线网络参数 $\theta$，令目标网络参数 $\theta^{-} = \theta$</h4>
+<div class="step"><span class="stepnum">·</span> 创建容量为 $N$ 的经验回放池 $\mathcal{D}$，设定折扣因子 $\gamma$、学习率 $\alpha$ 与探索率 $\epsilon$</div>
+</div>
+<div class="pseudo">
+<h4>对每个回合重复执行：</h4>
+<div class="step"><span class="stepnum">·</span> 初始化环境，得到初始状态 $s$</div>
+<div class="step"><span class="stepnum">·</span> 对每个时间步 $t$ 重复执行：</div>
+<div class="step"><span class="stepnum">·</span> 以概率 $\epsilon$ 随机选择动作 $a$，否则选择 $a = \arg\max_{a} Q(s, a; \theta)$</div>
+<div class="step"><span class="stepnum">·</span> 执行动作 $a$，观测奖励 $r$、下一状态 $s'$ 与终止标志 $d$</div>
+<div class="step"><span class="stepnum">·</span> 将转移 $(s, a, r, s', d)$ 存入 $\mathcal{D}$</div>
+</div>
+<div class="pseudo">
+<h4>从 $\mathcal{D}$ 中随机采样小批量转移 $(s, a, r, s', d)$</h4>
+<div class="step"><span class="stepnum">·</span> 对每个样本计算目标 $y = r + \gamma (1 - d) \max_{a'} Q(s', a'; \theta^{-})$</div>
+<div class="step"><span class="stepnum">·</span> 计算损失 $L(\theta) = (y - Q(s, a; \theta))^2$ 并对小批量取平均</div>
+<div class="step"><span class="stepnum">·</span> 用梯度下降更新 $\theta$，即</div>
+<div class="step formula-line"><div>$$\theta \leftarrow \theta - \alpha \nabla_{\theta} L(\theta)$$</div></div>
+<div class="step"><span class="stepnum">·</span> 每隔 $C$ 步令 $\theta^{-} = \theta$</div>
+</div>
+<div class="pseudo">
+<h4>令 $s = s'$</h4>
+<div class="step"><span class="stepnum">·</span> 若 $d$ 为真，则结束当前回合</div>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑧ Python 代码（可运行）</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<pre class="code"><button class="copybtn">复制代码</button><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69</span><code><span class="tok-kw">import</span> random
+<span class="tok-kw">from</span> collections <span class="tok-kw">import</span> deque
+<span class="tok-kw">import</span> numpy <span class="tok-kw">as</span> np, torch
+<span class="tok-kw">import</span> torch.nn <span class="tok-kw">as</span> nn
+<span class="tok-kw">import</span> torch.optim <span class="tok-kw">as</span> optim
+<span class="tok-kw">import</span> gymnasium <span class="tok-kw">as</span> gym
+GAMMA, LR, BATCH, BUFFER = <span class="tok-num">0.99</span>, <span class="tok-num">1</span>e-<span class="tok-num">3</span>, <span class="tok-num">64</span>, <span class="tok-num">10000</span>
+EPS_START, EPS_END, EPS_DECAY = <span class="tok-num">1.0</span>, <span class="tok-num">0.05</span>, <span class="tok-num">0.99</span>  <span class="tok-com"># epsilon 衰减：探索逐渐转向利用</span>
+TARGET_UPDATE, EPISODES = <span class="tok-num">10</span>, <span class="tok-num">200</span>  <span class="tok-com"># 每 10 回合同步目标网络，避免 TD 目标漂移</span>
+<span class="tok-kw">class</span> <span class="tok-fn">QNetwork</span>(nn.Module):
+    <span class="tok-str">"""输入状态，输出所有动作的 Q(s,a;theta)"""</span>
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(self, obs_dim, act_dim):
+        <span class="tok-fn">super</span>().<span class="tok-fn">__init__</span>()
+        self.net = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(obs_dim, <span class="tok-num">128</span>), nn.<span class="tok-fn">ReLU</span>(), nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, <span class="tok-num">128</span>), nn.<span class="tok-fn">ReLU</span>(), nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, act_dim))
+    <span class="tok-kw">def</span> <span class="tok-fn">forward</span>(self, x):
+        <span class="tok-kw">return</span> self.<span class="tok-fn">net</span>(x)
+<span class="tok-kw">class</span> ReplayBuffer:
+    <span class="tok-str">"""经验回放：随机采样打破相邻样本相关性"""</span>
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(self, capacity):
+        self.buffer = <span class="tok-fn">deque</span>(maxlen=capacity)
+    <span class="tok-kw">def</span> <span class="tok-fn">push</span>(self, *t):
+        self.buffer.<span class="tok-fn">append</span>(t)
+    <span class="tok-kw">def</span> <span class="tok-fn">sample</span>(self, batch):
+        s, a, r, ns, d = <span class="tok-bi">zip</span>(*random.<span class="tok-fn">sample</span>(self.buffer, batch))
+        <span class="tok-kw">return</span> (np.<span class="tok-fn">array</span>(s, np.float32), np.<span class="tok-fn">array</span>(a), np.<span class="tok-fn">array</span>(r, np.float32), np.<span class="tok-fn">array</span>(ns, np.float32), np.<span class="tok-fn">array</span>(d, np.float32))
+    <span class="tok-kw">def</span> <span class="tok-fn">__len__</span>(self):
+        <span class="tok-kw">return</span> <span class="tok-bi">len</span>(self.buffer)
+<span class="tok-kw">def</span> <span class="tok-fn">select_action</span>(net, state, epsilon):
+    <span class="tok-com"># epsilon-贪心：小概率随机探索，大概率选 Q 最大动作</span>
+    <span class="tok-kw">if</span> random.<span class="tok-fn">random</span>() &lt; epsilon:
+        <span class="tok-kw">return</span> random.<span class="tok-fn">randint</span>(<span class="tok-num">0</span>, <span class="tok-num">1</span>)
+    <span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():
+        <span class="tok-kw">return</span> <span class="tok-bi">int</span>(torch.<span class="tok-fn">argmax</span>(<span class="tok-fn">net</span>(torch.<span class="tok-fn">tensor</span>(state, dtype=torch.float32))).<span class="tok-fn">item</span>())
+<span class="tok-kw">def</span> <span class="tok-fn">train_step</span>(policy_net, target_net, optimizer, buffer):
+    <span class="tok-kw">if</span> <span class="tok-bi">len</span>(buffer) &lt; BATCH:
+        <span class="tok-kw">return</span>
+    s, a, r, ns, d = buffer.<span class="tok-fn">sample</span>(BATCH)
+    s, ns = torch.<span class="tok-fn">tensor</span>(s), torch.<span class="tok-fn">tensor</span>(ns)
+    a, r, d = torch.<span class="tok-fn">tensor</span>(a), torch.<span class="tok-fn">tensor</span>(r), torch.<span class="tok-fn">tensor</span>(d)
+    q = <span class="tok-fn">policy_net</span>(s).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, a.<span class="tok-fn">unsqueeze</span>(<span class="tok-num">1</span>)).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)  <span class="tok-com"># 取执行动作的 Q(s,a;theta)</span>
+    <span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():  <span class="tok-com"># 目标网络不参与反传</span>
+        y = r + GAMMA * (<span class="tok-num">1</span> - d) * <span class="tok-fn">target_net</span>(ns).<span class="tok-fn">max</span>(<span class="tok-num">1</span>)[<span class="tok-num">0</span>]  <span class="tok-com"># TD 目标，终止时无后续价值</span>
+    loss = nn.<span class="tok-fn">MSELoss</span>()(q, y)  <span class="tok-com"># 最小化 (y-Q)^2，逼近贝尔曼最优方程</span>
+    optimizer.<span class="tok-fn">zero_grad</span>(); loss.<span class="tok-fn">backward</span>(); optimizer.<span class="tok-fn">step</span>()
+<span class="tok-kw">def</span> <span class="tok-fn">main</span>():
+    env = gym.<span class="tok-fn">make</span>(<span class="tok-str">"CartPole-v1"</span>)
+    obs_dim, act_dim = env.observation_space.shape[<span class="tok-num">0</span>], env.action_space.n
+    policy_net, target_net = <span class="tok-fn">QNetwork</span>(obs_dim, act_dim), <span class="tok-fn">QNetwork</span>(obs_dim, act_dim)
+    target_net.<span class="tok-fn">load_state_dict</span>(policy_net.<span class="tok-fn">state_dict</span>())  <span class="tok-com"># 初始 theta^- = theta</span>
+    optimizer = optim.<span class="tok-fn">Adam</span>(policy_net.<span class="tok-fn">parameters</span>(), lr=LR)
+    buffer, epsilon = <span class="tok-fn">ReplayBuffer</span>(BUFFER), EPS_START
+    <span class="tok-kw">for</span> episode <span class="tok-kw">in</span> <span class="tok-bi">range</span>(EPISODES):
+        state, _ = env.<span class="tok-fn">reset</span>(seed=episode)
+        total_reward, done = <span class="tok-num">0</span>, <span class="tok-kw">False</span>
+        <span class="tok-kw">while</span> <span class="tok-kw">not</span> done:
+            action = <span class="tok-fn">select_action</span>(policy_net, state, epsilon)
+            next_state, reward, terminated, truncated, _ = env.<span class="tok-fn">step</span>(action)
+            done = terminated <span class="tok-kw">or</span> truncated
+            buffer.<span class="tok-fn">push</span>(state, action, reward, next_state, <span class="tok-bi">float</span>(done))
+            <span class="tok-fn">train_step</span>(policy_net, target_net, optimizer, buffer)
+            state, total_reward = next_state, total_reward + reward
+        epsilon = <span class="tok-bi">max</span>(EPS_END, epsilon * EPS_DECAY)
+        <span class="tok-kw">if</span> (episode + <span class="tok-num">1</span>) % TARGET_UPDATE == <span class="tok-num">0</span>:
+            target_net.<span class="tok-fn">load_state_dict</span>(policy_net.<span class="tok-fn">state_dict</span>())  <span class="tok-com"># 定期硬同步目标网络</span>
+        <span class="tok-kw">if</span> (episode + <span class="tok-num">1</span>) % <span class="tok-num">50</span> == <span class="tok-num">0</span>:
+            <span class="tok-bi">print</span>(f<span class="tok-str">"回合 {episode + 1}: 总奖励 {total_reward:.0f}, epsilon={epsilon:.3f}"</span>)
+    env.<span class="tok-fn">close</span>()
+<span class="tok-kw">if</span> __name__ == <span class="tok-str">"__main__"</span>:
+    <span class="tok-fn">main</span>()</code></pre>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑨ 代码讲解</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>开头定义 $\gamma=0.99$、学习率 $1\times10^{-3}$、批量大小 $64$、回放池容量 $10000$，以及 $\epsilon$ 从 $1.0$ 衰减到 $0.05$、衰减系数 $0.99$、每 $10$ 个回合同步一次目标网络、共训练 $200$ 个回合。这些常量把 $TD$ 学习、探索与目标网络稳定的节奏固定下来，后续所有函数都引用它们，避免在循环中硬编码数值。</li>
+<li>`QNetwork` 是三层全连接网络：输入状态 $s$（对 `CartPole-v1` 为 $4$ 维），经两个 $128$ 维隐藏层与 $\mathrm{ReLU}$ 激活，输出 $2$ 个动作各自的 $Q(s, a; \theta)$。一次前向传播即可得到全部动作的价值，选动作时只需取 $\arg\max_a Q(s, a; \theta)$，这正是用函数近似替代表格 $Q$ 表、推广到连续状态 $s$ 的关键。</li>
+<li>`ReplayBuffer` 用 `deque` 实现容量为 $10000$ 的先进先出回放池，`push` 存入每一步的转移 $(s, a, r, s', d)$，其中 $d$ 表示是否终止；`sample` 用 `random.sample` 随机抽取 $64$ 条转移并转成 `numpy` 数组返回。随机采样打破了相邻转移在时间上的相关性，使小批量数据的分布更接近独立同分布，同时让同一条经验可被多次复用，提高样本效率。</li>
+<li>`select_action` 实现 $\epsilon$-贪心：以概率 $\epsilon$ 随机返回动作 $0$ 或 $1$ 进行探索，以概率 $1-\epsilon$ 在不计算梯度的情况下取当前 $Q(s, a; \theta)$ 最大的动作进行利用。`main` 中每回合结束令 $\epsilon$ 乘以 $0.99$，并用 $0.05$ 下限截断，即 $\epsilon \leftarrow \max(0.05, 0.99\epsilon)$，使探索随训练逐渐减少但不完全消失。</li>
+<li>`train_step` 是算法核心：先等回放池样本数不少于 $64$ 再训练；用 `policy_net` 对小批量状态 $s$ 取执行动作 $a$ 对应的 $Q(s, a; \theta)$，即 `gather` 操作；再用参数为 $\theta^{-}$ 的 `target_net` 在 `torch.no_grad()` 下计算 $TD$ 目标 $y = r + \gamma (1-d) \max_{a'} Q(s', a'; \theta^{-})$，其中终止时 $d=1$ 使后续价值为 $0$。最后以均方误差 $L(\theta) = \mathbb{E}[(y - Q(s, a; \theta))^2]$ 为损失，经 `optimizer.zero_grad()`、`loss.backward()` 与 `optimizer.step()` 更新 $\theta$，逐步逼近 $Q^*(s, a)$。</li>
+<li>`main` 创建 `CartPole-v1` 环境与两个结构相同的网络，初始令 $\theta^{-}=\theta$，用 $\mathrm{Adam}$ 优化器训练 `policy_net`；每回合先 `reset` 得到初始状态 $s$，循环中按 $\epsilon$-贪心选动作、执行 `env.step`、把 $(s, a, r, s', d)$ 存入回放池并调用 `train_step`，直到终止或截断；每 $10$ 回合把 $\theta$ 硬复制给 $\theta^{-}$，每 $50$ 回合打印总奖励与 $\epsilon$，用奖励是否接近 $500$ 判断学习效果。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑩ 超参数</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<table class="data"><tr><th>参数</th><th>常用取值</th><th>说明</th></tr>
+<tr><td>折扣因子 $\gamma$</td><td>$0.99$</td><td>决定未来奖励在 $TD$ 目标 $y = r + \gamma \max_{a'} Q(s', a'; \theta^{-})$ 中的权重；$\gamma$ 越接近 $1$，智能体越看重长期回报，但 $TD$ 目标的方差与训练不稳定性也越大，`CartPole-v1` 这类长回合任务常用 $0.99$。</td></tr>
+<tr><td>学习率 $\alpha$</td><td>$1\times10^{-3}$</td><td>过大学习率会使 $Q(s, a; \theta)$ 更新步长过大、损失震荡甚至发散，过小则收敛过慢；配合 $\mathrm{Adam}$ 优化器，`CartPole-v1` 上 $10^{-3}$ 是常用起点，若损失长期不降可降至 $10^{-4}$ 量级再试。</td></tr>
+<tr><td>小批量大小 $B$</td><td>$64$</td><td>每次从回放池随机采样 $64$ 条转移计算 $TD$ 目标与损失 $L(\theta)$；$B$ 太小会使梯度噪声大、训练不稳，太大则计算变慢且单步更新对新经验反应迟钝，$32$ 到 $128$ 是常见区间。</td></tr>
+<tr><td>回放池容量 $N$</td><td>$10000$</td><td>容量 $10000$ 决定了可复用的历史经验范围；容量太小会过早丢弃有用经验、样本相关性回升，太大则池中多为早期低质量策略产生的旧转移，`CartPole-v1` 上 $10000$ 已足够，复杂任务可增大到 $10^5$ 量级。</td></tr>
+<tr><td>目标网络同步间隔（$\theta^{-}$ 更新频率）</td><td>$10$ 回合</td><td>每 $10$ 回合把 $\theta$ 复制给 $\theta^{-}$；间隔太短会使 $TD$ 目标 $y$ 随 $\theta$ 快速漂移、训练震荡，太长则目标过时、学习变慢；也可改为每 $1000$ 步软更新 $\theta^{-}$，但本课代码采用硬同步。</td></tr>
+<tr><td>$\epsilon$ 探索参数</td><td>$\epsilon$ 从 $1.0$ 衰减到 $0.05$，每回合乘 $0.99$</td><td>初始 $\epsilon=1.0$ 保证前期充分探索，若衰减过快、$\epsilon$ 很早降到 $0.05$，智能体会在 $Q(s, a; \theta)$ 尚未学好时过早利用次优动作；若衰减过慢则后期仍大量随机动作、奖励难以稳定，可通过打印 $\epsilon$ 与总奖励曲线判断衰减是否合适。</td></tr>
+</table>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑪ 常见坑</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>忘记处理终止状态：计算 $TD$ 目标时漏掉 $(1-d)$，会使终止状态 $s'$ 仍被赋予 $\gamma \max_{a'} Q(s', a'; \theta^{-})$ 的后续价值，导致 $Q(s, a; \theta)$ 被系统性高估；检查方法是让 $d=1$ 的样本单独计算 $y=r$，或在训练初期打印 $y$ 与 $r$ 的均值对比。</li>
+<li>目标网络与策略网络混用或漏加 `torch.no_grad()`：若用 `policy_net` 计算 $y$，或让 $y$ 参与反向传播，目标会随 $\theta$ 同步移动，相当于自己追自己，损失难以收敛；应始终用 `target_net` 计算 $y$ 并用 `torch.no_grad()` 包裹，且只在固定间隔把 $\theta$ 复制给 $\theta^{-}$，不要每步同步。</li>
+<li>$\epsilon$ 衰减过快或回放池未预热：$\epsilon$ 在几十回合内就降到 $0.05$，或在回放池样本少于 $64$ 时仍期望有学习效果，都会导致早期探索不足、策略陷入局部最优；建议先检查打印的 $\epsilon$ 与总奖励曲线，前 $50$ 回合保持较高探索，并确认 `train_step` 在样本数不足 $64$ 时直接返回的逻辑没有被误删。</li>
+<li>学习率与 $Q$ 值爆炸：损失突然变大、$Q(s, a; \theta)$ 绝对值持续增大或出现 $\mathrm{NaN}$，多因学习率过高或 `gather` 索引错误导致取到错误的动作价值；调试时先把学习率降到 $10^{-4}$、打印每 $50$ 回合的损失均值与 $Q$ 均值，并核对动作 $a$ 的取值范围是否为 $0$ 或 $1$。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑫ 练习题</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p class="qa-q"><b>练习题 1</b> 与表格 $Q$-Learning 相比，为什么 DQN 不能只是把 $Q$ 表换成神经网络 $Q(s, a; \theta)$ 就直接训练？请结合 $TD$ 目标 $y$ 与损失 $L(\theta)$，说明经验回放和目标网络分别要解决什么不稳定因素，以及它们是如何起作用的。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>核心区别不在学习目标本身，而在用函数近似之后训练会变得不稳定。表格 $Q$-Learning 更新的是彼此相对独立的表项，而 DQN 要用同一个参数 $\theta$ 拟合所有 $s$ 和 $a$，一次更新会同时改变很多状态动作的 $Q$ 值。</p>
+<p>DQN 的学习目标仍来自贝尔曼最优方程：用 $Q(s, a; \theta)$ 近似 $Q^*(s, a)$，并构造 $TD$ 目标 $y = r + \gamma (1 - d) \max_{a'} Q(s', a'; \theta^{-})$，其中 $r$ 为即时奖励，$\gamma$ 为折扣因子，$d$ 为终止标志，$s'$ 为下一状态，$\theta^{-}$ 为目标网络参数。损失为 $L(\theta) = \mathbb{E}_{(s, a, r, s') \sim \mathcal{D}}[(y - Q(s, a; \theta))^2]$，更新为 $\theta \leftarrow \theta - \alpha \nabla_{\theta} L(\theta)$。若 $d = 1$，则 $y = r$；若 $d = 0$，则保留 $\gamma \max_{a'} Q(s', a'; \theta^{-})$。</p>
+<p>第一个不稳定因素是样本高度相关。智能体按轨迹连续收集 $(s, a, r, s', d)$，相邻样本几乎来自同一段轨迹，若按顺序做随机梯度下降，梯度会沿同一方向反复偏移，网络容易被近期数据带偏。经验回放把转移存入回放池 $\mathcal{D}$，再从中均匀随机采样小批量训练。这样做一是打破相邻样本的相关性，使小批量更接近独立同分布；二是同一条转移可被多次利用，提高样本利用率；三是训练分布不再完全由当前策略的最近轨迹决定，从而更稳定。</p>
+<p>第二个不稳定因素是目标本身在动。如果用同一个在线网络同时计算预测 $Q(s, a; \theta)$ 和目标中的 $\max_{a'} Q(s', a'; \theta)$，那么每更新一次 $\theta$，$y$ 也会跟着变，相当于用自己不断移动的预测去监督自己，容易出现追逐自身、震荡甚至发散。目标网络把计算目标的参数固定为 $\theta^{-}$，在 $C$ 步内不更新，使 $y$ 在一次或一段更新中成为相对固定的监督信号；只有每隔 $C$ 步才执行 $\theta^{-} = \theta$，把已学到的参数同步过去，再开始下一轮稳定拟合。</p>
+<p>此外，DQN 仍用 $\epsilon$-贪心在探索与利用之间平衡：以概率 $\epsilon$ 随机选动作，以概率 $1 - \epsilon$ 选当前 $Q$ 值最大的动作；$\epsilon$ 随训练衰减，探索逐渐转向利用。没有这一点，即使损失稳定下降，也可能只在已访问的区域内收敛到次优策略。</p>
+<p>因此，DQN 不是简单替换，而是一套组合：神经网络解决高维状态的泛化，经验回放解决样本相关与低效，目标网络解决目标漂移，三者共同使 $Q(s, a; \theta)$ 能稳定逼近 $Q^*(s, a)$。</p>
+</div></details>
+<p class="qa-q"><b>练习题 2</b> 设折扣因子 $\gamma = 0.9$，从经验回放池 $\mathcal{D}$ 中随机采样得到一个包含三条转移 $(s, a, r, s', d)$ 的小批量。在线网络对已执行动作的预测值、环境奖励、目标网络在下一状态的最大 $Q$ 值，以及终止标志如下：</p>
+<p class="qa-q">第一条转移：$Q(s_1, a_1; \theta) = 0.8$，$r_1 = 1$，$\max_{a'} Q(s_1', a'; \theta^{-}) = 2.5$，$d_1 = 0$；
+第二条转移：$Q(s_2, a_2; \theta) = 1.2$，$r_2 = 0$，$\max_{a'} Q(s_2', a'; \theta^{-}) = 1.0$，$d_2 = 1$；
+第三条转移：$Q(s_3, a_3; \theta) = 1.5$，$r_3 = -1$，$\max_{a'} Q(s_3', a'; \theta^{-}) = 2.0$，$d_3 = 0$。</p>
+<p class="qa-q">第一，分别计算每条转移的 $TD$ 目标 $y_i$ 与 $TD$ 误差 $\delta_i = y_i - Q(s_i, a_i; \theta)$，其中 $y_i = r_i + \gamma (1 - d_i) \max_{a'} Q(s_i', a'; \theta^{-})$，$i = 1, 2, 3$。</p>
+<p class="qa-q">第二，计算每条转移的单个样本损失 $(y_i - Q(s_i, a_i; \theta))^2$，以及该小批量的平均损失 $L(\theta) = \frac{1}{3} \sum_{i=1}^{3} (y_i - Q(s_i, a_i; \theta))^2$。</p>
+<p class="qa-q">第三，若在计算第二条转移时错误地漏掉因子 $(1 - d_2)$，即误用 $y_2 = r_2 + \gamma \max_{a'} Q(s_2', a'; \theta^{-})$，计算错误的 $y_2$、$\delta_2$ 与单个样本损失，并与正确结果比较，说明漏掉 $(1 - d_2)$ 会带来什么问题。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>先写出单步 $TD$ 目标的计算公式：$y = r + \gamma (1 - d) \max_{a'} Q(s', a'; \theta^{-})$，以及 $TD$ 误差 $\delta = y - Q(s, a; \theta)$，单个样本损失为 $(y - Q(s, a; \theta))^2$。下面逐条计算。</p>
+<p>第一条转移：$y_1 = r_1 + \gamma (1 - d_1) \max_{a'} Q(s_1', a'; \theta^{-}) = 1 + 0.9 \times (1 - 0) \times 2.5 = 1 + 0.9 \times 2.5 = 1 + 2.25 = 3.25$。于是 $TD$ 误差为 $\delta_1 = y_1 - Q(s_1, a_1; \theta) = 3.25 - 0.8 = 2.45$，单个样本损失为 $(y_1 - Q(s_1, a_1; \theta))^2 = 2.45^2 = 6.0025$。$\delta_1 &gt; 0$ 说明在线网络低估了该动作的价值，梯度下降会增大 $Q(s_1, a_1; \theta)$，使其向 $3.25$ 靠近。</p>
+<p>第二条转移：由于 $d_2 = 1$，回合已经终止，$(1 - d_2) = 0$，未来价值项被完全去掉，$y_2 = r_2 + \gamma (1 - d_2) \max_{a'} Q(s_2', a'; \theta^{-}) = 0 + 0.9 \times (1 - 1) \times 1.0 = 0 + 0 = 0$。于是 $\delta_2 = y_2 - Q(s_2, a_2; \theta) = 0 - 1.2 = -1.2$，单个样本损失为 $(y_2 - Q(s_2, a_2; \theta))^2 = (-1.2)^2 = 1.44$。$\delta_2 &lt; 0$ 说明在线网络高估了该动作的价值，应减小 $Q(s_2, a_2; \theta)$，使其向 $0$ 靠近。</p>
+<p>第三条转移：$y_3 = r_3 + \gamma (1 - d_3) \max_{a'} Q(s_3', a'; \theta^{-}) = -1 + 0.9 \times (1 - 0) \times 2.0 = -1 + 0.9 \times 2.0 = -1 + 1.8 = 0.8$。于是 $\delta_3 = y_3 - Q(s_3, a_3; \theta) = 0.8 - 1.5 = -0.7$，单个样本损失为 $(y_3 - Q(s_3, a_3; \theta))^2 = (-0.7)^2 = 0.49$。$\delta_3 &lt; 0$ 同样说明在线网络高估了该动作的价值，应减小 $Q(s_3, a_3; \theta)$，使其向 $0.8$ 靠近。</p>
+<p>小批量平均损失为 $L(\theta) = \frac{1}{3} (6.0025 + 1.44 + 0.49) = \frac{1}{3} \times 7.9325 = 2.644166\ldots \approx 2.64$。</p>
+<p>若漏掉 $(1 - d_2)$，则错误的 $TD$ 目标为 $y_2^{\mathrm{wrong}} = r_2 + \gamma \max_{a'} Q(s_2', a'; \theta^{-}) = 0 + 0.9 \times 1.0 = 0.9$，错误的 $TD$ 误差为 $\delta_2^{\mathrm{wrong}} = y_2^{\mathrm{wrong}} - Q(s_2, a_2; \theta) = 0.9 - 1.2 = -0.3$，错误的单个样本损失为 $(y_2^{\mathrm{wrong}} - Q(s_2, a_2; \theta))^2 = (-0.3)^2 = 0.09$。与正确结果 $y_2 = 0$、$\delta_2 = -1.2$、损失 $1.44$ 相比，错误目标高估了 $0.9$，误差的绝对值由 $1.2$ 缩小为 $0.3$，损失由 $1.44$ 缩小为 $0.09$。这会使网络只把 $Q(s_2, a_2; \theta)$ 略微下调到 $0.9$ 附近，而不是正确地下调到 $0$ 附近，相当于为已经终止的状态虚构了并不存在的未来价值，造成 $Q$ 值高估，并且这种高估还会通过 $\max_{a'} Q(s', a'; \theta^{-})$ 传播到前面的状态。</p>
+<p>最终结果：$y_1 = 3.25$，$\delta_1 = 2.45$，损失 $6.0025$；$y_2 = 0$，$\delta_2 = -1.2$，损失 $1.44$；$y_3 = 0.8$，$\delta_3 = -0.7$，损失 $0.49$；小批量平均损失 $L(\theta) \approx 2.64$。</p>
+</div></details>
+<p class="qa-q"><b>练习题 3</b> 基于本课 DQN 代码，把 `train_step` 中的 $TD$ 目标改造成 Double DQN。</p>
+<p class="qa-q">本课代码的 `train_step` 函数中，$TD$ 目标是这样计算的：</p>
+<pre class="code"><span class="ln-col">1
+2</span><code><span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():
+    y = r + GAMMA * (<span class="tok-num">1</span> - d) * <span class="tok-fn">target_net</span>(ns).<span class="tok-fn">max</span>(<span class="tok-num">1</span>)[<span class="tok-num">0</span>]</code></pre>
+<p class="qa-q">即 $y = r + \gamma (1 - d) \max_{a'} Q(s', a'; \theta^{-})$，其中 $\gamma$ 为折扣因子，$d$ 为终止标志，$\theta^{-}$ 为目标网络参数。这一写法让同一个目标网络既负责在 $s'$ 处挑选使 $Q$ 值最大的动作，又负责评估该动作的价值，容易产生对 $Q$ 值的高估。</p>
+<p class="qa-q">请把上述 $TD$ 目标的计算改造成 Double DQN：用在线网络 $Q(s', a'; \theta)$ 挑选下一动作 $a^* = \arg\max_{a'} Q(s', a'; \theta)$，再用目标网络 $Q(s', a'; \theta^{-})$ 评估该动作，即 $y = r + \gamma (1 - d) Q(s', a^*; \theta^{-})$。</p>
+<p class="qa-q">要求：
+1. 明确指出要改的是 `train_step` 中的哪几行，并给出改动前后的关键代码；
+2. 简要说明这样改为什么能缓解高估，以及为什么不需要改动 $Q$ 网络结构、经验回放、损失函数 $L(\theta) = \mathbb{E}[(y - Q(s, a; \theta))^2]$ 和目标网络同步逻辑；
+3. 在 `CartPole-v1` 上运行改造后的代码（超参数与原代码相同，`EPISODES = 200`），预测与原 DQN 相比，在 $TD$ 目标 $y$ 与 $Q$ 估计值、损失曲线和回合奖励曲线上会看到什么现象，并说明如何通过打印或记录平均 $y$ 来验证改造是否生效。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p><b>1. 为什么原写法会高估</b></p>
+<p>当目标网络对不同动作的 $Q$ 估计都带有噪声时，取 $\max$ 的操作总是倾向于挑到被高估的那个动作，即 $\mathbb{E}[\max_{a'} Q(s', a'; \theta^{-})] \ge \max_{a'} \mathbb{E}[Q(s', a'; \theta^{-})]$。在 `CartPole-v1` 中只有两个动作，两个动作的真实 $Q$ 值常常很接近，噪声更容易决定 $\max$ 的结果，于是 $y$ 会被系统性抬高，抬高的 $y$ 又通过损失 $L(\theta)$ 去抬高 $Q(s, a; \theta)$，形成自我强化的高估循环。</p>
+<p><b>2. 改哪几行、改成什么</b></p>
+<p>只改 `train_step` 中计算 $y$ 的一行，改为三行，其余代码不动：</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4</span><code><span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():
+    next_actions = <span class="tok-fn">policy_net</span>(ns).<span class="tok-fn">argmax</span>(<span class="tok-num">1</span>, keepdim=<span class="tok-kw">True</span>)  <span class="tok-com"># 在线网络选动作</span>
+    next_q = <span class="tok-fn">target_net</span>(ns).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, next_actions).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)  <span class="tok-com"># 目标网络评估被选动作</span>
+    y = r + GAMMA * (<span class="tok-num">1</span> - d) * next_q</code></pre>
+<p>`policy_net(ns)` 的输出为批量大小乘以动作数，`argmax(1, keepdim=True)` 得到每条样本选出的动作索引，`gather(1, next_actions)` 从目标网络输出中取出对应动作的 $Q$ 值，`squeeze(1)` 后与 $r$、$d$ 和 $q$ 的形状一致，可以直接用于计算 $y$。注意保留 `with torch.no_grad():`，因为 $y$ 是监督信号，不参与反传；取执行动作 $Q$ 值的 `q = policy_net(s).gather(1, a.unsqueeze(1)).squeeze(1)` 那一行和 `loss = nn.MSELoss()(q, y)` 那一行都不用改。</p>
+<p><b>3. 为什么这样能缓解高估</b></p>
+<p>改造后，$a^*$ 由在线网络参数 $\theta$ 选出，价值由目标网络参数 $\theta^{-}$ 评出，目标变为 $y = r + \gamma (1 - d) Q(s', a^*; \theta^{-})$，其中 $a^* = \arg\max_{a'} Q(s', a'; \theta)$。两套参数在同步间隔内并不相同，在线网络高估某个动作的噪声，不一定会被目标网络同样高估，因此高估不易被同一个网络同时放大。当 $\theta$ 与 $\theta^{-}$ 都逼近最优时，$a^*$ 趋于最优动作，目标仍趋于贝尔曼最优目标，因此改造没有改变最优解 $Q^*(s, a)$，只是改变了估计路径。</p>
+<p>不需要改动的部分：$Q$ 网络结构仍是输入 $s$、输出全部动作的 $Q$ 值；经验回放仍采样 $(s, a, r, s', d)$；损失仍为 $L(\theta) = \mathbb{E}[(y - Q(s, a; \theta))^2]$；目标网络仍每隔 $10$ 回合同步一次，即 $\theta^{-} = \theta$，Double DQN 仍需要目标网络提供相对稳定的评估。</p>
+<p><b>4. 预期现象</b></p>
+<p>- $y$ 与 $Q$ 估计更保守：同一训练阶段打印的平均 $y$ 和平均 $Q(s, a; \theta)$，Double DQN 版本会系统性低于原版；$TD$ 误差 $\delta = y - Q(s, a; \theta)$ 的极端正值更少，损失 $L(\theta)$ 的尖峰更少、曲线更平滑。
+- 回合奖励曲线更稳定：在 `CartPole-v1` 中每回合奖励等于坚持的步数，上限为 $500$。原版可能在后期出现奖励突然回落，Double DQN 版本后 $50$ 回合的平均奖励波动更小，更容易稳定在较高水平，但不保证每一次随机运行都更快收敛，因为回放采样仍有随机性。
+- 计算量几乎不变：只多一次在 $ns$ 上对在线网络的前向计算，且在 `torch.no_grad()` 下进行，不增加反传和参数量，训练时间基本不变。</p>
+<p><b>5. 常见改错与自查</b></p>
+<p>- 若仍用 `target_net(ns).argmax(1)` 选动作，则与原版等价，毫无改进；若用 `policy_net(ns).max(1)[0]` 评估，则失去了目标网络的稳定作用，$y$ 会随 $\theta$ 快速漂移。
+- 若 `argmax(1)` 不写 `keepdim=True`，`gather` 会因形状不匹配而报错；若忘记 `squeeze(1)`，$y$ 的形状与 $q$ 不一致，在 `nn.MSELoss()` 中可能被广播成错误的形状。
+- 自查方法：在 `train_step` 中每隔若干步打印 `y.mean().item()` 与 `q.mean().item()`，与原版同阶段对比，Double DQN 版本的平均 $y$ 应系统性偏低，且奖励曲线的方差更小。</p>
+</div></details>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">参考文献</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>Mnih et al. 2013, Playing Atari with Deep Reinforcement Learning, arXiv:1312.5602</li>
+<li>Mnih et al. 2015, Human-level Control through Deep Reinforcement Learning, Nature 518, 529-533</li>
+<li>Sutton &amp; Barto 2018, Reinforcement Learning: An Introduction, 第 9 章至第 11 章</li>
+</ol>
+</div></details>
+<div class="pager">
+<a href="lesson-6.html">← 上一课：SARSA 与 Expected SARSA</a>
+<a href="../rl.html">← 返回 RL 精讲目录</a>
+<span>第 8 课 · Double DQN（即将更新）</span>
+</div>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="../assets/effects.js"></script>
+<script src="../assets/detail-rail.js"></script>
+<script src="../assets/sub-effects.js"></script>
+</body>
+</html>
