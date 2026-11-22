@@ -18,7 +18,8 @@
 <p class="meta">前置知识：Q-Learning、神经网络基础、经验回放概念</p>
 <div class="thesis">用神经网络拟合$Q$值，经验回放加目标网络稳定训练。</div>
 <div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
-<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · DQN 深度 Q 网络 · 制作中，完成后将更新到此处</p>
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-7-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · DQN 深度 Q 网络 · 6 分 17 秒</p>
 </div>
 <details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
 <p>在第 5 课的表格 $Q$-Learning 中，智能体需要为每一个状态 $s$ 和动作 $a$ 维护一个 $Q(s, a)$ 的数值，并通过不断试错逼近最优动作价值函数 $Q^*(s, a)$。当状态是游戏画面、连续传感器读数或高维特征向量时，状态数量会爆炸甚至无限，表格既存不下也无法泛化到从未见过的相似状态，表格方法因此失效。DQN 要解决的正是这类高维、连续状态下的最优控制问题，其适用场景是：环境可建模为马尔可夫决策过程，智能体能反复与环境交互并获得奖励 $r$，动作空间是离散且有限的，状态可以表示为向量或图像等固定维度的输入。DQN 的输入是当前状态 $s$，例如一帧游戏画面或传感器向量；输出是该状态下所有离散动作的 $Q$ 值估计，即 $Q(s, a; \theta)$，其中 $\theta$ 为神经网络参数，智能体据此选择 $Q$ 值最大的动作执行。训练目标是让网络输出逼近满足贝尔曼最优方程的真实动作价值，从而在不需要环境模型的情况下学到近似最优策略。</p>
