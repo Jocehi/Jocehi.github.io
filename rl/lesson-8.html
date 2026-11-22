@@ -18,7 +18,8 @@
 <p class="meta">前置知识：DQN</p>
 <div class="thesis">用在线网络选动作、目标网络评价值，解耦选择与评估。</div>
 <div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
-<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · Double DQN · 制作中，完成后将更新到此处</p>
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-8-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · Double DQN · 7 分 19 秒</p>
 </div>
 <details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
 <p>在第 7 课的 DQN 中，智能体用深度神经网络近似动作价值函数 $Q(s, a)$，并通过经验回放和目标网络进行离策略学习。然而，DQN 的目标值使用 $\max_{a'} Q(s', a'; \theta^-)$ 对下一状态 $s'$ 的所有动作取最大值，这会系统性地高估真实价值：当 $Q$ 的估计存在噪声时，最大值运算总倾向于挑中被高估的动作，即使其真实价值并不高，这种偏差会沿着自举过程不断累积和放大，导致策略学到次优甚至错误的动作。Double DQN 正是为纠正这一最大化偏差而设计的改进算法。它仍然面向离散动作空间、状态空间高维连续的任务，例如雅达利游戏、机器人控制的离散化动作选择和推荐系统中的离散决策，输入为当前状态 $s$、以及与环境交互得到的奖励 $r$ 和下一状态 $s'$，训练数据来自经验回放池 $D$ 中的转移样本 $(s, a, r, s')$；输出为经过修正的在线网络 $Q(s, a; \theta)$，由此导出贪心策略 $\pi(s) = \arg\max_a Q(s, a; \theta)$。与普通 DQN 相比，它不增加新的网络结构，只改变目标值的计算方式，因此可以在几乎相同的计算代价下获得更准确的价值估计和更稳定的学习效果。</p>
