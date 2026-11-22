@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 8 课 · Double DQN · Jocehi 的 RL 精讲</title>
+<link rel="stylesheet" href="../assets/space-rl.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
+</head>
+<body>
+<div class="wrap">
+<nav class="topnav"><b>Jocehi</b><a href="../index.html">首页</a><a href="../papers.html">论文精读</a><a href="../rl.html">RL 精讲</a><a href="../briefing.html">每日简报</a><a class="home" href="../index.html">← 返回首页</a></nav>
+<h1>第 8 课 · Double DQN</h1>
+<p class="meta">Double DQN · RL 算法每日精讲 · 2026-11-22 · 深度值函数 · 进阶 · 约 30 分钟</p>
+<p class="meta">前置知识：DQN</p>
+<div class="thesis">用在线网络选动作、目标网络评价值，解耦选择与评估。</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · Double DQN · 制作中，完成后将更新到此处</p>
+</div>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>在第 7 课的 DQN 中，智能体用深度神经网络近似动作价值函数 $Q(s, a)$，并通过经验回放和目标网络进行离策略学习。然而，DQN 的目标值使用 $\max_{a'} Q(s', a'; \theta^-)$ 对下一状态 $s'$ 的所有动作取最大值，这会系统性地高估真实价值：当 $Q$ 的估计存在噪声时，最大值运算总倾向于挑中被高估的动作，即使其真实价值并不高，这种偏差会沿着自举过程不断累积和放大，导致策略学到次优甚至错误的动作。Double DQN 正是为纠正这一最大化偏差而设计的改进算法。它仍然面向离散动作空间、状态空间高维连续的任务，例如雅达利游戏、机器人控制的离散化动作选择和推荐系统中的离散决策，输入为当前状态 $s$、以及与环境交互得到的奖励 $r$ 和下一状态 $s'$，训练数据来自经验回放池 $D$ 中的转移样本 $(s, a, r, s')$；输出为经过修正的在线网络 $Q(s, a; \theta)$，由此导出贪心策略 $\pi(s) = \arg\max_a Q(s, a; \theta)$。与普通 DQN 相比，它不增加新的网络结构，只改变目标值的计算方式，因此可以在几乎相同的计算代价下获得更准确的价值估计和更稳定的学习效果。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">② 核心思想</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>最大化偏差是问题的根源：DQN 的目标使用 $\max_{a'} Q(s', a'; \theta^-)$ 同时完成动作选择与价值评估，估计噪声会被最大值运算放大，导致 $Q(s, a)$ 系统性高估。</li>
+<li>解耦选择与评估是核心解法：用在线网络 $Q(s, a; \theta)$ 选择下一状态 $s'$ 下的最优动作 $a^*$，再用目标网络 $Q(s, a; \theta^-)$ 评估该动作的价值，避免同一个网络既选又评。</li>
+<li>目标值公式随之改变：对非终止转移，目标为 $y = r + \gamma Q(s', a^*; \theta^-)$，其中 $a^* = \arg\max_{a'} Q(s', a'; \theta)$；对终止转移，则直接令 $y = r$。</li>
+<li>其余训练流程与 DQN 相同：仍使用经验回放、基于 $\epsilon$ 的贪心探索、小批量梯度下降和周期性同步目标网络，因此可以很方便地在已有 DQN 代码上只改一行目标计算。</li>
+<li>效果与局限并存：解耦能显著减轻高估、提升策略质量和稳定性，但不能完全消除估计误差，且仍依赖目标网络与经验回放来抑制自举带来的不稳定。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">③ 与已学方法对比</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>与第 7 课的 DQN 相比，Double DQN 解决的是 DQN 固有的最大化偏差问题：DQN 用同一个目标网络既选动作又评价值，容易高估 $Q(s, a)$ 并把误差自举放大；Double DQN 用在线网络 $Q(s, a; \theta)$ 选动作、用目标网络 $Q(s, a; \theta^-)$ 评价值，显著降低高估、提升雅达利等任务上的得分与稳定性。与第 5 课的 Q-Learning 相比，它继承了表格 Q-Learning 的解耦思想并将其推广到深度网络，而与第 6 课的 SARSA 相比，它仍保持离策略学习的高样本效率，不必等待真实下一动作 $a'$。代价很小：不需要增加网络参数或额外超参数，计算量几乎不变；但它并未完全消除估计误差，对噪声很大的任务仍可能高估，且仍依赖经验回放和目标网络来维持稳定。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">④ 学习流程</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="agent-env" role="img" aria-label="智能体与环境交互循环"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrA" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6472"/></marker></defs><rect x="20" y="45" width="170" height="80" rx="12" fill="#d97706"/><text x="105" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">智能体 Agent</text><text x="105" y="103" text-anchor="middle" font-size="12" fill="#ffedd5">策略 π · 价值 V</text><rect x="450" y="45" width="170" height="80" rx="12" fill="#0f766e"/><text x="535" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">环境 Environment</text><text x="535" y="103" text-anchor="middle" font-size="12" fill="#ccfbf1">状态 s · 奖励 r</text><path d="M195,65 L445,65" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="55" text-anchor="middle" font-size="12" fill="#5b6472">动作 a</text><path d="M445,105 L195,105" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="125" text-anchor="middle" font-size="12" fill="#5b6472">观测 s′ · 奖励 r</text></svg></div>
+<ol class="flow">
+<li><span class="chip kind-compute">计算</span><b>初始化网络</b>随机初始化在线网络 $Q(s, a; \theta)$ 的参数 $\theta$，并令目标网络参数 $\theta^- \leftarrow \theta$；同时初始化经验回放池 $D$，设定折扣因子 $\gamma$、批量大小 $B$ 与目标网络同步间隔 $C$。</li>
+<li><span class="chip kind-observe">观察</span><b>观察状态</b>每回合开始时从环境获得初始状态 $s$，并将其作为当前状态输入在线网络 $Q(s, a; \theta)$，为后续选动作做准备。</li>
+<li><span class="chip kind-decide">决策</span><b>贪心选动作</b>根据 $Q(s, a; \theta)$ 以基于 $\epsilon$ 的贪心策略选择动作 $a$：以概率 $1 - \epsilon$ 选择价值最高的动作，以概率 $\epsilon$ 随机探索。</li>
+<li><span class="chip kind-act">行动</span><b>执行动作</b>在环境中执行动作 $a$，环境据此转移到下一状态 $s'$ 并给出即时奖励 $r$。</li>
+<li><span class="chip kind-feedback">反馈</span><b>观测反馈</b>观测奖励 $r$ 与下一状态 $s'$，并将转移 $(s, a, r, s')$ 存入经验回放池 $D$，供后续小批量训练使用。</li>
+<li><span class="chip kind-compute">计算</span><b>解耦算目标</b>从 $D$ 中随机采样小批量 $\{(s_j, a_j, r_j, s_j')\}_{j=1}^{B}$；对每个样本 $j$，先用在线网络选出 $a_j^* = \arg\max_{a'} Q(s_j', a'; \theta)$，再用目标网络评估并计算 $y_j = r_j + \gamma Q(s_j', a_j^*; \theta^-)$，若 $s_j'$ 为终止状态则 $y_j = r_j$。</li>
+<li><span class="chip kind-update">更新</span><b>计算损失更新</b>计算小批量均方损失 $L(\theta) = \frac{1}{B} \sum_{j=1}^{B} (y_j - Q(s_j, a_j; \theta))^2$，并对 $L(\theta)$ 关于 $\theta$ 求梯度，用梯度下降更新在线网络参数 $\theta$。</li>
+<li><span class="chip kind-loop">循环</span><b>同步与循环</b>每经过 $C$ 步更新，令 $\theta^- \leftarrow \theta$ 同步目标网络；若 $s'$ 为终止状态则结束本回合，否则令 $s \leftarrow s'$ 并进入下一时间步继续循环。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑤ 关键公式</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="formula-card">
+<h4>DQN 目标值（高估来源）</h4>
+<div>$$y^{\mathrm{DQN}} = r + \gamma \max_{a'} Q(s', a'; \theta^-)$$</div>
+<p>这是普通 DQN 的目标值计算方式，同一个目标网络 $Q(s', a'; \theta^-)$ 既负责挑出价值最大的动作，又负责评估它的价值。$y^{\mathrm{DQN}}$ 中的 $\max_{a'}$ 会把估计噪声中的正偏差挑出来放大，从而使 $Q(s, a)$ 系统性高估。理解这一项是理解 Double DQN 改进的前提。</p>
+<ul>
+<li>$y^{\mathrm{DQN}}$：普通 DQN 的目标值，作为监督在线网络学习的回归目标</li>
+<li>$r$：执行动作后环境给出的即时奖励</li>
+<li>$\gamma$：折扣因子，衡量未来奖励相对于即时奖励的重要性</li>
+<li>$s'$：执行动作后环境转移到的下一状态</li>
+<li>$a'$：下一状态下可供选择的候选动作</li>
+<li>$\theta^-$：目标网络的参数，周期性地从在线网络复制得到</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>Double DQN 动作选择</h4>
+<div>$$a^* = \arg\max_{a'} Q(s', a'; \theta)$$</div>
+<p>这一步只做选择，不做评估：用参数为 $\theta$ 的在线网络对下一状态 $s'$ 的全部候选动作打分，取分数最高的动作 $a^*$。由于选择者是在线网络，而评估者是目标网络，同一个动作不会因为被同一个网络高估而同时被选中和被高估。</p>
+<ul>
+<li>$a^*$：在线网络在下一状态下选出的最优动作，只用于选择</li>
+<li>$Q(s', a'; \theta)$：在线网络对下一状态下各候选动作的价值估计</li>
+<li>$a'$：下一状态下可供选择的候选动作</li>
+<li>$s'$：执行动作后环境转移到的下一状态</li>
+<li>$\theta$：在线网络的参数，在训练中持续更新</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>Double DQN 目标值</h4>
+<div>$$y = r + \gamma Q(s', a^*; \theta^-)$$</div>
+<p>这是 Double DQN 的核心目标值：先由在线网络选出 $a^*$，再由参数为 $\theta^-$ 的目标网络评估 $Q(s', a^*; \theta^-)$，并用折扣因子 $\gamma$ 折算后与即时奖励 $r$ 相加。若 $s'$ 为终止状态，则不存在未来价值，直接令 $y = r$。</p>
+<ul>
+<li>$y$：解耦后的目标值，作为监督在线网络学习的回归目标</li>
+<li>$r$：执行动作后环境给出的即时奖励</li>
+<li>$\gamma$：折扣因子，衡量未来奖励相对于即时奖励的重要性</li>
+<li>$s'$：执行动作后环境转移到的下一状态</li>
+<li>$a^*$：在线网络在下一状态下选出的最优动作</li>
+<li>$\theta^-$：目标网络的参数，周期性地从在线网络复制得到</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>小批量均方损失</h4>
+<div>$$L(\theta) = \frac{1}{B} \sum_{j=1}^{B} \left(y_j - Q(s_j, a_j; \theta)\right)^2$$</div>
+<p>损失是小批量样本上目标值 $y_j$ 与在线网络预测 $Q(s_j, a_j; \theta)$ 之差的平方的平均值，批量大小为 $B$。对 $L(\theta)$ 关于 $\theta$ 求梯度并做梯度下降，就能让在线网络的预测逐步逼近解耦后的目标值 $y_j$，从而更新策略。</p>
+<ul>
+<li>$L(\theta)$：小批量上的均方损失，用于衡量预测值与目标值的差距</li>
+<li>$B$：从经验回放池中采样的小批量样本数量</li>
+<li>$y_j$：小批量中第 $j$ 个样本的解耦目标值</li>
+<li>$Q(s_j, a_j; \theta)$：在线网络对小批量中第 $j$ 个样本的状态动作对的价值预测</li>
+<li>$s_j$：小批量中第 $j$ 个样本的当前状态</li>
+<li>$a_j$：小批量中第 $j$ 个样本实际执行的动作</li>
+</ul>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑥ 数学推导</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol class="mathnotes">
+<li>
+<p>第一步，先看普通 DQN 为什么会高估：对下一状态 $s'$，目标网络给每个候选动作 $a'$ 一个带噪声的估计 $Q(s', a'; \theta^-)$，而最大值运算 $\max_{a'} Q(s', a'; \theta^-)$ 总倾向于挑中噪声为正的动作。</p>
+</li>
+<li>
+<p>第二步，把这种偏差写成期望形式：即使每个动作的真实价值相同，只要估计有噪声，最大值的期望也会高于真实价值的最大值，偏差随动作数量和噪声增大而增大。</p>
+</li>
+<li>
+<p>第三步，指出问题根源是选择与评估用了同一个量：同一个 $Q(s', a'; \theta^-)$ 既决定哪个动作最好，又决定它值多少钱，被高估的动作因此同时获得选中和加分。</p>
+</li>
+<li>
+<p>第四步，引入解耦思想：让在线网络 $Q(s', a'; \theta)$ 负责选择，让目标网络 $Q(s', a^*; \theta^-)$ 负责评估，两者参数不同、更新节奏不同，被在线网络高估的动作不一定被目标网络高估。</p>
+</li>
+<li>
+<p>第五步，写出选择公式：在线网络在 $s'$ 下取分数最高的动作作为 $a^*$。</p>
+<div>$$a^* = \arg\max_{a'} Q(s', a'; \theta)$$</div></li>
+<li>
+<p>第六步，写出评估与目标值：用目标网络评估被选中的 $a^*$，再按折扣因子 $\gamma$ 折算并加上即时奖励 $r$，得到解耦后的目标值 $y$。</p>
+<div>$$y = r + \gamma Q(s', a^*; \theta^-)$$</div></li>
+<li>
+<p>第七步，处理终止状态：若 $s'$ 是终止状态，则没有未来回报，直接令 $y = r$，不再做自举。</p>
+</li>
+<li>
+<p>第八步，把目标值代入均方损失进行训练：对小批量中的每个样本 $j$，用 $y_j$ 监督在线网络的预测 $Q(s_j, a_j; \theta)$。</p>
+<div>$$L(\theta) = \frac{1}{B} \sum_{j=1}^{B} (y_j - Q(s_j, a_j; \theta))^2$$</div></li>
+<li>
+<p>第九步，给一个小数值例子：设 $r = 1$，$\gamma = 0.9$，在 $s'$ 下在线网络认为动作 $a_1$ 最好，即 $a^* = a_1$，而目标网络对 $a_1$ 的评估为 $Q(s', a_1; \theta^-) = 10$，对另一个被目标网络高估的动作 $a_2$ 的评估为 $Q(s', a_2; \theta^-) = 12$。</p>
+</li>
+<li>
+<p>第十步，计算两种目标值并对比：Double DQN 只评估被选中的 $a_1$，得到 $y = 1 + 0.9 \times 10 = 10$；而普通 DQN 直接取目标网络的最大值，得到 $y = 1 + 0.9 \times 12 = 11.8$，后者把目标网络对 $a_2$ 的高估直接带进了目标值。</p>
+</li>
+<li>
+<p>第十一步，总结效果与局限：解耦减轻了 $Q(s, a)$ 的系统性高估，使策略更稳定，但估计噪声本身仍未消失，因此仍需目标网络与经验回放来抑制自举带来的不稳定。</p>
+</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑦ 伪代码</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="pseudo">
+<h4>初始化在线网络 $Q(s, a; \theta)$，随机初始化参数 $\theta$</h4>
+<div class="step"><span class="stepnum">·</span> 初始化目标网络 $Q(s, a; \theta^-)$，令 $\theta^- \leftarrow \theta$</div>
+<div class="step"><span class="stepnum">·</span> 初始化经验回放池 $D$，设置折扣因子 $\gamma$、批量大小 $B$ 与目标网络同步间隔 $C$</div>
+</div>
+<div class="pseudo">
+<h4>对每个回合 $e = 1, 2, \dots$ 执行：</h4>
+<div class="step"><span class="stepnum">·</span> 初始化状态 $s$</div>
+<div class="step"><span class="stepnum">·</span> 对每个时间步 $t = 1, 2, \dots$ 执行：</div>
+<div class="step"><span class="stepnum">·</span> 根据 $Q(s, a; \theta)$ 以基于 $\epsilon$ 的贪心策略选择动作 $a$</div>
+<div class="step"><span class="stepnum">·</span> 执行动作 $a$，观测奖励 $r$ 与下一状态 $s'$</div>
+<div class="step"><span class="stepnum">·</span> 将转移 $(s, a, r, s')$ 存入经验回放池 $D$</div>
+<div class="step"><span class="stepnum">·</span> 从 $D$ 中随机采样小批量 $\{(s_j, a_j, r_j, s_j')\}_{j=1}^{B}$</div>
+<div class="step"><span class="stepnum">·</span> 对小批量中每个样本 $j$ 计算目标值 $y_j$：</div>
+<div class="step"><span class="stepnum">·</span> 用在线网络选择动作 $a_j^* = \arg\max_{a'} Q(s_j', a'; \theta)$</div>
+<div class="step"><span class="stepnum">·</span> 用目标网络评估价值 $y_j = r_j + \gamma Q(s_j', a_j^*; \theta^-)$，若 $s_j'$ 为终止状态则 $y_j = r_j$</div>
+<div class="step"><span class="stepnum">·</span> 计算损失</div>
+<div class="step formula-line"><div>$$L(\theta) = \frac{1}{B} \sum_{j=1}^{B} (y_j - Q(s_j, a_j; \theta))^2$$</div></div>
+<div class="step"><span class="stepnum">·</span> 对 $L(\theta)$ 关于 $\theta$ 求梯度并更新 $\theta$</div>
+<div class="step"><span class="stepnum">·</span> 若 $s'$ 为终止状态，则结束本回合</div>
+<div class="step"><span class="stepnum">·</span> 否则令 $s \leftarrow s'$，继续下一步</div>
+<div class="step"><span class="stepnum">·</span> 每经过 $C$ 步更新，令 $\theta^- \leftarrow \theta$</div>
+</div>
+<div class="pseudo">
+<h4>输出训练好的在线网络 $Q(s, a; \theta)$ 及其贪心策略 $\pi(s) = \arg\max_a Q(s, a; \theta)$</h4>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑧ Python 代码（可运行）</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<pre class="code"><button class="copybtn">复制代码</button><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85</span><code><span class="tok-kw">import</span> random
+<span class="tok-kw">import</span> numpy <span class="tok-kw">as</span> np
+<span class="tok-kw">import</span> torch
+<span class="tok-kw">import</span> torch.nn <span class="tok-kw">as</span> nn
+<span class="tok-kw">import</span> torch.optim <span class="tok-kw">as</span> optim
+<span class="tok-kw">import</span> gymnasium <span class="tok-kw">as</span> gym
+<span class="tok-kw">from</span> collections <span class="tok-kw">import</span> deque
+<span class="tok-com"># 超参数：CartPole 任务简单，网络与批量都可很小</span>
+GAMMA, LR, BATCH = <span class="tok-num">0.99</span>, <span class="tok-num">1</span>e-<span class="tok-num">3</span>, <span class="tok-num">64</span>
+BUFFER, SYNC_C, EPISODES = <span class="tok-num">10000</span>, <span class="tok-num">100</span>, <span class="tok-num">300</span>
+EPS, EPS_END, EPS_DECAY = <span class="tok-num">1.0</span>, <span class="tok-num">0.05</span>, <span class="tok-num">0.995</span>
+
+<span class="tok-kw">class</span> <span class="tok-fn">QNet</span>(nn.Module):
+    <span class="tok-str">"""两层 MLP：输入状态，输出各动作的 Q 值"""</span>
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(self, obs_dim, act_dim):
+        <span class="tok-fn">super</span>().<span class="tok-fn">__init__</span>()
+        self.net = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(obs_dim, <span class="tok-num">128</span>), nn.<span class="tok-fn">ReLU</span>(),
+                                 nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, <span class="tok-num">128</span>), nn.<span class="tok-fn">ReLU</span>(), nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, act_dim))
+    <span class="tok-kw">def</span> <span class="tok-fn">forward</span>(self, x):
+        <span class="tok-kw">return</span> self.<span class="tok-fn">net</span>(x)
+
+<span class="tok-kw">class</span> Replay:
+    <span class="tok-str">"""经验回放池：打乱时序相关性，稳定训练"""</span>
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(self, cap):
+        self.buf = <span class="tok-fn">deque</span>(maxlen=cap)
+    <span class="tok-kw">def</span> <span class="tok-fn">push</span>(self, *t):
+        self.buf.<span class="tok-fn">append</span>(t)
+    <span class="tok-kw">def</span> <span class="tok-fn">sample</span>(self, n):
+        <span class="tok-kw">return</span> random.<span class="tok-fn">sample</span>(self.buf, n)
+    <span class="tok-kw">def</span> <span class="tok-fn">__len__</span>(self):
+        <span class="tok-kw">return</span> <span class="tok-bi">len</span>(self.buf)
+
+env = gym.<span class="tok-fn">make</span>(<span class="tok-str">"CartPole-v1"</span>)
+obs_dim, act_dim = env.observation_space.shape[<span class="tok-num">0</span>], env.action_space.n
+online = <span class="tok-fn">QNet</span>(obs_dim, act_dim)  <span class="tok-com"># 在线网络：选动作、被训练</span>
+target = <span class="tok-fn">QNet</span>(obs_dim, act_dim)  <span class="tok-com"># 目标网络：只评估价值</span>
+target.<span class="tok-fn">load_state_dict</span>(online.<span class="tok-fn">state_dict</span>())  <span class="tok-com"># 初始同步两个网络参数</span>
+opt = optim.<span class="tok-fn">Adam</span>(online.<span class="tok-fn">parameters</span>(), lr=LR)
+memory, steps = <span class="tok-fn">Replay</span>(BUFFER), <span class="tok-num">0</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">act</span>(state, eps):
+    <span class="tok-str">"""epsilon-贪心：探索用随机动作，利用用在线网络贪心"""</span>
+    <span class="tok-kw">if</span> random.<span class="tok-fn">random</span>() &lt; eps:
+        <span class="tok-kw">return</span> env.action_space.<span class="tok-fn">sample</span>()
+    <span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():
+        <span class="tok-kw">return</span> <span class="tok-fn">online</span>(torch.<span class="tok-fn">as_tensor</span>(state, dtype=torch.float32)).<span class="tok-fn">argmax</span>().<span class="tok-fn">item</span>()
+
+<span class="tok-kw">def</span> <span class="tok-fn">learn</span>():
+    <span class="tok-str">"""Double DQN 核心：在线选动作，目标网络评估，解耦防高估"""</span>
+    <span class="tok-kw">if</span> <span class="tok-bi">len</span>(memory) &lt; BATCH:
+        <span class="tok-kw">return</span>
+    batch = memory.<span class="tok-fn">sample</span>(BATCH)
+    s, a, r, s2, d = <span class="tok-fn">map</span>(np.array, <span class="tok-bi">zip</span>(*batch))  <span class="tok-com"># 末位为终止标志</span>
+    s_t = torch.<span class="tok-fn">as_tensor</span>(s, dtype=torch.float32)
+    a_t = torch.<span class="tok-fn">as_tensor</span>(a, dtype=torch.int64).<span class="tok-fn">unsqueeze</span>(<span class="tok-num">1</span>)
+    r_t = torch.<span class="tok-fn">as_tensor</span>(r, dtype=torch.float32)
+    s2_t = torch.<span class="tok-fn">as_tensor</span>(s2, dtype=torch.float32)
+    d_t = torch.<span class="tok-fn">as_tensor</span>(d, dtype=torch.float32)
+    q = <span class="tok-fn">online</span>(s_t).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, a_t).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)  <span class="tok-com"># 取当前动作对应的预测值</span>
+    <span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():
+        <span class="tok-com"># 关键：在线网络选动作，目标网络评估价值，避免既选又评</span>
+        a_star = <span class="tok-fn">online</span>(s2_t).<span class="tok-fn">argmax</span>(<span class="tok-num">1</span>, keepdim=<span class="tok-kw">True</span>)
+        q_next = <span class="tok-fn">target</span>(s2_t).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, a_star).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)
+        y = r_t + GAMMA * q_next * (<span class="tok-num">1</span> - d_t)  <span class="tok-com"># 终止时目标即奖励</span>
+    loss = nn.<span class="tok-fn">MSELoss</span>()(q, y)  <span class="tok-com"># 均方误差拟合目标</span>
+    opt.<span class="tok-fn">zero_grad</span>(); loss.<span class="tok-fn">backward</span>(); opt.<span class="tok-fn">step</span>()
+
+<span class="tok-kw">for</span> ep <span class="tok-kw">in</span> <span class="tok-bi">range</span>(EPISODES):
+    state, _ = env.<span class="tok-fn">reset</span>(seed=ep)
+    total = <span class="tok-num">0</span>
+    <span class="tok-kw">while</span> <span class="tok-kw">True</span>:
+        action = <span class="tok-fn">act</span>(state, EPS)
+        next_state, reward, terminated, truncated, _ = env.<span class="tok-fn">step</span>(action)
+        done = terminated <span class="tok-kw">or</span> truncated
+        memory.<span class="tok-fn">push</span>(state, action, reward, next_state, <span class="tok-bi">float</span>(done))
+        state, total, steps = next_state, total + reward, steps + <span class="tok-num">1</span>
+        <span class="tok-fn">learn</span>()
+        <span class="tok-kw">if</span> steps % SYNC_C == <span class="tok-num">0</span>:  <span class="tok-com"># 定期同步目标网络</span>
+            target.<span class="tok-fn">load_state_dict</span>(online.<span class="tok-fn">state_dict</span>())
+        <span class="tok-kw">if</span> done:
+            <span class="tok-kw">break</span>
+    EPS = <span class="tok-bi">max</span>(EPS_END, EPS * EPS_DECAY)
+    <span class="tok-kw">if</span> (ep + <span class="tok-num">1</span>) % <span class="tok-num">50</span> == <span class="tok-num">0</span>:
+        <span class="tok-bi">print</span>(f<span class="tok-str">"回合 {ep+1}: 奖励 {total:.0f}, epsilon {EPS:.3f}"</span>)
+env.<span class="tok-fn">close</span>()</code></pre>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑨ 代码讲解</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>超参数与网络结构：代码开头用较小的网络与批量适配 CartPole，设 $\gamma=0.99$、学习率 $0.001$、批量 $64$；QNet 为两层 MLP，输入状态 $s$，输出各动作的 $Q(s, a; \theta)$，两个 $128$ 维隐藏层之间用 $\mathrm{ReLU}$ 激活，输出维度等于动作数。</li>
+<li>经验回放池：Replay 用双端队列保存最近 $10000$ 条转移 $(s, a, r, s', d)$，其中 $d$ 为终止标志；push 存入、sample 随机抽取 $64$ 条，打破连续转移的相关性，让小批量更接近独立同分布，从而稳定 $Q$ 值的拟合。</li>
+<li>双网络初始化：创建两个结构相同的网络，online 为在线网络，负责选动作并接受训练，target 为目标网络，只用于评估价值；二者参数分别记为 $\theta$ 与 $\theta^-$，初始时完全同步，之后 target 不直接训练，只在固定步数后从 online 复制参数。</li>
+<li>动作选择：act 函数实现 $\epsilon$-贪心，探索时以概率 $\epsilon$ 随机采样动作，利用时先由 online 得到 $Q(s, a; \theta)$ 并取 $\arg\max_a Q(s, a; \theta)$；注意推理时关闭梯度，避免产生无谓的计算图。</li>
+<li>Double DQN 核心 learn：先判断回放池是否已有 $64$ 条样本，再随机取一批量并整理为状态 $s$、动作 $a$、奖励 $r$、下一状态 $s'$ 与终止标志 $d$；用 online 计算当前动作的预测值 $Q(s, a; \theta)$，关键一步是在不计算梯度的条件下，先由 online 选出 $a^*=\arg\max_{a'} Q(s', a'; \theta)$，再由 target 评估 $Q(s', a^*; \theta^-)$，得到目标 $y=r+\gamma Q(s', a^*; \theta^-)$，并用 $(1-d)$ 在终止时截断自举，即 $d=1$ 时 $y=r$；最后用均方误差拟合 $Q(s, a; \theta)$ 与 $y$，做一次梯度下降。</li>
+<li>主训练循环：共 $300$ 回合，每回合从环境重置状态开始，用当前 $\epsilon$ 选动作、执行、把转移存入回放池、调用 learn 学习；每 $100$ 步同步一次 target，回合结束按 $\epsilon\leftarrow\max(0.05, 0.995\epsilon)$ 衰减探索率，每 $50$ 回合打印总奖励与 $\epsilon$，便于观察学习曲线。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑩ 超参数</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<table class="data"><tr><th>参数</th><th>常用取值</th><th>说明</th></tr>
+<tr><td>折扣因子 $\gamma$</td><td>0.99</td><td>控制未来奖励在目标中的权重，$\gamma$ 越接近 $1$，智能体越看重长期回报；CartPole 需要长期坚持平衡，取 $0.99$ 较合适，太小会使策略短视，太大则自举误差会随 $\gamma$ 放大。</td></tr>
+<tr><td>学习率</td><td>0.001</td><td>Adam 优化器的步长，过大容易使 $Q(s, a; \theta)$ 震荡甚至发散，过小则 $300$ 回合内学不充分；配合批量 $64$ 与当前网络规模，$0.001$ 是 CartPole 上稳妥的起点，出现震荡可先降到 $0.0005$ 再试。</td></tr>
+<tr><td>批量大小</td><td>64</td><td>每次从回放池随机抽取的样本数，批量太小会使 $Q$ 值估计噪声大、梯度不稳，太大则计算变慢且单步更新次数相对减少；$64$ 在稳定性和速度之间比较均衡。</td></tr>
+<tr><td>目标网络同步周期</td><td>100 步</td><td>每 $100$ 步把 $\theta$ 复制给 $\theta^-$；同步太频繁会使目标随在线网络快速漂移、失去稳定作用，太久则目标过时、学习变慢，可在 $50$ 到 $1000$ 步之间根据奖励曲线调整。</td></tr>
+<tr><td>探索率 $\epsilon$ 及其衰减</td><td>从 1.0 衰减至 0.05，衰减系数 0.995</td><td>训练初期 $\epsilon=1$ 充分探索，后期保留 $0.05$ 的随机动作以防陷入局部最优；衰减过快会使智能体过早利用未成熟的 $Q(s, a; \theta)$，衰减过慢则 $300$ 回合结束时仍在大量随机探索。</td></tr>
+</table>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑪ 常见坑</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>只改了选动作的网络、却忘了改评估网络：若 $a^*$ 与价值评估都用同一个网络，就退化为普通 DQN，仍会高估 $Q(s, a)$；检查 learn 中的关键两行，确认 $\arg\max$ 来自 online、而被 gather 的 $Q$ 值来自 target，两者不要写反或写成同一个网络。</li>
+<li>目标值参与了梯度计算：计算 $y$ 时必须关闭梯度或分离目标，否则 $Q(s', a^*; \theta^-)$ 也会被反向传播，目标随参数移动、训练不稳定；本代码用无梯度上下文包裹目标计算，改写时务必保留这一层，损失只对当前 $Q(s, a; \theta)$ 求梯度。</li>
+<li>终止标志用错或漏乘 $(1-d)$：若终止转移仍加上 $\gamma Q(s', a^*; \theta^-)$，相当于给已结束的回合凭空续上未来价值，$Q$ 值会被系统性抬高；同时注意区分 terminated 与 truncated，本代码把两者合并为 done 再转成 $d$，改环境时要确认 $d=1$ 的含义与奖励定义一致。</li>
+<li>同步周期与探索衰减调得极端：每步都同步 target 等价于没有目标网络，$Q$ 值容易震荡；$\epsilon$ 衰减过快则前期探索不足，奖励长期停在低位。调试时先固定同步周期为 $100$ 步、观察每 $50$ 回合的奖励是否上升，再单独调 $\epsilon$ 衰减或学习率，不要同时改多个超参数。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑫ 练习题</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p class="qa-q"><b>练习题 1</b> 请解释 DQN 的最大化偏差是如何产生的，并说明 Double DQN 是如何通过解耦动作选择与价值评估来减轻这一偏差的？请分别写出 DQN 与 Double DQN 在非终止转移下的目标值 $y$ 的计算公式，对比二者的区别，并结合本课数值例子说明 Double DQN 的目标值为何更低；最后说明 Double DQN 能否完全消除估计误差，为什么？</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>核心在于：DQN 的目标同时用同一个网络完成动作选择与价值评估，估计噪声会被最大值运算放大；Double DQN 把这两件事分给两个不同的网络，从而减轻系统性高估。</p>
+<p>1. 最大化偏差的来源</p>
+<p>在 DQN 中，对非终止转移，目标值为 $y = r + \gamma \max_{a'} Q(s', a'; \theta^-)$，其中 $r$ 为即时奖励，$\gamma$ 为折扣因子，$s'$ 为下一状态，$a'$ 为下一状态的候选动作，$\theta^-$ 为目标网络参数。目标网络对每个 $a'$ 的估计都含有噪声，而 $\max_{a'}$ 运算总倾向于挑中噪声为正、被高估的动作。即使所有动作的真实价值相同，只要估计有噪声，$\max_{a'} Q(s', a'; \theta^-)$ 的期望也会高于真实价值的最大值，且偏差随动作数量增多和噪声增大而增大。于是被高估的动作同时获得“被选中”和“被加分”，$Q(s, a)$ 出现系统性高估，进而可能使策略偏向实际并不好的动作，训练也不稳定。</p>
+<p>2. Double DQN 的解耦做法</p>
+<p>Double DQN 把选择与评估分给两个参数不同、更新节奏不同的网络：用在线网络 $Q(s, a; \theta)$ 选择动作，用目标网络 $Q(s, a; \theta^-)$ 评估价值。具体分两步：先由在线网络选出最优动作 $a^* = \arg\max_{a'} Q(s', a'; \theta)$，再由目标网络评估该动作，得到目标值 $y = r + \gamma Q(s', a^*; \theta^-)$；若 $s'$ 为终止状态，则 $y = r$，不再自举。由于 $a^*$ 由 $\theta$ 决定，而价值由 $\theta^-$ 给出，被在线网络高估的动作不一定被目标网络高估，高估便不容易同时通过选择与评估两关，从而显著减轻偏差。</p>
+<p>3. 数值对比</p>
+<p>设 $r = 1$，$\gamma = 0.9$，在 $s'$ 下在线网络认为 $a_1$ 最好，即 $a^* = a_1$，目标网络的评估为 $Q(s', a_1; \theta^-) = 10$，而对另一动作 $a_2$ 的评估为 $Q(s', a_2; \theta^-) = 12$。Double DQN 只评估被选中的 $a_1$，得 $y = 1 + 0.9 \times 10 = 10$；普通 DQN 直接取目标网络的最大值，得 $y = 1 + 0.9 \times 12 = 11.8$。后者把目标网络对 $a_2$ 的高估直接带入目标值，前者则避免了这一点。训练时再用 $y$ 监督在线网络的预测，损失为 $L(\theta) = \frac{1}{B} \sum_{j=1}^{B} (y_j - Q(s_j, a_j; \theta))^2$，其中 $B$ 为小批量大小，$j$ 为样本编号。</p>
+<p>4. 能否完全消除估计误差</p>
+<p>不能。解耦只是让选择噪声与评估噪声不再完全同源，从而降低 $\max$ 运算带来的系统性正偏差，但估计噪声本身并未消失：在线网络与目标网络并非完全独立，目标网络是在线网络的周期性同步复制，$Q(s', a^*; \theta^-)$ 本身仍有噪声，自举、函数逼近和有限数据带来的误差仍在。因此 Double DQN 仍需经验回放、$\epsilon$-贪心探索、小批量梯度下降和周期性同步目标网络来抑制不稳定；它在已有 DQN 代码上只需改一行目标计算，即把 $\max_{a'} Q(s', a'; \theta^-)$ 改为先用在线网络求 $a^*$ 再用目标网络求 $Q(s', a^*; \theta^-)$，其余流程不变，但能得到更准确的 $Q(s, a)$ 估计、更稳定的训练和更好的策略。</p>
+</div></details>
+<p class="qa-q"><b>练习题 2</b> 已知一条非终止转移 $(s, a, r, s')$，其中即时奖励 $r = 1$，折扣因子 $\gamma = 0.95$，当前在线网络对已执行动作的预测值为 $Q(s, a; \theta) = 7$。在下一状态 $s'$ 下，在线网络 $Q(s', a'; \theta)$ 与目标网络 $Q(s', a'; \theta^-)$ 对三个候选动作的估计值如下表所示：</p>
+<p class="qa-q">| 动作 | $Q(s', a'; \theta)$ | $Q(s', a'; \theta^-)$ |
+| $a_1$ | $12$ | $8$ |
+| $a_2$ | $10$ | $13$ |
+| $a_3$ | $9$ | $9$ |</p>
+<p class="qa-q">请完成以下手算：（1）由在线网络确定 $a^*$；（2）分别计算普通 DQN 与 Double DQN 的目标值 $y$；（3）计算两种目标值的差值；（4）以 Double DQN 的目标值为监督，计算单样本均方损失 $L = (y - Q(s, a; \theta))^2$，并与用普通 DQN 目标值算出的损失作对比。最后用一句话说明计算结果如何体现 Double DQN 减轻最大化偏差的作用。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>第一步：确定 $a^*$。在线网络在 $s'$ 下的三个估计值为 $12$、$10$ 和 $9$，其中最大值为 $12$，对应动作 $a_1$，因此 $a^* = \arg\max_{a'} Q(s', a'; \theta) = a_1$。</p>
+<p>第二步：计算普通 DQN 的目标值。目标网络在 $s'$ 下的三个估计值为 $8$、$13$ 和 $9$，其中最大值为 $13$，对应动作 $a_2$，即 $\max_{a'} Q(s', a'; \theta^-) = 13$。由于该转移非终止，普通 DQN 的目标值为 $y_{\text{DQN}} = r + \gamma \max_{a'} Q(s', a'; \theta^-) = 1 + 0.95 \times 13 = 1 + 12.35 = 13.35$。</p>
+<p>第三步：计算 Double DQN 的目标值。由第一步得 $a^* = a_1$，目标网络对 $a_1$ 的评估为 $Q(s', a^*; \theta^-) = Q(s', a_1; \theta^-) = 8$，因此 $y_{\text{Double DQN}} = r + \gamma Q(s', a^*; \theta^-) = 1 + 0.95 \times 8 = 1 + 7.6 = 8.6$。</p>
+<p>第四步：计算两种目标值的差值。$y_{\text{DQN}} - y_{\text{Double DQN}} = 13.35 - 8.6 = 4.75$，且 $13.35 \div 8.6 \approx 1.55$，即普通 DQN 的目标值比 Double DQN 高 $4.75$，约为后者的 $1.55$ 倍。</p>
+<p>第五步：计算单样本均方损失。以 Double DQN 的目标值为监督，$L_{\text{Double DQN}} = (y_{\text{Double DQN}} - Q(s, a; \theta))^2 = (8.6 - 7)^2 = (1.6)^2 = 2.56$；以普通 DQN 的目标值为监督，$L_{\text{DQN}} = (y_{\text{DQN}} - Q(s, a; \theta))^2 = (13.35 - 7)^2 = (6.35)^2 = 40.3225$。两者损失之差为 $40.3225 - 2.56 = 37.7625$。</p>
+<p>结论：普通 DQN 同时用目标网络选择 $a_2$ 并评估 $a_2$，把目标网络对 $a_2$ 的高估 $13$ 直接带入目标值；而 Double DQN 用在线网络选出 $a_1$ 后只评估 $a_1$，目标网络对 $a_1$ 的评估只有 $8$，因此目标值更低、损失也更小，这正体现了解耦选择与评估可以减轻最大化偏差，避免 $Q(s, a)$ 被系统性推高。最终数值：$y_{\text{DQN}} = 13.35$，$y_{\text{Double DQN}} = 8.6$，$L_{\text{Double DQN}} = 2.56$，$L_{\text{DQN}} = 40.3225$。</p>
+</div></details>
+<p class="qa-q"><b>练习题 3</b> 基于本课代码，在 CartPole-v1 上做一次消融对比实验：把 Double DQN 退化为普通 DQN，只改目标值 $y$ 的计算，其余部分保持不变，验证解耦动作选择与价值评估是否真的能降低目标值。</p>
+<p class="qa-q">任务如下：</p>
+<p class="qa-q">1. 在超参数区增加一个开关 `USE_DOUBLE`，默认值为 `True`。</p>
+<p class="qa-q">2. 只修改 `learn()` 函数中计算下一状态价值的两行：当开关为 `True` 时保持本课的 Double DQN 写法，即先用在线网络 $Q(s', a'; \theta)$ 选出 $a^*$，再用目标网络 $Q(s', a'; \theta^-)$ 评估 $a^*$；当开关为 `False` 时改为普通 DQN 写法，即直接用目标网络取 $\max_{a'} Q(s', a'; \theta^-)$。不要改动预测值 $Q(s_j, a_j; \theta)$ 的计算、均方损失 $L(\theta)$、优化器、经验回放、$\epsilon$-贪心探索和目标网络同步周期 $SYNC_C$ 等其他部分。</p>
+<p class="qa-q">3. 在 `learn()` 中记录一个可用于观察高估的指标：每次计算出下一状态价值后，把它的批量均值追加到一个全局列表中，便于之后按训练步数取滑动平均并画图或打印。</p>
+<p class="qa-q">4. 在其他超参数、网络结构和训练回合数均不变的前提下，分别用 `USE_DOUBLE = True` 和 `USE_DOUBLE = False` 各完整运行一次训练（建议多次运行取平均以减小随机性），对比两组实验的回合回报曲线和第 3 步记录的下一状态价值均值曲线。</p>
+<p class="qa-q">请给出：需要修改的具体位置与改前、改后的关键代码；你预期在两种设置下分别看到什么现象，并用最大化偏差的原理说明为什么会出现这种差异；以及如果只看某一次运行的最终回合回报，普通 DQN 偶然也跑到满分，能否据此否定 Double DQN 的作用，为什么？</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>核心原则：只做一次受控消融，只改目标值 $y$ 的计算方式，不改网络、经验回放、$\epsilon$-贪心、损失 $L(\theta)$ 和同步周期 $SYNC_C$，这样两组实验的差异才能归因于是否解耦选择与评估。</p>
+<p><b>1. 增加开关</b></p>
+<p>在超参数区，例如在 `EPS, EPS_END, EPS_DECAY = 1.0, 0.05, 0.995` 之后增加一行：</p>
+<pre class="code"><span class="ln-col">1</span><code>USE_DOUBLE = <span class="tok-kw">True</span>  <span class="tok-com"># True：Double DQN；False：普通 DQN</span></code></pre>
+<p><b>2. 修改 `learn()` 中的目标计算</b></p>
+<p>原代码（本课 Double DQN 写法）：</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4
+5</span><code><span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():
+    <span class="tok-com"># 关键：在线网络选动作，目标网络评估价值，避免既选又评</span>
+    a_star = <span class="tok-fn">online</span>(s2_t).<span class="tok-fn">argmax</span>(<span class="tok-num">1</span>, keepdim=<span class="tok-kw">True</span>)
+    q_next = <span class="tok-fn">target</span>(s2_t).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, a_star).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)
+    y = r_t + GAMMA * q_next * (<span class="tok-num">1</span> - d_t)</code></pre>
+<p>改为带分支的写法：</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9</span><code><span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():
+    <span class="tok-kw">if</span> USE_DOUBLE:
+        <span class="tok-com"># Double DQN：在线网络选动作，目标网络评估价值</span>
+        a_star = <span class="tok-fn">online</span>(s2_t).<span class="tok-fn">argmax</span>(<span class="tok-num">1</span>, keepdim=<span class="tok-kw">True</span>)
+        q_next = <span class="tok-fn">target</span>(s2_t).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, a_star).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)
+    <span class="tok-kw">else</span>:
+        <span class="tok-com"># 普通 DQN：目标网络既选又评</span>
+        q_next = <span class="tok-fn">target</span>(s2_t).<span class="tok-fn">max</span>(dim=<span class="tok-num">1</span>)[<span class="tok-num">0</span>]
+    y = r_t + GAMMA * q_next * (<span class="tok-num">1</span> - d_t)</code></pre>
+<p>其中，`USE_DOUBLE = True` 时的目标为 $y = r + \gamma Q(s', a^*; \theta^-)$，且 $a^* = \arg\max_{a'} Q(s', a'; \theta)$；`USE_DOUBLE = False` 时的目标为 $y = r + \gamma \max_{a'} Q(s', a'; \theta^-)$。计算 $y$ 的那一行本身不用改，因为当 $d_t = 1$ 时 $(1 - d_t) = 0$，终止转移的目标自动变为 $y = r$。</p>
+<p><b>3. 记录下一状态价值均值</b></p>
+<p>在全局区增加一个列表，并在 `learn()` 中追加记录：</p>
+<pre class="code"><span class="ln-col">1</span><code>q_next_log = []</code></pre>
+<pre class="code"><span class="ln-col">1</span><code>q_next_log.<span class="tok-fn">append</span>(q_next.<span class="tok-fn">mean</span>().<span class="tok-fn">item</span>())</code></pre>
+<p>把第二行放在计算出 `q_next` 之后、仍在 `torch.no_grad()` 块内或紧随其后均可。训练结束后可用滑动平均查看趋势，例如：</p>
+<pre class="code"><span class="ln-col">1
+2</span><code><span class="tok-kw">import</span> numpy <span class="tok-kw">as</span> np
+<span class="tok-bi">print</span>(np.<span class="tok-fn">mean</span>(q_next_log[-<span class="tok-num">1000</span>:]))</code></pre>
+<p><b>4. 预期现象</b></p>
+<p>（1）下一状态价值均值：普通 DQN 一侧系统性更高。原因是普通 DQN 用同一个目标网络 $Q(s', a'; \theta^-)$ 既选动作又评估价值，$\max_{a'} Q(s', a'; \theta^-)$ 总倾向于挑中估计噪声为正的动作，把正噪声带进目标值 $y$；Double DQN 用在线网络 $Q(s', a'; \theta)$ 选出的 $a^*$ 再由目标网络评估，被在线网络高估的动作不一定被目标网络高估，因此目标值更低、更接近真实价值。</p>
+<p>用本课数值例子可以定量验证这一点：设 $r = 1$，$\gamma = 0.9$，在线网络选出 $a^* = a_1$，目标网络的评估为 $Q(s', a_1; \theta^-) = 10$，而另一个动作的评估为 $Q(s', a_2; \theta^-) = 12$，则 Double DQN 的目标值为 $y = 1 + 0.9 \times 10 = 10$，普通 DQN 的目标值为 $y = 1 + 0.9 \times 12 = 11.8$，两者相差 $11.8 - 10 = 1.8$。在真实训练中，单个小批量的差值有正有负，但平均而言普通 DQN 的下一状态价值均值更高。</p>
+<p>（2）回合回报曲线：Double DQN 一侧通常上升更快、波动更小，更容易稳定在高分段；普通 DQN 一侧上升更慢、曲线波动更大，学习后期也可能出现回报回落。这是因为被高估的目标值 $y$ 会通过均方损失 $L(\theta) = \frac{1}{B} \sum_{j=1}^{B} (y_j - Q(s_j, a_j; \theta))^2$ 反复抬高在线网络的预测值 $Q(s, a; \theta)$，使贪心策略建立在虚高的价值估计之上。</p>
+<p>（3）差异大小的提醒：CartPole-v1 只有两个动作，即 $|\mathcal{A}| = 2$，动作越多、价值越接近时最大化偏差越大，因此在这个任务上两组差异可能不如多动作任务明显；同时训练本身有随机性，单次运行的曲线可能交叉。正确的做法是多次运行取平均，重点看下一状态价值均值曲线是否系统性分开，而不是只比较某一次的最终分数。</p>
+<p><b>5. 一次满分不能否定 Double DQN</b></p>
+<p>不能。最大化偏差说的是 $Q(s, a)$ 估计的统计性系统高估，不等于普通 DQN 每一次训练都必然失败；目标网络、经验回放和 $\epsilon$-贪心探索本身也能在一定程度上抑制不稳定，简单的 CartPole-v1 即使存在高估也可能被解出。一次偶然满分只是单次采样的结果，方差很大，不能推翻多次运行下目标值更低、曲线更稳定的平均趋势；Double DQN 的作用是减轻而非完全消除估计误差，这一点也与它仍需目标网络与经验回放配合使用是一致的。</p>
+</div></details>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">参考文献</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>van Hasselt, Guez &amp; Silver 2016, Deep Reinforcement Learning with Double Q-learning, arXiv:1509.06461</li>
+<li>Mnih et al. 2015, Human-level control through deep reinforcement learning, Nature 518, 529–533</li>
+<li>van Hasselt 2010, Double Q-learning, Advances in Neural Information Processing Systems 23</li>
+<li>Sutton &amp; Barto 2018, Reinforcement Learning: An Introduction, 2nd edition, 第6章</li>
+</ol>
+</div></details>
+<div class="pager">
+<a href="lesson-7.html">← 上一课：DQN 深度 Q 网络</a>
+<a href="../rl.html">← 返回 RL 精讲目录</a>
+<span>第 9 课 · Dueling DQN（即将更新）</span>
+</div>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="../assets/effects.js"></script>
+<script src="../assets/detail-rail.js"></script>
+<script src="../assets/sub-effects.js"></script>
+</body>
+</html>
