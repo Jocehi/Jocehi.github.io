@@ -6,6 +6,7 @@
   function copyText(btn, text, doneLabel) {
     function done(ok) {
       btn.textContent = ok ? doneLabel : '复制失败';
+      if (ok && window.sxToast) window.sxToast('已复制');
       setTimeout(function () { btn.textContent = btn.getAttribute('data-label'); }, 1600);
     }
     if (navigator.clipboard && navigator.clipboard.writeText) {

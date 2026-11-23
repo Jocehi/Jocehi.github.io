@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
     playBtn.textContent = audio.paused ? '▶' : '❚❚';
     playBtn.setAttribute('aria-label', audio.paused ? '播放' : '暂停');
     fab.classList.toggle('playing', !audio.paused);
+    playBtn.classList.remove('sx-pop'); void playBtn.offsetWidth; playBtn.classList.add('sx-pop');
   }
   playBtn.addEventListener('click', function () {
     if (audio.paused) audio.play().catch(function () {});

@@ -379,3 +379,15 @@ pre.code::after{content:"code";position:absolute;top:.55rem;left:78px;
   box-shadow:0 1px 2px rgba(60,40,20,.05),0 14px 34px rgba(188,148,96,.13)}
 #contents .card.split:hover{box-shadow:0 1px 2px rgba(60,40,20,.05),0 20px 44px rgba(188,148,96,.18)}
 footer{border-top:1px solid rgba(28,26,23,.08);padding-top:1.4rem}
+
+/* ---- dissolve 改造（2026-11-23）：Glossy 按钮 / 点按回缩 / Morph 轻切换 ---- */
+.archive-toggle{box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 2px rgba(224,82,138,.18),0 6px 16px rgba(224,82,138,.10)}
+.archive-toggle:active{transform:scale(.97)}
+#player button:active{transform:scale(.94)}
+#playerPlay.sx-pop{animation:sx-pop .25s ease}
+@keyframes sx-pop{50%{transform:scale(1.18)}}
+.archive-toggle.sx-swap{animation:sx-swap .28s ease}
+@keyframes sx-swap{0%{opacity:1}40%{opacity:.25}100%{opacity:1}}
+@media (prefers-reduced-motion: reduce){
+  #playerPlay.sx-pop,.archive-toggle.sx-swap{animation:none}
+}

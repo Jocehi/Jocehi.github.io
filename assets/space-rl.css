@@ -301,3 +301,33 @@ pre.code .ln-col{top:2.7rem}
   transition:transform .18s ease,box-shadow .18s ease}
 .pager a:hover{transform:translateY(-2px);text-decoration:none;
   box-shadow:0 1px 2px rgba(26,35,50,.05),0 14px 30px rgba(26,35,50,.09)}
+
+/* ---- dissolve 改造（2026-11-23）：SegmentedControl 筛选 pill / ProgressSteps 点亮 / 折叠淡入 / Glossy 按钮 / 点按回缩 ---- */
+.filter-bar{position:relative}
+.filter-indicator{position:absolute;top:.4rem;left:0;height:36px;width:0;background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(26,35,50,.14),0 6px 16px rgba(26,35,50,.10);opacity:0;transition:transform .35s cubic-bezier(.4,0,.2,1),width .35s cubic-bezier(.4,0,.2,1),opacity .2s ease;z-index:0;pointer-events:none}
+.filter-pill{position:relative;z-index:1}
+.filter-pill.active{background:transparent;color:var(--text);font-weight:700}
+.filter-pill:active{transform:scale(.97)}
+@keyframes sx-filter-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.lesson-card.sx-filter-in{animation:sx-filter-in .35s ease both}
+/* ProgressSteps：编号小节左侧圆点脊线，滚到哪节点亮哪节 */
+.sec{position:relative}
+.sec-head{position:relative;padding:.95rem 0 .2rem 1.5rem}
+.sec-head::before{content:"";position:absolute;left:2px;top:1.4rem;width:11px;height:11px;border-radius:50%;border:2px solid #d8d2c4;background:var(--surface);transition:background .3s ease,border-color .3s ease,box-shadow .3s ease}
+.sec:not(:last-of-type)::before{content:"";position:absolute;left:7px;top:2.15rem;bottom:-.4rem;width:2px;background:var(--border)}
+.sec-body{padding:.35rem 0 .6rem 1.5rem}
+.sec.lit .sec-head::before{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,119,6,.18)}
+.sec.lit .sec-toggle{color:var(--accent)}
+/* 折叠内容打开时淡入下滑 */
+details.sec[open ] .sec-body{animation:sx-sec-in .3s ease}
+details.qa[open ] .ans{animation:sx-sec-in .3s ease}
+@keyframes sx-sec-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+/* Glossy 按钮：内高光 + 外环 + 柔影，按下回缩（无渐变背景） */
+.spec-copy{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 1px 2px rgba(26,35,50,.25),0 6px 16px rgba(26,35,50,.14)}
+.spec-copy:active{transform:scale(.97)}
+.copybtn{transition:background .15s ease,transform .15s ease}
+.copybtn:active{transform:scale(.94)}
+.actions button:active{transform:scale(.97)}
+@media (prefers-reduced-motion: reduce){
+  .filter-indicator,.lesson-card.sx-filter-in,details.sec[open ] .sec-body,details.qa[open ] .ans{transition:none;animation:none}
+}

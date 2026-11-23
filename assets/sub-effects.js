@@ -607,6 +607,9 @@
     return t;
   }
 
+  /* 复制按钮共用：detail-rail.js 与 effects.js 里点复制后调这个弹提示 */
+  window.sxToast = toast;
+
   /* ============================================================
      7 · 卡片收起 / 恢复
      ============================================================ */
@@ -982,6 +985,92 @@
   /* ============================================================
      11 · 样式（由 JS 注入，保证所有页面一致）
      ============================================================ */
+  /* ============================================================
+     11 · 新增 · ProgressSteps：滚动点亮编号小节与五步流程
+     ============================================================ */
+  function setupProgressSteps() {
+    if (!('IntersectionObserver' in window)) return;
+    var secs = Array.prototype.slice.call(document.querySelectorAll('details.sec'));
+    if (secs.length) {
+      var current = null;
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            if (current && current !== en.target) current.classList.remove('lit');
+            current = en.target;
+            current.classList.add('lit');
+          }
+        });
+      }, { rootMargin: '-15% 0px -70% 0px' });
+      secs.forEach(function (s) { io.observe(s); });
+    }
+    var flow = document.querySelector('.flow5');
+    if (flow) {
+      var steps = Array.prototype.slice.call(flow.querySelectorAll('.fstep'));
+      var io2 = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          steps.forEach(function (st, i) {
+            setTimeout(function () { st.classList.add('lit'); }, i * 130);
+          });
+          io2.disconnect();
+        });
+      }, { threshold: 0.25 });
+      io2.observe(flow);
+    }
+  }
+
+  /* ============================================================
+     12 · 新增 · Accordion：编号小节平滑开合（details.sec）
+     ============================================================ */
+  function setupSmoothSections() {
+    var secs = document.querySelectorAll('details.sec');
+    if (!secs.length) return;
+    Array.prototype.forEach.call(secs, function (d) {
+      var sum = d.querySelector('summary');
+      var body = d.querySelector('.sec-body');
+      if (!sum || !body) return;
+      var busy = false;
+      sum.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (busy) return;
+        busy = true;
+        if (d.open) {
+          var h = body.offsetHeight;
+          body.style.maxHeight = h + 'px';
+          body.style.overflow = 'hidden';
+          requestAnimationFrame(function () {
+            body.style.transition = 'max-height .3s ease, opacity .25s ease';
+            body.style.maxHeight = '0px';
+            body.style.opacity = '0';
+          });
+          setTimeout(function () {
+            d.open = false;
+            body.style.maxHeight = ''; body.style.overflow = '';
+            body.style.transition = ''; body.style.opacity = '';
+            busy = false;
+          }, 300);
+        } else {
+          d.open = true;
+          var h2 = body.offsetHeight;
+          body.style.maxHeight = '0px';
+          body.style.overflow = 'hidden';
+          body.style.opacity = '0';
+          requestAnimationFrame(function () {
+            body.style.transition = 'max-height .3s ease, opacity .25s ease';
+            body.style.maxHeight = h2 + 'px';
+            body.style.opacity = '1';
+          });
+          setTimeout(function () {
+            body.style.maxHeight = ''; body.style.overflow = '';
+            body.style.transition = ''; body.style.opacity = '';
+            busy = false;
+          }, 320);
+        }
+      });
+    });
+  }
+
   function injectStyle() {
     if (document.getElementById('sx-style')) return;
     var css = [
@@ -1051,6 +1140,10 @@
     if (isPaper || isLesson) {
       if (canCanvas) setupImageReveal();
       setupPrint();
+      setupProgressSteps();
+    }
+    if (isLesson) {
+      setupSmoothSections();
     }
     if (isPapersList || isRlList || isBriefIndex) {
       if (canCanvas) setupListGather();

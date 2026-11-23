@@ -280,3 +280,26 @@ figure{position:relative}
   transition:transform .18s ease,box-shadow .18s ease}
 .pager a:hover{transform:translateY(-2px);text-decoration:none;
   box-shadow:0 1px 2px rgba(28,26,23,.05),0 14px 30px rgba(28,26,23,.09)}
+
+/* ---- dissolve 改造（2026-11-23）：SegmentedControl 筛选 pill / 五步流程点亮 / 折叠淡入 / Glossy 按钮 / 点按回缩 ---- */
+.filter-bar{position:relative}
+.filter-indicator{position:absolute;top:.4rem;left:0;height:36px;width:0;background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(28,26,23,.14),0 6px 16px rgba(28,26,23,.10);opacity:0;transition:transform .35s cubic-bezier(.4,0,.2,1),width .35s cubic-bezier(.4,0,.2,1),opacity .2s ease;z-index:0;pointer-events:none}
+.filter-pill{position:relative;z-index:1}
+.filter-pill.active{background:transparent;color:var(--text);font-weight:700}
+.filter-pill:active{transform:scale(.97)}
+@keyframes sx-filter-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.paper-card.sx-filter-in{animation:sx-filter-in .35s ease both}
+/* 五步流程：滚入视野时逐个点亮 */
+.flow5 .fstep{transition:border-color .18s ease,transform .18s ease,box-shadow .3s ease}
+.flow5 .fstep.lit{border-color:var(--accent)}
+.flow5 .fstep.lit .n{display:inline-flex;align-items:center;justify-content:center;width:1.35rem;height:1.35rem;border-radius:50%;background:var(--accent);color:#fff;font-size:.72rem}
+/* 折叠内容打开时淡入下滑 */
+details.qa[open ] .ans{animation:sx-sec-in .3s ease}
+@keyframes sx-sec-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+/* Glossy 按钮：内高光 + 外环 + 柔影，按下回缩（无渐变背景） */
+.spec-copy{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 1px 2px rgba(28,26,23,.25),0 6px 16px rgba(28,26,23,.14)}
+.spec-copy:active{transform:scale(.97)}
+.actions button:active{transform:scale(.97)}
+@media (prefers-reduced-motion: reduce){
+  .filter-indicator,.paper-card.sx-filter-in,details.qa[open ] .ans{transition:none;animation:none}
+}

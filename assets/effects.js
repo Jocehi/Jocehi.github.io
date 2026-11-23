@@ -118,6 +118,7 @@
     var txt = code ? code.textContent : pre.textContent;
     function done(ok) {
       btn.textContent = ok ? '已复制 ✓' : '复制失败';
+      if (ok && window.sxToast) window.sxToast('已复制');
       setTimeout(function () { btn.textContent = '复制代码'; }, 1600);
     }
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -197,6 +198,7 @@
         var expanded = card.classList.toggle('expanded');
         btn.setAttribute('aria-expanded', String(expanded));
         btn.textContent = label(expanded);
+        btn.classList.remove('sx-swap'); void btn.offsetWidth; btn.classList.add('sx-swap');
       });
       list.parentNode.insertBefore(btn, list.nextSibling);
     });
