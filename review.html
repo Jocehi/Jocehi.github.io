@@ -4,12 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>每日复盘 · Jocehi</title>
+<link href="https://fonts.googleapis.com/css2?family=Water+Brush&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
+<header class="site-nav"><div class="nav-inner"><a class="brand" href="index.html"><img src="avatar.webp" alt="Jocehi"><span>Jocehi</span></a><nav class="nav-links" aria-label="主导航"><a href="papers.html">论文精读</a><a href="rl.html">RL 精讲</a><a href="briefing.html">每日简报</a><a href="review.html" class="active">每日复盘</a><a href="diary.html">日记</a><a href="blog.html">博客</a></nav><span class="nav-meta">每天 8:00 更新</span></div></header>
 <canvas id="sakura"></canvas>
 <div class="wrap">
-<nav class="topnav"><b>Jocehi</b><a href="index.html">首页</a><a href="papers.html">论文精读</a><a href="rl.html">RL 精讲</a><a href="briefing.html">每日简报</a><a href="review.html">每日复盘</a><a href="diary.html">日记</a><a href="blog.html">博客</a><a class="home" href="index.html">← 返回首页</a></nav>
+
 
 <h1>📝 每日复盘</h1>
 <p class="meta">每天花几分钟写下来：做了什么、做得好的、待改进的、明日的计划。内容只保存在你自己的浏览器里。</p>
@@ -30,7 +32,6 @@
 </div>
 
 <h2>往期复盘</h2>
-<div class="list-head"><p class="small" style="margin:0">复盘内容只存在本机浏览器里</p><button class="btn ghost" id="rvClearAll" data-clear-all type="button">清空全部</button></div>
 <div id="rvList"></div>
 <p class="empty" id="rvEmpty">还没有复盘，写下今天的第一条吧。</p>
 
@@ -38,6 +39,5 @@
 </div>
 <script src="assets/effects.js"></script>
 <script src="assets/review.js"></script>
-<script src="assets/sub-effects.js"></script>
 </body>
 </html>
