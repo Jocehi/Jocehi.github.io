@@ -29,15 +29,30 @@ body{
 a{color:var(--accent2);text-decoration:none}
 a:hover{text-decoration:underline}
 .wrap{max-width:48rem;margin:0 auto;padding:0 1rem 4rem}
+.wrap.wide{max-width:64rem}
+.site-nav.wide .nav-inner{max-width:64rem}
 #sakura{display:none}
 
-/* ---- 顶栏 ---- */
-.topnav{display:flex;align-items:baseline;gap:1.1rem;flex-wrap:wrap;
-  padding:1rem 0;border-bottom:1px solid var(--border);font-size:.9rem}
-.topnav b{font-family:"Noto Serif SC","Songti SC",Georgia,serif;font-size:1.05rem;color:var(--text)}
-.topnav a{color:var(--dim)}
-.topnav a:hover{color:var(--accent);text-decoration:none}
-.topnav .home{margin-left:auto}
+/* ---- 顶栏：Dissolve 式细高毛玻璃通栏（2026-11-23 改版） ---- */
+.site-nav{position:sticky;top:0;z-index:50;margin:0 calc(50% - 50vw);
+  background:rgba(250,248,243,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(26,35,50,.07)}
+.nav-inner{max-width:48rem;margin:0 auto;padding:0 1rem;height:60px;
+  display:flex;align-items:center;gap:1.5rem}
+.brand{display:flex;align-items:center;gap:.55rem;color:var(--text);flex:0 0 auto}
+.brand:hover{text-decoration:none}
+.brand img{width:30px;height:30px;border-radius:50%;object-fit:cover;
+  border:2px solid #fff;box-shadow:0 2px 8px rgba(217,119,6,.28)}
+.brand span{font-family:"Noto Serif SC","Songti SC",Georgia,serif;font-size:1.15rem;font-weight:700}
+.nav-links{display:flex;gap:.15rem;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.nav-links::-webkit-scrollbar{display:none}
+.nav-links a{padding:.42rem .8rem;border-radius:999px;color:var(--dim);
+  font-weight:600;font-size:.92rem;white-space:nowrap}
+.nav-links a:hover{color:var(--accent);background:rgba(217,119,6,.09);text-decoration:none}
+.nav-links a.active{color:var(--accent);background:rgba(217,119,6,.09)}
+.nav-meta{margin-left:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;
+  font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+@media (max-width:640px){.nav-meta{display:none}.nav-inner{gap:.9rem;padding:0 .9rem}.nav-links{mask-image:linear-gradient(90deg,#000 82%,transparent);-webkit-mask-image:linear-gradient(90deg,#000 82%,transparent)}.nav-links a{padding:.42rem .6rem}}
 
 /* ---- 标题 / 元信息 / 直觉句 ---- */
 h1{font-family:"Noto Serif SC","Songti SC",Georgia,serif;font-size:1.9rem;
@@ -177,7 +192,6 @@ footer{color:var(--dim);font-size:.85rem;text-align:center;padding:1.5rem 0 0}
 @media (max-width:640px){
   h1{font-size:1.6rem}
   .formula-card ul{grid-template-columns:1fr}
-  .topnav .home{margin-left:0}
   pre.code{font-size:.8rem}
 }
 
@@ -208,7 +222,6 @@ footer{color:var(--dim);font-size:.85rem;text-align:center;padding:1.5rem 0 0}
    ============================================================ */
 body::before{content:"";position:fixed;inset:0;z-index:70;pointer-events:none;opacity:.03;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
-.topnav{position:sticky;top:0;z-index:40;background:var(--bg)}
 h1{letter-spacing:-.015em}
 .lesson-card{box-shadow:0 1px 2px rgba(26,35,50,.04),0 8px 22px rgba(26,35,50,.06);
   transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
@@ -237,9 +250,9 @@ figure{padding:.55rem;box-shadow:0 1px 2px rgba(26,35,50,.04),0 8px 22px rgba(26
   padding:.45rem .9rem;height:36px;transition:background .15s ease,color .15s ease}
 .filter-pill:hover{color:var(--text)}
 .filter-pill.active{background:var(--surface2);color:var(--text)}
-.filter-search{flex:1;min-width:150px;height:36px;border:1px solid var(--border);
+.filter-search{flex:1;min-width:150px;height:36px;border:0;
   border-radius:10px;padding:.3rem .8rem;font:inherit;font-size:.9rem;
-  background:var(--surface);color:var(--text)}
+  background:transparent;color:var(--text)}
 .filter-search:focus{border-color:var(--accent);outline:none;
   box-shadow:0 0 0 3px rgba(217,119,6,.18)}
 .filter-count{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
