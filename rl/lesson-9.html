@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 9 课 · Dueling DQN · Jocehi 的 RL 精讲</title>
+<link rel="stylesheet" href="../assets/space-rl.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
+</head>
+<body>
+<div class="wrap">
+<nav class="topnav"><b>Jocehi</b><a href="../index.html">首页</a><a href="../papers.html">论文精读</a><a href="../rl.html">RL 精讲</a><a href="../briefing.html">每日简报</a><a class="home" href="../index.html">← 返回首页</a></nav>
+<h1>第 9 课 · Dueling DQN</h1>
+<p class="meta">Dueling DQN · RL 算法每日精讲 · 2026-11-23 · 深度值函数 · 进阶 · 约 35 分钟</p>
+<p class="meta">前置知识：DQN、Double DQN</p>
+<div class="thesis">把动作价值拆成状态好坏与动作优劣，分别学习再合并。</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · Dueling DQN · 制作中，完成后将更新到此处</p>
+</div>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>本课考虑离散动作的马尔可夫决策过程，智能体在每个时刻观察状态 $s$，选择动作 $a$，环境返回奖励 $r$ 并转移到下一状态 $s'$，目标是学习使长期折扣回报最大的策略。DQN 直接用一个神经网络估计每个状态动作对的动作价值 $Q(s, a)$，但在许多状态下，不同动作的价值差异很小，真正重要的是状态本身的好坏；例如在游戏画面中，大多数动作都不会立即改变局面，网络却要为每个动作单独学习相近的数值，样本效率较低。Dueling DQN 要解决的正是如何在不改变动作价值定义和训练目标的前提下，让网络更高效地学习状态价值，并把动作之间的相对优势分离出来，其核心分解为 $Q(s, a) = V(s) + A(s, a)$，其中 $V(s)$ 表示状态 $s$ 的价值，$A(s, a)$ 表示动作 $a$ 的优势。它适用于状态空间高维、动作空间离散、奖励稀疏或动作价值差异较小的任务，例如 Atari 游戏、机器人离散控制和离散推荐选择。输入是当前状态 $s$，通常为图像或特征向量；输出是该状态下每个候选动作 $a$ 的估计动作价值 $Q(s, a)$，智能体据此选择价值最大的动作，训练时仍使用经验回放和目标网络，并以折扣因子 $\gamma$ 衡量未来奖励的重要性。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">② 核心思想</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>将动作价值分解为状态价值与优势函数之和，即 $Q(s, a) = V(s) + A(s, a)$，其中 $V(s)$ 衡量状态本身的好坏，$A(s, a)$ 衡量动作 $a$ 相对于该状态平均水平的优劣。</li>
+<li>优势函数存在不可辨识性：给 $V(s)$ 加上常数 $c$、给 $A(s, a)$ 减去同一常数 $c$，得到的 $Q(s, a)$ 不变，因此需要用约束固定分解方式。</li>
+<li>实践中采用均值中心化聚合：$Q(s, a) = V(s) + A(s, a) - \frac{1}{|\mathcal{A}|} \sum_{a' \in \mathcal{A}} A(s, a')$，用所有动作优势的均值作为基准，使优势的均值为 $0$，从而稳定学习并保留动作间的相对排序。</li>
+<li>网络结构分为共享特征层、价值流和优势流：共享层提取状态 $s$ 的表示，价值流输出一个标量 $V(s)$，优势流输出每个动作 $a$ 对应的 $A(s, a)$，最后在聚合层合并得到 $Q(s, a)$。</li>
+<li>价值流在所有动作的更新中都能得到训练信号，因此即使某个动作 $a$ 很少被选择，网络仍能从其他动作的样本中学习 $V(s)$，从而提高样本效率，尤其在动作价值差异较小的状态下效果更明显。</li>
+<li>Dueling DQN 只改变网络结构，不改变 $Q$ 学习的损失、经验回放和目标网络机制，因此可以直接与 Double DQN 结合，用在线网络选择动作、用目标网络评估价值，减少过估计。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">③ 与已学方法对比</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>与第7课的 DQN 相比，Dueling DQN 不改变经验回放、目标网络和 $Q$ 学习的目标，只把网络结构改为价值流加优势流的双流结构，因此能在动作价值差异很小的状态下更快学会 $V(s)$，样本效率更高，在 Atari 等任务上收敛更稳定；与第8课的 Double DQN 相比，两者解决的问题互补，Double DQN 用在线网络选动作、目标网络评估来抑制 $Q(s, a)$ 的过估计，Dueling DQN 则通过结构先验缓解价值估计的方差和泛化问题，二者可以叠加使用。代价是网络参数和计算量略有增加，需要处理优势函数的不可辨识性并选择均值或最大值中心化方式；当动作价值差异本身很大、每个动作都需要精细区分时，收益有限，优势流甚至可能引入额外噪声。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">④ 学习流程</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="agent-env" role="img" aria-label="智能体与环境交互循环"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrA" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6472"/></marker></defs><rect x="20" y="45" width="170" height="80" rx="12" fill="#d97706"/><text x="105" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">智能体 Agent</text><text x="105" y="103" text-anchor="middle" font-size="12" fill="#ffedd5">策略 π · 价值 V</text><rect x="450" y="45" width="170" height="80" rx="12" fill="#0f766e"/><text x="535" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">环境 Environment</text><text x="535" y="103" text-anchor="middle" font-size="12" fill="#ccfbf1">状态 s · 奖励 r</text><path d="M195,65 L445,65" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="55" text-anchor="middle" font-size="12" fill="#5b6472">动作 a</text><path d="M445,105 L195,105" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="125" text-anchor="middle" font-size="12" fill="#5b6472">观测 s′ · 奖励 r</text></svg></div>
+<ol class="flow">
+<li><span class="chip kind-observe">观察</span><b>初始化网络与状态</b>初始化在线网络参数 $\theta$ 与目标网络参数 $\theta^{-}$，令 $\theta^{-}=\theta$，初始化经验回放池 $\mathcal{D}$，设置折扣因子 $\gamma$、探索率 $\epsilon$ 与批量大小 $B$，观察初始状态 $s$。</li>
+<li><span class="chip kind-decide">决策</span><b>选择动作</b>以概率 $\epsilon$ 随机选择动作 $a$，否则选择 $a=\arg\max_{a'} Q(s, a'; \theta)$，输入为当前状态 $s$，输出为待执行的动作 $a$。</li>
+<li><span class="chip kind-act">行动</span><b>执行动作</b>在环境中执行动作 $a$，输入为状态 $s$ 与动作 $a$，等待环境转移并返回奖励与下一状态。</li>
+<li><span class="chip kind-feedback">反馈</span><b>存储转移采样</b>观察奖励 $r$ 与下一状态 $s'$，将 $(s, a, r, s')$ 存入 $\mathcal{D}$，令 $s=s'$，并从 $\mathcal{D}$ 中随机采样批量大小为 $B$ 的转移。</li>
+<li><span class="chip kind-compute">计算</span><b>计算价值优势</b>对采样状态 $s$，共享层提取特征，价值流输出 $V(s)$，优势流输出每个动作的 $A(s, a)$，用均值中心化聚合得到 $Q(s, a)=V(s)+A(s, a)-\frac{1}{|\mathcal{A}|}\sum_{a'\in\mathcal{A}}A(s, a')$。</li>
+<li><span class="chip kind-compute">计算</span><b>计算目标损失</b>用在线网络选择下一动作 $a^*=\arg\max_{a'} Q(s', a'; \theta)$，用目标网络评估得到目标值 $y=r+\gamma Q(s', a^*; \theta^{-})$，终止状态时 $y=r$，计算损失 $L(\theta)=(y-Q(s, a; \theta))^2$ 并对批量取平均。</li>
+<li><span class="chip kind-update">更新</span><b>更新网络参数</b>对损失 $L(\theta)$ 求梯度并用梯度下降更新在线网络参数 $\theta$，每隔 $C$ 步令 $\theta^{-}=\theta$，使目标网络与在线网络同步。</li>
+<li><span class="chip kind-loop">循环</span><b>判断循环继续</b>若训练未结束且回合未结束，令当前状态为 $s'$ 并返回选择动作继续下一轮；若回合结束则重置 $s$ 为初始状态，直至训练结束。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑤ 关键公式</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="formula-card">
+<h4>价值优势分解</h4>
+<div>$$Q(s, a) = V(s) + A(s, a)$$</div>
+<p>该式把 $Q(s, a)$ 拆成两部分：$V(s)$ 只与状态 $s$ 有关，表示该状态本身的好坏；$A(s, a)$ 表示动作 $a$ 相对该状态平均水平的优劣。网络不再直接为每个动作单独学习相近的数值，而是先学好 $V(s)$，再学习动作之间的相对差异。</p>
+<ul>
+<li>$Q(s, a)$：在状态 $s$ 下执行动作 $a$ 后得到的期望折扣回报</li>
+<li>$V(s)$：状态 $s$ 的价值，即从 $s$ 出发按当前策略行动的期望折扣回报</li>
+<li>$A(s, a)$：在状态 $s$ 下动作 $a$ 的优势，即该动作比状态平均水平好多少</li>
+<li>$s$：智能体当前观察到的状态</li>
+<li>$a$：智能体在状态 $s$ 下选择的动作</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>均值中心化聚合</h4>
+<div>$$Q(s, a) = V(s) + A(s, a) - \frac{1}{|\mathcal{A}|} \sum_{a' \in \mathcal{A}} A(s, a')$$</div>
+<p>直接相加存在不可辨识性，因此减去所有动作优势的均值作为基准，使中心化后的优势均值为 $0$。这样 $V(s)$ 被固定为 $Q(s, a)$ 在所有动作上的平均值，分解方式唯一，学习过程更稳定，同时保留了动作间的相对排序。</p>
+<ul>
+<li>$Q(s, a)$：聚合后得到的动作价值估计</li>
+<li>$V(s)$：价值流输出的状态价值</li>
+<li>$A(s, a)$：优势流输出的原始优势</li>
+<li>$|\mathcal{A}|$：离散动作集合 $\mathcal{A}$ 中的动作总数</li>
+<li>$\frac{1}{|\mathcal{A}|} \sum_{a' \in \mathcal{A}} A(s, a')$：所有动作优势的均值，用作中心化基准</li>
+<li>$a'$：求和时遍历的任意一个候选动作</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>Double DQN 目标值</h4>
+<div>$$y = r + \gamma Q(s', \arg\max_{a'} Q(s', a'; \theta); \theta^{-})$$</div>
+<p>该式把 Dueling DQN 与 Double DQN 结合：用参数为 $\theta$ 的在线网络先选出下一状态 $s'$ 下价值最大的动作，再用参数为 $\theta^{-}$ 的目标网络评估该动作的价值，从而减少直接取最大值带来的过估计。若 $s'$ 为终止状态，则目标值 $y$ 直接等于奖励 $r$。</p>
+<ul>
+<li>$y$：用于监督 $Q(s, a; \theta)$ 的目标值</li>
+<li>$r$：执行动作 $a$ 后环境返回的即时奖励</li>
+<li>$\gamma$：折扣因子，衡量未来奖励相对于即时奖励的重要性，取值在 $0$ 与 $1$ 之间</li>
+<li>$s'$：执行动作 $a$ 后转移到的下一状态</li>
+<li>$\theta$：在线网络的参数</li>
+<li>$\theta^{-}$：目标网络的参数，定期从 $\theta$ 同步得到</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>Dueling DQN 损失函数</h4>
+<div>$$L(\theta) = \mathbb{E}_{(s, a, r, s') \sim \mathcal{D}} \left[ (y - Q(s, a; \theta))^2 \right]$$</div>
+<p>损失是目标值 $y$ 与当前估计 $Q(s, a; \theta)$ 之差的平方在经验回放池 $\mathcal{D}$ 上的期望，训练时用批量样本的平均值近似该期望。最小化该损失会同时更新价值流与优势流的参数，使 $V(s)$ 与 $A(s, a)$ 协同拟合 $Q(s, a)$。</p>
+<ul>
+<li>$L(\theta)$：在线网络参数为 $\theta$ 时的训练损失</li>
+<li>$y$：由目标网络计算得到的监督目标值</li>
+<li>$Q(s, a; \theta)$：在线网络对状态 $s$ 下动作 $a$ 的动作价值估计</li>
+<li>$\mathcal{D}$：经验回放池，存放历史转移样本的集合</li>
+<li>$(s, a, r, s')$：从 $\mathcal{D}$ 中采样的一条转移，包含状态、动作、奖励与下一状态</li>
+</ul>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑥ 数学推导</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol class="mathnotes">
+<li>
+<p>第一步，从定义出发：$Q^\pi(s, a)$ 是从状态 $s$ 出发先执行动作 $a$、之后按策略 $\pi$ 行动得到的期望折扣回报，$V^\pi(s)$ 是从状态 $s$ 出发直接按策略 $\pi$ 行动得到的期望折扣回报。</p>
+</li>
+<li>
+<p>第二步，优势函数定义为动作价值与状态价值之差，它衡量动作 $a$ 比状态 $s$ 的平均水平好多少：</p>
+<div>$$A^\pi(s, a)=Q^\pi(s, a)-V^\pi(s)$$</div></li>
+<li>
+<p>第三步，把上式移项，就得到 Dueling DQN 的基本分解：</p>
+<div>$$Q^\pi(s, a)=V^\pi(s)+A^\pi(s, a)$$</div></li>
+<li>
+<p>第四步，注意分解并不唯一：给 $V^\pi(s)$ 加上常数 $c$，同时给所有动作的 $A^\pi(s, a)$ 都减去同一个 $c$，得到的 $Q^\pi(s, a)$ 保持不变，因此仅凭 $Q^\pi(s, a)$ 的监督信号无法唯一确定 $V^\pi(s)$ 与 $A^\pi(s, a)$，这就是不可辨识性。</p>
+</li>
+<li>
+<p>第五步，用均值中心化固定分解：要求中心化后的优势在所有动作上的均值为 $0$，此时 $V(s)$ 等于 $Q(s, a)$ 在所有动作上的平均值，分解方式被唯一确定：</p>
+<div>$$Q(s, a)=V(s)+A(s, a)-\frac{1}{|\mathcal{A}|}\sum_{a'\in\mathcal{A}}A(s, a')$$</div></li>
+<li>
+<p>第六步，这样做还有学习上的好处：价值流的输出 $V(s)$ 会从每个动作的样本中都获得梯度信号，即使某个动作 $a$ 很少被选择，$V(s)$ 仍能通过其他动作的样本得到训练，因此在动作价值差异较小的状态下样本效率更高。</p>
+</li>
+<li>
+<p>第七步，看一个小数值例子：设某状态 $s$ 有 $3$ 个动作，价值流输出 $V(s)=10$，优势流原始输出为 $A(s, a_1)=3$、$A(s, a_2)=1$、$A(s, a_3)=-1$，三者均值为 $1$。</p>
+</li>
+<li>
+<p>第八步，减去均值 $1$ 后，中心化优势为 $2$、$0$、$-2$，聚合得到 $Q(s, a_1)=12$、$Q(s, a_2)=10$、$Q(s, a_3)=8$，其平均值 $(12+10+8)/3=10$ 恰好等于 $V(s)$，动作排序仍由优势决定。</p>
+</li>
+<li>
+<p>第九步，对比无约束情形：若把 $V(s)$ 改为 $11$，同时把原始优势都减 $1$ 变为 $2$、$0$、$-2$，则无约束的 $V(s)+A(s, a)$ 仍为 $13$、$11$、$9$，与原来相同，说明不加约束时 $V(s)$ 与 $A(s, a)$ 无法被唯一确定。</p>
+</li>
+<li>
+<p>第十步，训练时仍用 Double DQN 的目标值 $y$ 与损失 $L(\theta)$ 更新参数 $\theta$，Dueling 结构只改变 $Q(s, a)$ 的计算方式，不改变 $Q$ 学习的目标与经验回放机制。</p>
+</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑦ 伪代码</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="pseudo">
+<h4>初始化在线网络参数 $\theta$ 与目标网络参数 $\theta^{-}$，令 $\theta^{-} = \theta$</h4>
+<div class="step"><span class="stepnum">·</span> 初始化经验回放池 $\mathcal{D}$，设置折扣因子 $\gamma$、探索率 $\epsilon$、学习率 $\alpha$、批量大小 $B$ 与目标网络更新间隔 $C$</div>
+<div class="step"><span class="stepnum">·</span> 初始化当前状态 $s$</div>
+</div>
+<div class="pseudo">
+<h4>重复以下步骤，直到训练结束：</h4>
+<div class="step"><span class="stepnum">·</span> 以概率 $\epsilon$ 随机选择动作 $a$，否则选择 $a = \arg\max_{a'} Q(s, a'; \theta)$</div>
+<div class="step"><span class="stepnum">·</span> 执行动作 $a$，观察奖励 $r$ 与下一状态 $s'$，将 $(s, a, r, s')$ 存入 $\mathcal{D}$</div>
+<div class="step"><span class="stepnum">·</span> 令 $s = s'$，若回合结束则重置 $s$ 为初始状态</div>
+</div>
+<div class="pseudo">
+<h4>从 $\mathcal{D}$ 中随机采样一批转移 $(s, a, r, s')$，批量大小为 $B$</h4>
+<div class="step"><span class="stepnum">·</span> 对每个采样的状态 $s$，用价值流计算 $V(s)$，用优势流计算每个动作 $a$ 的 $A(s, a)$</div>
+<div class="step"><span class="stepnum">·</span> 用均值中心化聚合计算</div>
+<div class="step formula-line"><div>$$Q(s, a) = V(s) + A(s, a) - \frac{1}{|\mathcal{A}|} \sum_{a' \in \mathcal{A}} A(s, a')$$</div></div>
+</div>
+<div class="pseudo">
+<h4>用在线网络选择下一动作 $a^* = \arg\max_{a'} Q(s', a'; \theta)$</h4>
+<div class="step"><span class="stepnum">·</span> 用目标网络评估该动作，计算目标值 $y = r + \gamma Q(s', a^*; \theta^{-})$，若 $s'$ 为终止状态则 $y = r$</div>
+<div class="step"><span class="stepnum">·</span> 计算损失 $L(\theta) = (y - Q(s, a; \theta))^2$，并对批量取平均</div>
+<div class="step"><span class="stepnum">·</span> 用梯度下降更新 $\theta$，每隔 $C$ 步令 $\theta^{-} = \theta$</div>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑧ Python 代码（可运行）</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<pre class="code"><button class="copybtn">复制代码</button><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74</span><code><span class="tok-kw">import</span> random
+<span class="tok-kw">import</span> numpy <span class="tok-kw">as</span> np
+<span class="tok-kw">import</span> torch
+<span class="tok-kw">import</span> torch.nn <span class="tok-kw">as</span> nn
+<span class="tok-kw">import</span> torch.optim <span class="tok-kw">as</span> optim
+<span class="tok-kw">import</span> gymnasium <span class="tok-kw">as</span> gym
+<span class="tok-kw">from</span> collections <span class="tok-kw">import</span> deque
+
+<span class="tok-com"># Dueling 网络：共享层 + 价值流 $V(s)$ + 优势流 $A(s,a)$，均值中心化聚合消除不可辨识性</span>
+<span class="tok-kw">class</span> <span class="tok-fn">DuelingQNet</span>(nn.Module):
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(self, state_dim, action_dim):
+        <span class="tok-fn">super</span>().<span class="tok-fn">__init__</span>()
+        self.shared = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(state_dim, <span class="tok-num">128</span>), nn.<span class="tok-fn">ReLU</span>())  <span class="tok-com"># 共享特征提取</span>
+        self.value = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, <span class="tok-num">128</span>), nn.<span class="tok-fn">ReLU</span>(), nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, <span class="tok-num">1</span>))  <span class="tok-com"># 价值流：输出标量 $V(s)$</span>
+        self.advantage = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, <span class="tok-num">128</span>), nn.<span class="tok-fn">ReLU</span>(), nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, action_dim))  <span class="tok-com"># 优势流：每个动作的 $A(s,a)$</span>
+
+    <span class="tok-kw">def</span> <span class="tok-fn">forward</span>(self, x):
+        h = self.<span class="tok-fn">shared</span>(x)
+        v = self.<span class="tok-fn">value</span>(h)
+        a = self.<span class="tok-fn">advantage</span>(h)
+        <span class="tok-com"># 均值中心化：$A$ 减去均值，使优势均值为 $0$，固定分解，保留动作相对排序</span>
+        <span class="tok-kw">return</span> v + a - a.<span class="tok-fn">mean</span>(dim=<span class="tok-num">1</span>, keepdim=<span class="tok-kw">True</span>)  <span class="tok-com"># $Q(s,a)=V(s)+A(s,a)-mean(A)$</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">main</span>():
+    env = gym.<span class="tok-fn">make</span>(<span class="tok-str">"CartPole-v1"</span>)
+    state_dim, action_dim = env.observation_space.shape[<span class="tok-num">0</span>], env.action_space.n
+    device = torch.<span class="tok-fn">device</span>(<span class="tok-str">"cuda"</span> <span class="tok-kw">if</span> torch.cuda.<span class="tok-fn">is_available</span>() <span class="tok-kw">else</span> <span class="tok-str">"cpu"</span>)
+    online = <span class="tok-fn">DuelingQNet</span>(state_dim, action_dim).<span class="tok-fn">to</span>(device)  <span class="tok-com"># 在线网络 $theta$</span>
+    target = <span class="tok-fn">DuelingQNet</span>(state_dim, action_dim).<span class="tok-fn">to</span>(device)  <span class="tok-com"># 目标网络 $theta^{-}$</span>
+    target.<span class="tok-fn">load_state_dict</span>(online.<span class="tok-fn">state_dict</span>())  <span class="tok-com"># $theta^{-}=theta$</span>
+    opt = optim.<span class="tok-fn">Adam</span>(online.<span class="tok-fn">parameters</span>(), lr=<span class="tok-num">1</span>e-<span class="tok-num">3</span>)
+    buffer = <span class="tok-fn">deque</span>(maxlen=<span class="tok-num">10000</span>)  <span class="tok-com"># 经验回放池 $D$</span>
+    gamma, eps, eps_min, eps_decay = <span class="tok-num">0.99</span>, <span class="tok-num">1.0</span>, <span class="tok-num">0.05</span>, <span class="tok-num">0.995</span>
+    batch, target_update, episodes = <span class="tok-num">64</span>, <span class="tok-num">100</span>, <span class="tok-num">300</span>
+    steps = <span class="tok-num">0</span>
+    <span class="tok-kw">for</span> ep <span class="tok-kw">in</span> <span class="tok-bi">range</span>(episodes):
+        s, _ = env.<span class="tok-fn">reset</span>(seed=ep)
+        done, total_reward = <span class="tok-kw">False</span>, <span class="tok-num">0</span>
+        <span class="tok-kw">while</span> <span class="tok-kw">not</span> done:
+            <span class="tok-com"># $epsilon$-贪心：探索或利用 $Q$ 最大的动作</span>
+            <span class="tok-kw">if</span> random.<span class="tok-fn">random</span>() &lt; eps:
+                a = env.action_space.<span class="tok-fn">sample</span>()
+            <span class="tok-kw">else</span>:
+                <span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():
+                    a = <span class="tok-fn">online</span>(torch.<span class="tok-fn">tensor</span>(s, dtype=torch.float32, device=device)).<span class="tok-fn">argmax</span>().<span class="tok-fn">item</span>()
+            s2, r, terminated, truncated, _ = env.<span class="tok-fn">step</span>(a)
+            done = terminated <span class="tok-kw">or</span> truncated
+            buffer.<span class="tok-fn">append</span>((s, a, r, s2, done))
+            s, total_reward, steps = s2, total_reward + r, steps + <span class="tok-num">1</span>
+            <span class="tok-kw">if</span> <span class="tok-bi">len</span>(buffer) &gt;= batch:
+                batch_data = random.<span class="tok-fn">sample</span>(buffer, batch)
+                ss, aa, rr, ss2, dd = <span class="tok-bi">zip</span>(*batch_data)
+                ss = torch.<span class="tok-fn">tensor</span>(np.<span class="tok-fn">array</span>(ss), dtype=torch.float32, device=device)
+                aa = torch.<span class="tok-fn">tensor</span>(aa, dtype=torch.long, device=device)
+                rr = torch.<span class="tok-fn">tensor</span>(rr, dtype=torch.float32, device=device)
+                ss2 = torch.<span class="tok-fn">tensor</span>(np.<span class="tok-fn">array</span>(ss2), dtype=torch.float32, device=device)
+                dd = torch.<span class="tok-fn">tensor</span>(dd, dtype=torch.float32, device=device)
+                q = <span class="tok-fn">online</span>(ss).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, aa.<span class="tok-fn">unsqueeze</span>(<span class="tok-num">1</span>)).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)  <span class="tok-com"># $Q(s,a;theta)$</span>
+                <span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():
+                    <span class="tok-com"># Double DQN：在线网选动作 $a^*$，目标网评估，避免过估计</span>
+                    a_star = <span class="tok-fn">online</span>(ss2).<span class="tok-fn">argmax</span>(dim=<span class="tok-num">1</span>, keepdim=<span class="tok-kw">True</span>)
+                    q_next = <span class="tok-fn">target</span>(ss2).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, a_star).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)
+                    y = rr + gamma * q_next * (<span class="tok-num">1</span> - dd)  <span class="tok-com"># 终止时 $y=r$</span>
+                loss = nn.<span class="tok-fn">MSELoss</span>()(q, y)  <span class="tok-com"># $L(theta)=(y-Q)^2$ 的批量平均</span>
+                opt.<span class="tok-fn">zero_grad</span>(); loss.<span class="tok-fn">backward</span>(); opt.<span class="tok-fn">step</span>()
+                <span class="tok-kw">if</span> steps % target_update == <span class="tok-num">0</span>:
+                    target.<span class="tok-fn">load_state_dict</span>(online.<span class="tok-fn">state_dict</span>())  <span class="tok-com"># 每 $C$ 步同步 $theta^{-}=theta$</span>
+        eps = <span class="tok-bi">max</span>(eps_min, eps * eps_decay)
+        <span class="tok-kw">if</span> (ep + <span class="tok-num">1</span>) % <span class="tok-num">50</span> == <span class="tok-num">0</span>:
+            <span class="tok-bi">print</span>(f<span class="tok-str">"Episode {ep+1}, reward={total_reward:.0f}, eps={eps:.2f}"</span>)
+    env.<span class="tok-fn">close</span>()
+
+<span class="tok-kw">if</span> __name__ == <span class="tok-str">"__main__"</span>:
+    <span class="tok-fn">main</span>()</code></pre>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑨ 代码讲解</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>定义 `DuelingQNet`：共享层 `self.shared` 先把状态 $s$ 编码为 $128$ 维特征 $h$；价值流 `self.value` 输出一个标量 $V(s)$，优势流 `self.advantage` 输出每个动作 $a$ 对应的 $A(s, a)$。两条流共用 $h$，因此 $V(s)$ 的学习可以借助所有动作的样本，而不只依赖某个 $a$ 被选中的样本。</li>
+<li>在 `forward` 中用均值中心化聚合：先由 $h$ 得到 $V(s)$ 与 $A(s, a)$，再返回 $Q(s, a)=V(s)+A(s, a)-\frac{1}{|\mathcal{A}|}\sum_{a' \in \mathcal{A}} A(s, a')$。减去均值后优势的均值为 $0$，消除了 $V(s)$ 加 $c$、$A(s, a)$ 减 $c$ 仍得到同一 $Q(s, a)$ 的不可辨识性，同时保留动作间的相对排序，因此 $\arg\max_{a} Q(s, a)$ 不变。</li>
+<li>在 `main` 中创建 CartPole 环境，初始化在线网络 $Q(s, a; \theta)$ 与目标网络 $Q(s, a; \theta^{-})$ 并令 $\theta^{-}=\theta$，用 Adam 优化 $\theta$，学习率为 $10^{-3}$；同时创建容量为 $10000$ 的经验回放池 $D$，并设定折扣因子 $\gamma=0.99$、初始探索率 $\epsilon=1.0$、最小探索率 $\epsilon_{\min}=0.05$、衰减系数 $0.995$、批量大小 $64$、目标网络同步间隔 $100$ 步、总回合数 $300$。</li>
+<li>主循环按 $\epsilon$-贪心与环境交互：以概率 $\epsilon$ 随机采样动作 $a$ 探索，以概率 $1-\epsilon$ 选择 $Q(s, a; \theta)$ 最大的动作 $a$；执行后得到下一状态 $s'$、奖励 $r$ 与终止标志，并把 $(s, a, r, s', done)$ 存入 $D$，同时累计奖励并更新全局步数。注意终止时 $done$ 为真，否则继续执行。</li>
+<li>当 $D$ 中样本数不少于批量大小 $64$ 时，从 $D$ 中随机抽取一个小批量 $(s, a, r, s', done)$，用在线网络得到当前 $Q(s, a; \theta)$；再用 Double DQN 计算目标值：在线网络选出 $a^*=\arg\max_{a'} Q(s', a'; \theta)$，目标网络评估得到 $Q(s', a^*; \theta^{-})$，目标值为 $y=r+\gamma Q(s', a^*; \theta^{-})(1-done)$，终止时 $done=1$，故 $y=r$。最后用均方误差 $L(\theta)=(y-Q(s, a; \theta))^2$ 的批量平均作为损失，对 $\theta$ 做一次梯度下降更新。</li>
+<li>每 $100$ 步把 $\theta$ 同步给 $\theta^{-}$，即令 $\theta^{-}=\theta$，使目标值 $y$ 在一段时间内保持稳定；每个回合结束时按 $\epsilon \leftarrow \max(\epsilon_{\min}, \epsilon \times 0.995)$ 衰减探索率，其中 $\epsilon_{\min}=0.05$，并每 $50$ 个回合打印一次总奖励与当前 $\epsilon$，便于观察学习是否收敛。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑩ 超参数</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<table class="data"><tr><th>参数</th><th>常用取值</th><th>说明</th></tr>
+<tr><td>折扣因子 $\gamma$</td><td>$0.99$</td><td>决定未来奖励 $r$ 的权重：$\gamma$ 越接近 $1$，智能体越看重长期回报，但目标值 $y$ 的方差与训练不稳定性也越大；CartPole 这类需要持续平衡的任务常用 $0.99$，过小会使智能体只顾眼前奖励 $r$。</td></tr>
+<tr><td>探索率 $\epsilon$ 及其衰减</td><td>$1.0 \to 0.05$，每回合乘以 $0.995$</td><td>训练初期 $\epsilon$ 接近 $1$，以随机动作 $a$ 充分探索；随着 $\epsilon$ 衰减，智能体越来越多地利用 $Q(s, a; \theta)$ 最大的动作 $a$。衰减过快会过早陷入局部最优，衰减过慢则后期仍有大量随机动作 $a$，难以收敛。</td></tr>
+<tr><td>学习率 $lr$</td><td>$10^{-3}$</td><td>Adam 的步长：$lr$ 过大时 $Q(s, a; \theta)$ 更新不稳定、损失 $L(\theta)$ 震荡甚至发散；$lr$ 过小则 $300$ 个回合内学不充分。可先固定 $10^{-3}$，若损失 $L(\theta)$ 长期不降再尝试 $5\times10^{-4}$ 或 $10^{-4}$。</td></tr>
+<tr><td>批量大小 $batch$</td><td>$64$</td><td>每次从 $D$ 中抽取 $64$ 条样本计算损失 $L(\theta)$ 的平均梯度：批量太小会使梯度噪声大、$Q(s, a; \theta)$ 更新不稳定；批量太大则计算变慢，且单步更新次数相对减少。$64$ 是 CartPole 上常用且性价比高的折中值。</td></tr>
+<tr><td>目标网络同步间隔 $C$</td><td>$100$ 步</td><td>每 $100$ 步令 $\theta^{-}=\theta$：$C$ 太小，目标值 $y$ 跟随在线网络 $Q(s, a; \theta)$ 变化过快，容易震荡；$C$ 太大，目标网络 $Q(s, a; \theta^{-})$ 过时，学习变慢。结合批量大小 $64$ 与总步数，$100$ 步是常用起点。</td></tr>
+</table>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑪ 常见坑</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>不要写成 $Q(s, a)=V(s)+A(s, a)$ 直接相加而不减均值：此时 $V(s)$ 与 $A(s, a)$ 不可辨识，训练中两者会相互漂移，$V(s)$ 可能学不到状态本身的好坏。调试时检查 `forward` 是否减去优势均值，并打印同一状态 $s$ 下所有动作 $a$ 的 $A(s, a)$ 均值，确认其接近 $0$。</li>
+<li>优势均值必须沿动作维求平均：若对批量维求均值，会错误地把不同状态 $s$ 的优势混在一起，导致 $Q(s, a)$ 计算错误。应按每行、即维度 $1$ 求均值并保留该维；调试时打印一个批量的 $Q(s, a)$ 形状，CartPole 下应为 $64 \times 2$，其中 $2$ 是动作数 $|\mathcal{A}|$。</li>
+<li>计算目标值 $y$ 时不要用在线网络同时选动作和评估，也不要让梯度流进目标网络：应由在线网络选出 $a^*$，由目标网络评估 $Q(s', a^*; \theta^{-})$，并在计算 $y$ 时关闭梯度；否则会重新引入过估计，且 $\theta^{-}$ 会被错误更新。调试时检查目标值计算是否在无梯度模式下进行，并确认只有 $\theta$ 参与优化器更新。</li>
+<li>若训练 $300$ 个回合后总奖励仍长期低于 $100$，先不要调网络结构：先检查 $\epsilon$ 是否已从 $1.0$ 衰减到 $0.05$ 附近、经验回放池 $D$ 是否已存满批量 $64$ 再开始更新、目标网络是否每 $100$ 步同步；再检查奖励 $r$ 与终止标志 $done$ 是否正确传入目标值 $y=r+\gamma Q(s', a^*; \theta^{-})(1-done)$，其中终止时 $done=1$。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑫ 练习题</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p class="qa-q"><b>练习题 1</b> 请解释 Dueling DQN 为什么要把 $Q(s, a)$ 分解为状态价值 $V(s)$ 与优势函数 $A(s, a)$ 之和，这种分解存在怎样的不可辨识性问题，均值中心化聚合 $Q(s, a)=V(s)+A(s, a)-\frac{1}{|\mathcal{A}|}\sum_{a' \in \mathcal{A}} A(s, a')$ 是如何固定分解方式的？并进一步说明：这种双流结构为什么能提高样本效率，尤其是在动作价值差异较小的状态下效果更明显？它与 Double DQN 是什么关系？</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>Dueling DQN 的出发点是区分状态本身好不好与在这个状态下某个动作比平均水平好多少。记 $Q^\pi(s, a)$ 为从状态 $s$ 出发先执行动作 $a$、之后按策略 $\pi$ 行动得到的期望折扣回报，$V^\pi(s)$ 为从状态 $s$ 出发直接按策略 $\pi$ 行动得到的期望折扣回报，则优势函数定义为 $A^\pi(s, a)=Q^\pi(s, a)-V^\pi(s)$，移项即得 $Q^\pi(s, a)=V^\pi(s)+A^\pi(s, a)$。其中 $V(s)$ 只与 $s$ 有关，衡量状态本身的好坏；$A(s, a)$ 衡量动作 $a$ 相对于该状态平均水平的优劣，正值表示好于平均，负值表示差于平均，接近 $0$ 表示动作选择几乎不影响回报。但仅凭 $Q(s, a)$ 的监督信号无法唯一确定这一分解，这就是不可辨识性。对任意常数 $c$，把 $V(s)$ 改为 $V(s)+c$，同时把所有动作的 $A(s, a)$ 都改为 $A(s, a)-c$，则 $Q(s, a)=V(s)+A(s, a)$ 保持不变，也就是说 $V(s)$ 与 $A(s, a)$ 可以沿着这条方向任意漂移而不改变 $Q(s, a)$，网络学到的 $V(s)$ 就失去了状态价值的语义，训练也不稳定，因此必须加一个约束来固定分解方式。实践中采用均值中心化聚合：$Q(s, a)=V(s)+A(s, a)-\frac{1}{|\mathcal{A}|}\sum_{a' \in \mathcal{A}} A(s, a')$。这里减去的是所有动作优势的均值，中心化后的优势在所有动作上的均值为 $0$，于是 $V(s)$ 等于 $Q(s, a)$ 在所有动作上的平均值，即 $V(s)=\frac{1}{|\mathcal{A}|}\sum_{a' \in \mathcal{A}} Q(s, a')$，分解被唯一确定：若再给 $V(s)$ 加 $c$、给 $A(s, a)$ 减 $c$，中心化优势的均值将变为 $-c$，不再满足均值为 $0$ 的约束，除非 $c=0$。同时，由于对所有动作减去的是同一个均值，动作间的相对排序不变，$\arg\max_{a} Q(s, a)=\arg\max_{a} A(s, a)$，贪心动作不受影响。例如，某状态 $s$ 有 $3$ 个动作，价值流输出 $V(s)=10$，优势流原始输出为 $A(s, a_1)=3$、$A(s, a_2)=1$、$A(s, a_3)=-1$，三者均值为 $1$。减去均值后中心化优势为 $2$、$0$、$-2$，聚合得到 $Q(s, a_1)=12$、$Q(s, a_2)=10$、$Q(s, a_3)=8$，其平均值恰好等于 $V(s)$，排序仍由优势决定。若不加约束，把 $V(s)$ 改为 $11$、把原始优势都减 $1$，无约束的 $V(s)+A(s, a)$ 仍为 $13$、$11$、$9$，与原来相同，这正说明不加约束时 $V(s)$ 与 $A(s, a)$ 无法被唯一确定。结构上，网络先由共享层提取状态 $s$ 的表示，再分出两条流：价值流输出一个标量 $V(s)$，优势流输出每个动作的 $A(s, a)$，最后在聚合层按上式合并。由于 $V(s)$ 出现在每个动作的 $Q(s, a)$ 中，价值流会从每个动作的样本中都获得梯度信号，即使某个动作 $a$ 很少被选择，$V(s)$ 仍能通过其他动作的样本得到训练；优势流只需学习动作间的相对差异，而不必重复学习状态本身的好坏。这在动作价值差异较小的状态下尤其有利：此时各动作的 $A(s, a)$ 都接近 $0$，$Q(s, a)$ 主要由 $V(s)$ 决定，网络可以把容量和样本集中用于学好 $V(s)$，而不必为每个动作分别从头学习几乎相同的 $Q$ 值，从而提高样本效率和泛化能力；在动作选择确实重要的状态下，优势流仍能学出较大的 $A(s, a)$ 差异来区分动作。最后，Dueling DQN 只改变 $Q(s, a)$ 的计算方式与网络结构，不改变 $Q$ 学习的损失、经验回放和目标网络机制，因此可以直接与 Double DQN 结合：用在线网络选择动作，用目标网络评估价值，以减少过估计，Dueling 结构只是让 $Q(s, a)$ 的估计本身更准确、更高效。</p>
+</div></details>
+<p class="qa-q"><b>练习题 2</b> 设某状态 $s$ 有 $3$ 个动作 $a_1$、$a_2$、$a_3$，即 $|\mathcal{A}|=3$。某时刻 Dueling 网络在状态 $s$ 处输出价值流 $V(s)=10$，优势流原始输出为 $A(s,a_1)=3$、$A(s,a_2)=1$、$A(s,a_3)=-1$。（1）计算原始优势的均值，并用均值中心化聚合公式 $Q(s,a)=V(s)+A(s,a)-\frac{1}{|\mathcal{A}|}\sum_{a'\in\mathcal{A}}A(s,a')$ 求 $Q(s,a_1)$、$Q(s,a_2)$、$Q(s,a_3)$，验证这三个 $Q$ 值的平均值等于 $V(s)$，并指出 $s$ 处的贪心动作。（2）取常数 $c=1$，把 $V(s)$ 改为 $11$，同时把三个原始优势都减去 $1$。分别计算改动前后无约束分解 $V(s)+A(s,a)$ 的三个值，说明这为什么体现了不可辨识性；再结合（1）的结果，说明均值中心化约束为什么能固定分解方式。（3）设智能体在 $s$ 处执行动作 $a_2$，得到奖励 $r=1$，转移到下一状态 $s'$，且未终止，折扣因子 $\gamma=0.99$。在 $s'$ 处，在线网络输出 $V_{online}(s')=6$，原始优势为 $A_{online}(s',a_1)=4$、$A_{online}(s',a_2)=1$、$A_{online}(s',a_3)=-2$；目标网络输出 $V_{target}(s')=8$，原始优势为 $A_{target}(s',a_1)=2$、$A_{target}(s',a_2)=5$、$A_{target}(s',a_3)=-1$。按 Double DQN 的做法，先用在线网络在 $s'$ 处选择动作 $a^*$，再用目标网络评估该动作，求目标值 $y=r+\gamma Q_{target}(s',a^*)$、$Q(s,a_2)$ 的时序差分误差 $\delta$ 与单样本损失 $L=(y-Q(s,a_2))^2$。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>（1）原始优势的均值为 $\frac{3+1+(-1)}{3}=\frac{3}{3}=1$。中心化后的优势为 $3-1=2$、$1-1=0$、$-1-1=-2$，其均值为 $0$。代入均值中心化聚合公式，得 $Q(s,a_1)=10+3-1=12$，$Q(s,a_2)=10+1-1=10$，$Q(s,a_3)=10+(-1)-1=8$。这三个 $Q$ 值的平均值为 $\frac{12+10+8}{3}=\frac{30}{3}=10$，恰好等于 $V(s)=10$。因为 $12$ 是最大值，所以 $s$ 处的贪心动作为 $a_1$。（2）改动前无约束分解为 $10+3=13$、$10+1=11$、$10+(-1)=9$。取 $c=1$ 后，$V(s)$ 变为 $11$，原始优势变为 $2$、$0$、$-2$，无约束分解为 $11+2=13$、$11+0=11$、$11+(-2)=9$，与改动前完全相同。因此仅从 $V(s)+A(s,a)$ 的值无法区分 $V(s)=10$、$A(s,a_1)=3$、$A(s,a_2)=1$、$A(s,a_3)=-1$ 与 $V(s)=11$、$A(s,a_1)=2$、$A(s,a_2)=0$、$A(s,a_3)=-2$ 这两组分解，这就是不可辨识性。均值中心化要求中心化后的优势均值为 $0$，此时 $V(s)$ 必须等于 $Q(s,a)$ 在所有动作上的平均值。对（1）得到的 $Q(s,a_1)=12$、$Q(s,a_2)=10$、$Q(s,a_3)=8$，其平均值为 $10$，故只能取 $V(s)=10$，中心化优势只能取 $2$、$0$、$-2$。若强行取 $V(s)=11$，则 $Q(s,a)-V(s)$ 为 $1$、$-1$、$-3$，其均值为 $-1$，不等于 $0$，违反约束；可见均值中心化排除了上述平移自由度，固定了分解方式。（3）先计算在线网络在 $s'$ 处的 $Q$ 值。原始优势均值为 $\frac{4+1+(-2)}{3}=\frac{3}{3}=1$，中心化优势为 $3$、$0$、$-3$，故 $Q_{online}(s',a_1)=6+4-1=9$，$Q_{online}(s',a_2)=6+1-1=6$，$Q_{online}(s',a_3)=6+(-2)-1=3$。最大值为 $9$，故在线网络选择的动作为 $a^*=a_1$。再计算目标网络在 $s'$ 处的 $Q$ 值。原始优势均值为 $\frac{2+5+(-1)}{3}=\frac{6}{3}=2$，中心化优势为 $0$、$3$、$-3$，故 $Q_{target}(s',a_1)=8+2-2=8$，$Q_{target}(s',a_2)=8+5-2=11$，$Q_{target}(s',a_3)=8+(-1)-2=5$。Double DQN 用目标网络评估在线网络选出的 $a_1$，即 $Q_{target}(s',a^*)=Q_{target}(s',a_1)=8$。注意目标网络自身的最大动作是 $a_2$，但 Double DQN 不直接取 $11$，这正是它减少过估计的关键。目标值为 $y=r+\gamma Q_{target}(s',a^*)=1+0.99\times 8=1+7.92=8.92$。由（1）知当前 $Q(s,a_2)=10$，故时序差分误差为 $\delta=y-Q(s,a_2)=8.92-10=-1.08$。单样本损失为 $L=(y-Q(s,a_2))^2=(-1.08)^2=1.1664$。最终结果为：$Q(s,a_1)=12$、$Q(s,a_2)=10$、$Q(s,a_3)=8$，贪心动作为 $a_1$；$y=8.92$，$\delta=-1.08$，$L=1.1664$。</p>
+</div></details>
+<p class="qa-q"><b>练习题 3</b> 基于本课给出的 `DuelingQNet` 代码（共享层提取状态 $s$ 的表示，价值流输出 $V(s)$，优势流输出每个动作的 $A(s, a)$，`forward` 中原聚合为 `v + a - a.mean(dim=1, keepdim=True)`），完成以下代码改造与对比实验：</p>
+<p class="qa-q">1. 聚合方式改造：把均值中心化改为最大值中心化，即改成 $Q(s, a)=V(s)+A(s, a)-\max_{a' \in \mathcal{A}} A(s, a')$。说明此时 $V(s)$ 的含义变成了什么，中心化后的优势有什么特点。</p>
+<p class="qa-q">2. 增加可切换开关：给 `DuelingQNet.__init__` 增加参数 `mode`，支持 `'mean'`、`'max'`、`'none'` 三种取值，分别对应均值中心化、最大值中心化、无约束的 $Q(s, a)=V(s)+A(s, a)$。说明需要改哪几行、改成什么，并注意 PyTorch 中 `max` 的返回值与 `mean` 有什么不同。</p>
+<p class="qa-q">3. 对比实验：在 `main()` 中用同一超参数（例如 $\gamma=0.99$、$\epsilon$ 从 $1.0$ 衰减到 $0.05$、批量大小为 $64$、训练 $300$ 个回合）分别运行三种模式，记录每个回合的奖励并计算滑动平均奖励；同时固定一个状态 $s_0$（例如 `env.reset(seed=0)` 得到的状态），在训练结束后分别打印三种模式下该状态的 $V(s_0)$、原始优势 $A(s_0, a)$、中心化后的优势和 $Q(s_0, a)$。</p>
+<p class="qa-q">要求：只改聚合与开关相关的代码，不改 $Q$ 学习的损失、经验回放和 Double DQN 的目标值计算方式。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>参考答案：</p>
+<p>一、改哪几行、改成什么</p>
+<p>1. `__init__` 增加开关，只改签名并多存一个属性，其余三层不变：</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4
+5
+6
+7</span><code><span class="tok-kw">class</span> <span class="tok-fn">DuelingQNet</span>(nn.Module):
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(self, state_dim, action_dim, mode=<span class="tok-str">'mean'</span>):
+        <span class="tok-fn">super</span>().<span class="tok-fn">__init__</span>()
+        self.mode = mode
+        self.shared = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(state_dim, <span class="tok-num">128</span>), nn.<span class="tok-fn">ReLU</span>())
+        self.value = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, <span class="tok-num">128</span>), nn.<span class="tok-fn">ReLU</span>(), nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, <span class="tok-num">1</span>))
+        self.advantage = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, <span class="tok-num">128</span>), nn.<span class="tok-fn">ReLU</span>(), nn.<span class="tok-fn">Linear</span>(<span class="tok-num">128</span>, action_dim))</code></pre>
+<p>2. `forward` 是核心改动，只改最后一行聚合，改成按 `mode` 分支：</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12</span><code>    <span class="tok-kw">def</span> <span class="tok-fn">forward</span>(self, x):
+        h = self.<span class="tok-fn">shared</span>(x)
+        v = self.<span class="tok-fn">value</span>(h)
+        a = self.<span class="tok-fn">advantage</span>(h)
+        <span class="tok-kw">if</span> self.mode == <span class="tok-str">'mean'</span>:
+            <span class="tok-kw">return</span> v + a - a.<span class="tok-fn">mean</span>(dim=<span class="tok-num">1</span>, keepdim=<span class="tok-kw">True</span>)
+        <span class="tok-kw">elif</span> self.mode == <span class="tok-str">'max'</span>:
+            <span class="tok-kw">return</span> v + a - a.<span class="tok-fn">max</span>(dim=<span class="tok-num">1</span>, keepdim=<span class="tok-kw">True</span>)[<span class="tok-num">0</span>]
+        <span class="tok-kw">elif</span> self.mode == <span class="tok-str">'none'</span>:
+            <span class="tok-kw">return</span> v + a
+        <span class="tok-kw">else</span>:
+            <span class="tok-kw">raise</span> <span class="tok-fn">ValueError</span>(<span class="tok-str">'mode must be mean, max or none'</span>)</code></pre>
+<p>注意：`mean` 直接返回张量，`max` 返回 `(values, indices)` 这样的二元组，必须取 `[0]` 才能得到最大值张量，否则 `v + a - ...` 会报错；两种聚合都要保留 `keepdim=True`，使减去的量形状为 `(batch, 1)`，才能广播到 $Q(s, a)$ 的形状。</p>
+<p>3. `main()` 对比实验：把创建网络、优化器和经验回放池的代码放进按 `mode` 循环的循环体内，其余训练代码不变：</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</span><code>results = {}
+<span class="tok-kw">for</span> mode <span class="tok-kw">in</span> [<span class="tok-str">'mean'</span>, <span class="tok-str">'max'</span>, <span class="tok-str">'none'</span>]:
+    online = <span class="tok-fn">DuelingQNet</span>(state_dim, action_dim, mode=mode).<span class="tok-fn">to</span>(device)
+    target = <span class="tok-fn">DuelingQNet</span>(state_dim, action_dim, mode=mode).<span class="tok-fn">to</span>(device)
+    target.<span class="tok-fn">load_state_dict</span>(online.<span class="tok-fn">state_dict</span>())
+    opt = optim.<span class="tok-fn">Adam</span>(online.<span class="tok-fn">parameters</span>(), lr=<span class="tok-num">1</span>e-<span class="tok-num">3</span>)
+    buffer = <span class="tok-fn">deque</span>(maxlen=<span class="tok-num">10000</span>)
+    rewards = []
+    <span class="tok-com"># 其余训练循环不变，每回合把总奖励加入 rewards</span>
+    results[mode] = rewards</code></pre>
+<p>`opt` 和 `buffer` 必须在循环内重新创建，否则优化器状态和经验会在三种模式间泄漏，对比不再公平。</p>
+<p>固定状态检查，在每种模式训练结束后执行：</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8</span><code>s0, _ = env.<span class="tok-fn">reset</span>(seed=<span class="tok-num">0</span>)
+<span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():
+    x = torch.<span class="tok-fn">tensor</span>(s0, dtype=torch.float32, device=device).<span class="tok-fn">unsqueeze</span>(<span class="tok-num">0</span>)
+    h = online.<span class="tok-fn">shared</span>(x)
+    v = online.<span class="tok-fn">value</span>(h)
+    a = online.<span class="tok-fn">advantage</span>(h)
+    q = <span class="tok-fn">online</span>(x)
+<span class="tok-bi">print</span>(mode, v.<span class="tok-fn">item</span>(), a.<span class="tok-fn">cpu</span>().<span class="tok-fn">numpy</span>(), q.<span class="tok-fn">cpu</span>().<span class="tok-fn">numpy</span>())</code></pre>
+<p>这里 `v` 对应 $V(s_0)$，`a` 对应原始的 $A(s_0, a)$，`q` 对应聚合后的 $Q(s_0, a)$。</p>
+<p>二、$V(s)$ 的含义为什么会变</p>
+<p>均值中心化时，对 $Q(s, a)=V(s)+A(s, a)-\frac{1}{|\mathcal{A}|}\sum_{a' \in \mathcal{A}} A(s, a')$ 两边对所有 $a$ 求平均，中心化项相互抵消，得到 $V(s)=\frac{1}{|\mathcal{A}|}\sum_{a \in \mathcal{A}} Q(s, a)$，即 $V(s)$ 是 $Q(s, a)$ 在所有动作上的平均值，中心化后的优势均值为 $0$。</p>
+<p>最大值中心化时，设 $a^*=\arg\max_{a \in \mathcal{A}} A(s, a)$，则 $Q(s, a^*)=V(s)$，所以 $V(s)=\max_{a \in \mathcal{A}} Q(s, a)$，即 $V(s)$ 是最优动作的 $Q$ 值；中心化后最优动作的优势为 $0$，其余动作的优势小于或等于 $0$。</p>
+<p>无约束时 $Q(s, a)=V(s)+A(s, a)$，取任意常数 $c$，令 $V'(s)=V(s)+c$、$A'(s, a)=A(s, a)-c$，仍有 $V'(s)+A'(s, a)=V(s)+A(s, a)$，所以 $V(s)$ 既不是平均值也不是最大值，没有确定的含义。</p>
+<p>三、预期看到的现象</p>
+<p>1. 表达能力相同，差别在优化：三种聚合都能表示同一组 $Q(s, a)$，因为 $V(s)$ 可以整体平移来吸收常数差，所以最终学到的策略和 $Q(s, a)$ 在理想情况下应接近，差别主要体现在训练稳定性和速度上，而不是能否表示。</p>
+<p>2. 奖励曲线：`'mean'` 最稳定、上升最快，滑动平均奖励最先达到高位且波动最小；`'max'` 接近 `'mean'`，但波动稍大、上升稍慢；`'none'` 上升最慢、曲线波动最大，在 $300$ 个回合内可能仍未稳定到与前两者相同的水平。原因是均值聚合让 $V(s)$ 从每个动作的样本都获得梯度，而最大值聚合对最优动作的优势梯度会被抵消，无约束时 $V(s)$ 与 $A(s, a)$ 还会互相漂移。</p>
+<p>梯度细节：均值聚合时 $\frac{\partial Q(s, a)}{\partial A(s, a)}=1-\frac{1}{|\mathcal{A}|}$，对其他动作的偏导为 $-\frac{1}{|\mathcal{A}|}$，所有优势都参与更新；最大值聚合时，若 $a$ 就是最优动作，则 $Q(s, a)=V(s)$，其优势的偏导为 $0$，若 $a$ 不是最优动作，则自身偏导为 $1$、最优动作的偏导为 $-1$；无约束时自身偏导为 $1$，但 $V(s)$ 与 $A(s, a)$ 会同时获得同一时序差分误差的梯度，容易同向漂移。</p>
+<p>3. 固定状态 $s_0$ 的打印：设示意性的最终 $Q(s_0, a)$ 为 $12$、$10$、$8$，则 `'mean'` 应看到 $V(s_0)=10$、中心化优势为 $2$、$0$、$-2$；`'max'` 应看到 $V(s_0)=12$、中心化优势为 $0$、$-2$、$-4$；`'none'` 的 $Q(s_0, a)$ 仍可接近 $12$、$10$、$8$，但 $V(s_0)$ 可能漂移到例如 $15$，原始优势为 $-3$、$-5$、$-7$，既不等于 $Q$ 的平均值，也不等于最大值。实际数值会随随机种子和初始化变化，不要期望与示意数完全相同，关键是看 $V(s_0)$ 与 $Q(s_0, a)$ 平均值或最大值的关系是否成立。</p>
+<p>4. 常见错误：忘记给 `max` 加 `[0]` 会报错；去掉 `keepdim=True` 会导致广播形状错误；只改 `online` 不改 `target`，或三种模式共用同一个 `buffer`，都会使对比失效；改动损失或目标值 $y=r+\gamma Q_{target}(s', a^*)$（其中 $a^*$ 由在线网络选择）就不再是单纯的聚合消融实验。</p>
+</div></details>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">参考文献</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>Wang et al. 2016, Dueling Network Architectures for Deep Reinforcement Learning, arXiv:1511.06581</li>
+<li>Van Hasselt et al. 2016, Deep Reinforcement Learning with Double Q-learning, arXiv:1509.06461</li>
+<li>Mnih et al. 2013, Playing Atari with Deep Reinforcement Learning, arXiv:1312.5602</li>
+<li>Sutton &amp; Barto 2018, 第10章 On-policy Control with Approximation</li>
+</ol>
+</div></details>
+<div class="pager">
+<a href="lesson-8.html">← 上一课：Double DQN</a>
+<a href="../rl.html">← 返回 RL 精讲目录</a>
+<span>第 10 课 · 优先经验回放 PER（即将更新）</span>
+</div>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="../assets/effects.js"></script>
+<script src="../assets/detail-rail.js"></script>
+<script src="../assets/sub-effects.js"></script>
+</body>
+</html>
