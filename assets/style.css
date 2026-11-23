@@ -345,3 +345,8 @@ pre.code::after{content:"code";position:absolute;top:.55rem;left:78px;
   background:#fff;padding:.4rem 1.1rem;font:inherit;font-size:.88rem;font-weight:700;color:#8a5a2b;
   cursor:pointer;transition:background .15s ease,transform .15s ease}
 .archive-toggle:hover{background:#fdf0f5;transform:translateY(-1px)}
+
+/* ---- 去掉所有框框外面的黄色边线（2026-11-23，用户觉得丑） ---- */
+/* 那条淡黄线是 --line:#e9d6bd 的 1px 边框；去掉后框框只靠阴影区分 */
+.card,.topnav,.player,.entry,.lock{border:0}
+.archive-toggle{border:0;background:#fdf0f5}
