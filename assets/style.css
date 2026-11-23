@@ -223,8 +223,6 @@ body.has-player{padding-bottom:6rem}
 .entry-sec p{margin:0}
 .entry-body{margin:.6rem 0 0;white-space:pre-wrap}
 .empty{color:var(--faint)}
-.list-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin:.6rem 0 .2rem}
-.list-head .btn{padding:.4rem .95rem;font-size:.85rem}
 .lock{max-width:420px;margin:3rem auto;text-align:center}
 .lock-icon{font-size:3rem}
 .lock h1{margin:.5rem 0}
@@ -333,3 +331,17 @@ pre.code::before{content:"";position:absolute;top:0;left:0;right:0;height:2.1rem
 pre.code::after{content:"code";position:absolute;top:.55rem;left:78px;
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   font-size:12px;color:#8b93a7}
+
+/* ---- 主页内容框：统一高度 + 只展示最新 3 条，展开看全部（2026-11-23） ---- */
+/* 桌面端：六张卡片统一 660px 高；点展开后该卡高度自适应 */
+@media (min-width:641px){
+  #contents .card.split{height:660px;min-height:660px}
+  #contents .card.split.expanded{height:auto}
+}
+/* 折叠只在 JS 已给卡片打上 .collapsible 时生效（无 JS 时默认展示全部，不丢内容） */
+#contents .card.split.collapsible .archive li:nth-child(n+4){display:none}
+#contents .card.split.collapsible.expanded .archive li:nth-child(n+4){display:list-item}
+.archive-toggle{display:inline-block;margin:.35rem 0 0;border:1px solid var(--line);border-radius:999px;
+  background:#fff;padding:.4rem 1.1rem;font:inherit;font-size:.88rem;font-weight:700;color:#8a5a2b;
+  cursor:pointer;transition:background .15s ease,transform .15s ease}
+.archive-toggle:hover{background:#fdf0f5;transform:translateY(-1px)}

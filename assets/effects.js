@@ -172,3 +172,32 @@
       }, { passive: true });
     }
   })();
+
+  /* ---- 主页存档：只展示最新 3 条，其余折叠，点“展开”看全部（2026-11-23） ---- */
+  (function () {
+    var VISIBLE = 3;
+    var cards = document.querySelectorAll('#contents .card.split');
+    if (!cards.length) return;
+    Array.prototype.forEach.call(cards, function (card) {
+      var list = card.querySelector('.archive');
+      if (!list) return;
+      var items = list.querySelectorAll('li');
+      if (items.length <= VISIBLE) return;
+      card.classList.add('collapsible');
+      var hidden = items.length - VISIBLE;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'archive-toggle';
+      btn.setAttribute('aria-expanded', 'false');
+      function label(expanded) {
+        return expanded ? '收起 ↑' : '展开全部（还有 ' + hidden + ' 条） ▾';
+      }
+      btn.textContent = label(false);
+      btn.addEventListener('click', function () {
+        var expanded = card.classList.toggle('expanded');
+        btn.setAttribute('aria-expanded', String(expanded));
+        btn.textContent = label(expanded);
+      });
+      list.parentNode.insertBefore(btn, list.nextSibling);
+    });
+  })();
