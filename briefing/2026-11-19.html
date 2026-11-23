@@ -45,9 +45,23 @@ article:hover{transform:translateY(-2px);box-shadow:0 1px 2px rgba(23,32,43,.05)
 .fig img{padding:6px;background:#fff;box-shadow:0 1px 2px rgba(23,32,43,.05),0 8px 22px rgba(23,32,43,.08)}
 .meta span{font-variant-numeric:tabular-nums}
 @media (hover:none){article:hover{transform:none}}
+
+.site-nav{position:sticky;top:0;z-index:50;margin:0 calc(50% - 50vw);background:rgba(247,245,240,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(23,32,43,.08)}
+.nav-inner{max-width:1060px;margin:0 auto;padding:0 18px;height:60px;display:flex;align-items:center;gap:1.5rem}
+.brand{display:flex;align-items:center;gap:.55rem;color:var(--ink);flex:0 0 auto;text-decoration:none}
+.brand img{width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid #fff;box-shadow:0 2px 8px rgba(15,118,110,.25)}
+.brand span{font-family:"Songti SC","Noto Serif SC",Georgia,serif;font-size:1.15rem;font-weight:700}
+.nav-links{display:flex;gap:.15rem;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.nav-links::-webkit-scrollbar{display:none}
+.nav-links a{padding:.42rem .8rem;border-radius:999px;color:var(--muted);font-weight:600;font-size:.92rem;white-space:nowrap;text-decoration:none}
+.nav-links a:hover{color:var(--teal);background:rgba(15,118,110,.08)}
+.nav-links a.active{color:var(--teal);background:rgba(15,118,110,.08)}
+.nav-meta{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+@media (max-width:640px){.nav-meta{display:none}.nav-inner{gap:.9rem}.nav-links{mask-image:linear-gradient(90deg,#000 82%,transparent);-webkit-mask-image:linear-gradient(90deg,#000 82%,transparent)}.nav-links a{padding:.42rem .6rem}}
 </style>
 </head>
 <body>
+<header class="site-nav"><div class="nav-inner"><a class="brand" href="../index.html"><img src="../avatar.webp" alt="Jocehi"><span>Jocehi</span></a><nav class="nav-links" aria-label="主导航"><a href="../papers.html">论文精读</a><a href="../rl.html">RL 精讲</a><a href="../briefing.html" class="active">每日简报</a><a href="../review.html">每日复盘</a><a href="../diary.html">日记</a><a href="../blog.html">博客</a></nav><span class="nav-meta">每天 8:00 更新</span></div></header>
 <div class="wrap">
 <header class="masthead">
 <div class="kicker">WORLD MODEL DAILY · 世界模型日报</div>
@@ -232,6 +246,5 @@ article:hover{transform:translateY(-2px);box-shadow:0 1px 2px rgba(23,32,43,.05)
 </div>
 <div style="position:relative;z-index:2;max-width:880px;margin:36px auto 0;padding:0 20px 40px;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap"><a href="2026-11-18.html" style="color:#1d2333;font-weight:600;text-decoration:none">← 2026年11月18日（周三）</a><a href="../briefing.html" style="color:#c2437c;font-weight:600;text-decoration:none">全部简报存档</a><span></span></div>
 <script src="../assets/effects.js"></script>
-<script src="../assets/sub-effects.js"></script>
 </body>
 </html>
