@@ -31,9 +31,9 @@ li{margin:.3rem 0}
   padding:.05rem .7rem;font-size:.8rem;font-weight:600;margin-right:.4rem}
 /* ---- 顶栏：Dissolve 式细高毛玻璃通栏（2026-11-23 改版，旧胶囊导航已废弃） ---- */
 .site-nav{position:sticky;top:12px;z-index:50;width:min(1120px,calc(100% - 32px));margin:12px auto 0;
-  background:rgba(255,255,255,.82);backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5);
-  border:1px solid #f1e3e6;border-radius:999px;
-  box-shadow:0 8px 24px rgba(188,148,96,.14),0 1px 2px rgba(60,40,20,.05)}
+  background:transparent;backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5);
+  border:0;border-radius:999px;
+  box-shadow:none}
 .nav-inner{max-width:1120px;margin:0 auto;padding:0 1.25rem;height:60px;
   display:flex;align-items:center;gap:1.5rem}
 .brand{display:flex;align-items:center;gap:.55rem;color:var(--ink);flex:0 0 auto}
