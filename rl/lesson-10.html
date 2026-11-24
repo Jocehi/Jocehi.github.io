@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 10 课 · 优先经验回放 PER · Jocehi 的 RL 精讲</title>
+<link rel="stylesheet" href="../assets/space-rl.css?v=cf3e1f8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Water+Brush&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/katex/katex.min.css?v=cf3e1f8">
+  <script defer src="../assets/katex/katex.min.js?v=cf3e1f8"></script>
+  <script defer src="../assets/katex/auto-render.min.js?v=cf3e1f8" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
+</head>
+<body>
+<header class="site-nav"><div class="nav-inner"><a class="brand" href="../index.html"><img src="../avatar.webp" alt="Jocehi"><span>Jocehi</span></a><nav class="nav-links" aria-label="主导航"><a href="../papers.html">论文精读</a><a href="../rl.html" class="active">RL 精讲</a><a href="../briefing.html">每日简报</a><a href="../review.html">每日复盘</a><a href="../diary.html">日记</a><a href="../blog.html">博客</a></nav></div></header>
+<div class="wrap">
+<h1>第 10 课 · 优先经验回放 PER</h1>
+<p class="meta">Prioritized Experience Replay · RL 算法每日精讲 · 2026-11-24 · 深度值函数 · 进阶 · 约 30 分钟</p>
+<p class="meta">前置知识：DQN</p>
+<div class="thesis">优先回放 $TD$ 误差大的经验，学得更快。</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · 优先经验回放 PER · 30 分钟 · 制作中，完成后将更新到此处</p>
+</div>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>在第 7 课的 DQN 中，智能体把交互得到的经验存入经验回放池，再从中均匀随机采样小批量来训练 $Q$ 网络。均匀采样虽然打破了相邻样本的相关性、提高了数据利用率，但它默认所有经验同等重要，这与实际学习并不相符：许多经验的 $TD$ 误差已经很小、几乎学不到新东西，而少数关键经验，例如首次获得奖励、稀有转移或犯下大错的经验，往往 $TD$ 误差很大、最值得反复学习，却可能很久才被随机抽中一次。PER 要解决的正是经验利用效率低、重要经验学习慢的问题。它适用于离散动作值函数方法，特别适合奖励稀疏、关键转移罕见、样本昂贵或训练步数有限的任务，如 Atari 游戏、机器人控制与仿真环境。输入是智能体与环境交互产生的经验流、当前 $Q$ 网络与目标网络，以及优先级指数 $\alpha$ 与重要性采样指数 $\beta$ 等超参数；每条经验为 $ (s, a, r, s') $ 形式的四元组。输出是经过优先采样训练后更准确的动作价值函数 $Q(s,a)$，以及随之改进的贪心策略 $\pi(s)=\arg\max_a Q(s,a)$，从而在相同交互次数下更快收敛、取得更高回报。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">② 核心思想</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>优先级由 $TD$ 误差决定：经验 $i$ 的优先级 $p_i$ 通常取 $|\delta_i|+\epsilon$，其中 $\delta_i$ 是该经验的 $TD$ 误差，误差越大说明当前 $Q$ 估计越不准，越值得优先学习。</li>
+<li>比例优先级用 $p_i^\alpha$ 控制优先程度：采样概率为 $P(i)=\frac{p_i^\alpha}{\sum_k p_k^\alpha}$，$\alpha=0$ 时退化为均匀采样，$\alpha$ 越大越偏向高优先级经验。</li>
+<li>排序优先级是另一种实现：按 $|\delta_i|$ 从大到小排序后用排名倒数作为优先级，它对误差尺度不敏感，但需要维护全局排序，实现代价更高。</li>
+<li>重要性采样权重纠正分布偏差：优先采样会改变数据分布，因此用 $w_i=(N\cdot P(i))^{-\beta}$ 加权损失，并在训练中将 $\beta$ 从较小值逐步退火到 $1$，以恢复无偏性。</li>
+<li>新经验先给最大优先级：刚存入的经验尚未计算 $TD$ 误差，通常先赋予当前最大优先级 $p_{\max}$，保证它至少被学习一次，避免重要新经验被长期忽略。</li>
+<li>与 Double DQN 和 Dueling DQN 正交：PER 只改变经验的采样方式，不改变网络结构与 $TD$ 目标，因此可以与第 8 课和第 9 课的方法叠加使用。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">③ 与已学方法对比</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>与第 7 课均匀回放的 DQN 相比，PER 不改变网络结构与 $TD$ 目标，只改变采样分布，让高 $TD$ 误差经验获得更高采样概率，因此能更快修正价值估计、减少无效重复学习。与第 8 课的 Double DQN 和第 9 课的 Dueling DQN 相比，后两者分别解决动作价值高估与价值-优势分解问题，而 PER 解决的是数据选择问题，三者正交、可叠加使用。代价是：优先采样改变了数据分布，会引入采样偏差，必须用重要性采样权重 $w_i$ 纠正；维护优先级与按优先级采样需要额外计算与求和树等数据结构，实现更复杂；若 $\alpha$ 过大，还可能反复采样少数高误差噪声经验，导致训练不稳定。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">④ 学习流程</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="agent-env" role="img" aria-label="智能体与环境交互循环"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrA" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6472"/></marker></defs><rect x="20" y="45" width="170" height="80" rx="12" fill="#d97706"/><text x="105" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">智能体 Agent</text><text x="105" y="103" text-anchor="middle" font-size="12" fill="#ffedd5">策略 π · 价值 V</text><rect x="450" y="45" width="170" height="80" rx="12" fill="#0f766e"/><text x="535" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">环境 Environment</text><text x="535" y="103" text-anchor="middle" font-size="12" fill="#ccfbf1">状态 s · 奖励 r</text><path d="M195,65 L445,65" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="55" text-anchor="middle" font-size="12" fill="#5b6472">动作 a</text><path d="M445,105 L195,105" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="125" text-anchor="middle" font-size="12" fill="#5b6472">观测 s′ · 奖励 r</text></svg></div>
+<ol class="flow">
+<li><span class="chip kind-observe">观察</span><b>初始化与观察</b>初始化在线网络 $Q(s,a;\theta)$ 与目标网络 $Q(s,a;\theta^{-})$，设置经验池容量 $N$、优先级指数 $\alpha$、初始 $\beta_0$ 与批量大小 $B$，并观察初始状态 $s_0$。</li>
+<li><span class="chip kind-decide">决策</span><b>选择动作</b>在当前状态 $s_t$ 下按 $\epsilon$-贪心策略选择动作 $a_t$，以概率 $1-\epsilon$ 选择当前 $Q$ 值最大的动作，以概率 $\epsilon$ 随机探索。</li>
+<li><span class="chip kind-act">行动</span><b>执行动作</b>执行动作 $a_t$，智能体与环境交互一步，准备接收环境的反馈结果。</li>
+<li><span class="chip kind-feedback">反馈</span><b>环境反馈</b>环境返回奖励 $r_t$ 与下一状态 $s_{t+1}$，得到一条新经验 $(s_t,a_t,r_t,s_{t+1})$，并将其以最大优先级 $p_{\max}$ 存入经验池。</li>
+<li><span class="chip kind-compute">计算</span><b>优先采样</b>当经验池中经验数大于 $B$ 时，按 $P(i)=\frac{p_i^\alpha}{\sum_k p_k^\alpha}$ 从池中采样 $B$ 条经验，得到小批量 $\mathcal{B}$，并计算每条经验的重要性采样权重 $w_i=(N\cdot P(i))^{-\beta}$。</li>
+<li><span class="chip kind-compute">计算</span><b>计算误差</b>对小批量中每条经验 $i$，用目标网络计算目标 $y_i=r_i+\gamma \max_{a'} Q(s_i',a';\theta^{-})$，再计算 $TD$ 误差 $\delta_i=y_i-Q(s_i,a_i;\theta)$。</li>
+<li><span class="chip kind-update">更新</span><b>加权更新</b>用加权损失 $L=\frac{1}{B}\sum_{i\in\mathcal{B}} w_i\cdot\delta_i^2$ 对参数 $\theta$ 做一次梯度下降，并用 $|\delta_i|+\epsilon$ 更新被采样经验的优先级 $p_i$ 与最大优先级 $p_{\max}$。</li>
+<li><span class="chip kind-loop">循环</span><b>循环判断</b>每经过 $C$ 步将目标网络参数更新为 $\theta^{-}\leftarrow\theta$，并将 $\beta$ 向 $1$ 线性退火；若训练未结束，则回到当前状态 $s_{t+1}$ 继续下一轮交互与学习。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑤ 关键公式</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="formula-card">
+<h4>优先级定义</h4>
+<div>$$p_i = |\delta_i| + \epsilon$$</div>
+<p>误差越大，当前 $Q$ 估计与 $TD$ 目标的差距越大，这条经验能提供的学习信号越多，因此优先级越高。$\epsilon$ 只起平滑作用，避免 $p_i$ 为 $0$；新经验在计算 $\delta_i$ 之前先取当前最大优先级，保证至少被学习一次。</p>
+<ul>
+<li>$p_i$：经验 $i$ 的优先级，值越大越先被采样</li>
+<li>$\delta_i$：经验 $i$ 的 $TD$ 误差，等于目标 $y_i$ 减去当前估计 $Q(s_i,a_i;\theta)$</li>
+<li>$\epsilon$：很小的正常数，例如 $0.01$，保证优先级不为 $0$</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>比例优先级采样概率</h4>
+<div>$$P(i)=\frac{p_i^\alpha}{\sum_k p_k^\alpha}$$</div>
+<p>分母是对经验池中全部 $N$ 条经验的 $p_k^\alpha$ 求和，因此所有 $P(i)$ 之和为 $1$，构成合法的采样分布。$\alpha=0$ 时退化为均匀采样，$\alpha$ 越大，采样越集中在高优先级经验上。</p>
+<ul>
+<li>$P(i)$：从经验池中采样到经验 $i$ 的概率</li>
+<li>$p_i$：经验 $i$ 的优先级</li>
+<li>$\alpha$：优先级指数，取值通常在 $0$ 到 $1$ 之间，控制优先程度</li>
+<li>$k$：求和下标，遍历经验池中的全部经验</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>重要性采样权重</h4>
+<div>$$w_i=(N \cdot P(i))^{-\beta}$$</div>
+<p>优先采样使高优先级经验出现频率高于均匀分布，直接训练会高估这部分经验的作用。$w_i$ 对出现概率过高的经验降权、对罕见经验升权，并在训练中把 $\beta$ 从较小值退火到 $1$，逐步恢复无偏性。</p>
+<ul>
+<li>$w_i$：经验 $i$ 的重要性采样权重，用于纠正采样分布偏差</li>
+<li>$N$：经验池容量，即池中经验总数</li>
+<li>$P(i)$：经验 $i$ 被优先采样的概率</li>
+<li>$\beta$：重要性采样指数，训练初期较小，后期退火到 $1$</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>加权损失函数</h4>
+<div>$$L=\frac{1}{B}\sum_{i\in\mathcal{B}} w_i \cdot \delta_i^2$$</div>
+<p>每条经验的平方 $TD$ 误差 $\delta_i^2$ 先乘以权重 $w_i$ 再求平均，权重越大，经验对梯度的影响越大。训练后用新的 $|\delta_i|+\epsilon$ 更新该经验的优先级，使采样分布随学习进展动态变化。</p>
+<ul>
+<li>$L$：加权后的平均损失，用于对在线网络做一次梯度下降</li>
+<li>$B$：小批量大小，即每次采样并用于训练的经验条数</li>
+<li>$\mathcal{B}$：本次优先采样得到的小批量经验集合</li>
+<li>$w_i$：经验 $i$ 的归一化重要性采样权重</li>
+<li>$\delta_i$：经验 $i$ 的 $TD$ 误差</li>
+</ul>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑥ 数学推导</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol class="mathnotes">
+<li>
+<p>第一步：均匀采样默认所有经验同等重要，但学习信号来自 $TD$ 误差 $\delta_i$，当 $|\delta_i|$ 很小时，该经验几乎不能再改进 $Q$ 值，而当 $|\delta_i|$ 很大时，说明当前估计与目标差距大，最值得学习。</p>
+</li>
+<li>
+<p>第二步：因此把优先级定义为误差绝对值再加一个小常数，得到</p>
+<div>$$p_i = |\delta_i| + \epsilon$$</div></li>
+<li>
+<p>其中 $\epsilon$ 保证优先级恒为正，避免某条经验永远得不到采样。</p>
+</li>
+<li>
+<p>第三步：把优先级变成采样概率时引入指数 $\alpha$ 进行调节，得到</p>
+<div>$$P(i)=\frac{p_i^\alpha}{\sum_k p_k^\alpha}$$</div></li>
+<li>
+<p>当 $\alpha=0$ 时分子分母都退化为 $1$，即均匀采样；$\alpha$ 越大，高优先级经验被抽中的概率越高。</p>
+</li>
+<li>
+<p>第四步：优先采样改变了数据分布，直接用它训练会使期望出现偏差，因此用重要性采样权重进行纠正，得到</p>
+<div>$$w_i=(N\cdot P(i))^{-\beta}$$</div></li>
+<li>
+<p>并把 $w_i$ 除以批次内最大值归一化，使最大权重为 $1$，训练更稳定。</p>
+</li>
+<li>
+<p>第五步：把权重乘到平方 $TD$ 损失上，得到</p>
+<div>$$L=\frac{1}{B}\sum_{i\in\mathcal{B}} w_i\cdot\delta_i^2$$</div></li>
+<li>
+<p>再对在线网络参数 $\theta$ 做梯度下降，随后用新的 $|\delta_i|+\epsilon$ 更新被采样经验的优先级。</p>
+</li>
+<li>
+<p>第六步：小数值例子：设经验池大小 $N=1000$，某条经验的 $|\delta_i|=0.9$，取 $\epsilon=0.01$，则 $p_i=0.91$；若 $\alpha=0.6$ 且分母之和为 $500$，则 $P(i)$ 约为 $0.0019$，而均匀采样概率仅为 $0.001$。</p>
+</li>
+<li>
+<p>第七步：继续算权重：取 $\beta=0.4$，则 $w_i=(1000\times 0.0019)^{-0.4}$ 约为 $0.77$；随着训练推进把 $\beta$ 线性退火到 $1$，权重纠正作用逐渐增强，最终恢复近似无偏的学习。</p>
+</li>
+<li>
+<p>第八步：新经验因为还没有算过 $\delta_i$，先赋予当前最大优先级 $p_{\max}$，保证它至少能被抽中一次；与 Double DQN 或 Dueling DQN 叠加时，只需改变采样方式，$TD$ 目标与网络结构保持不变。</p>
+</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑦ 伪代码</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="pseudo">
+<h4>初始化：</h4>
+<div class="step"><span class="stepnum">·</span> 初始化经验池，容量为 $N$，优先级指数为 $\alpha$，重要性采样指数初始值为 $\beta_0$，最终值为 $1$</div>
+<div class="step"><span class="stepnum">·</span> 初始化在线网络 $Q(s,a;\theta)$ 与目标网络 $Q(s,a;\theta^{-})$，令 $\theta^{-}=\theta$</div>
+<div class="step"><span class="stepnum">·</span> 设置最大优先级 $p_{\max}=1$，批量大小为 $B$，目标网络更新间隔为 $C$</div>
+</div>
+<div class="pseudo">
+<h4>与环境交互并存储经验：</h4>
+<div class="step"><span class="stepnum">·</span> 在状态 $s_t$ 下按 $\epsilon$ 贪心策略选择动作 $a_t$</div>
+<div class="step"><span class="stepnum">·</span> 执行动作 $a_t$，得到奖励 $r_t$ 与下一状态 $s_{t+1}$</div>
+<div class="step"><span class="stepnum">·</span> 计算 $TD$ 误差 $\delta_t=y_t-Q(s_t,a_t;\theta)$，其中 $y_t=r_t+\gamma \max_{a'} Q(s_{t+1},a';\theta^{-})$</div>
+<div class="step"><span class="stepnum">·</span> 将经验 $ (s_t,a_t,r_t,s_{t+1}) $ 存入经验池，优先级设为 $p_{\max}$</div>
+<div class="step"><span class="stepnum">·</span> 若经验池中经验数量大于 $B$，则执行一次优先采样与学习</div>
+</div>
+<div class="pseudo">
+<h4>优先采样与学习：</h4>
+<div class="step"><span class="stepnum">·</span> 按 $P(i)=\frac{p_i^\alpha}{\sum_k p_k^\alpha}$ 从经验池中采样 $B$ 条经验，得到小批量索引集合 $\mathcal{B}$</div>
+<div class="step"><span class="stepnum">·</span> 对每条经验 $i$ 计算重要性采样权重 $w_i=(N\cdot P(i))^{-\beta}$，并按 $w_i \leftarrow \frac{w_i}{\max_j w_j}$ 归一化</div>
+<div class="step"><span class="stepnum">·</span> 对每条经验 $i$ 计算目标 $y_i=r_i+\gamma \max_{a'} Q(s_i',a';\theta^{-})$</div>
+<div class="step"><span class="stepnum">·</span> 对每条经验 $i$ 计算 $TD$ 误差 $\delta_i=y_i-Q(s_i,a_i;\theta)$</div>
+<div class="step"><span class="stepnum">·</span> 用加权损失 对 $\theta$ 做一次梯度下降</div>
+<div class="step formula-line"><div>$$L=\frac{1}{B}\sum_{i\in\mathcal{B}} w_i \cdot \delta_i^2$$</div></div>
+<div class="step"><span class="stepnum">·</span> 用 $|\delta_i|+\epsilon$ 更新每条采样经验的优先级 $p_i$，并更新 $p_{\max}=\max_i p_i$</div>
+</div>
+<div class="pseudo">
+<h4>目标网络更新与退火：</h4>
+<div class="step"><span class="stepnum">·</span> 每经过 $C$ 步，令 $\theta^{-} \leftarrow \theta$</div>
+<div class="step"><span class="stepnum">·</span> 将 $\beta$ 按线性退火逐步增大至 $1$</div>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑧ Python 代码（可运行）</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<pre class="code"><button class="copybtn">复制代码</button><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76</span><code><span class="tok-kw">import</span> random
+<span class="tok-kw">import</span> numpy <span class="tok-kw">as</span> np
+<span class="tok-kw">import</span> gymnasium <span class="tok-kw">as</span> gym
+<span class="tok-kw">import</span> torch
+<span class="tok-kw">import</span> torch.nn <span class="tok-kw">as</span> nn
+<span class="tok-com"># $\alpha$ 控制优先程度；$\beta$ 从 $0.4$ 退火到 $1$，纠正优先采样带来的分布偏差</span>
+ALPHA, BETA0, BETA1 = <span class="tok-num">0.6</span>, <span class="tok-num">0.4</span>, <span class="tok-num">1.0</span>
+CAPACITY, BATCH, GAMMA, LR = <span class="tok-num">10000</span>, <span class="tok-num">64</span>, <span class="tok-num">0.99</span>, <span class="tok-num">1</span>e-<span class="tok-num">3</span>
+EPS = <span class="tok-num">1</span>e-<span class="tok-num">6</span>  <span class="tok-com"># 避免优先级为 $0$ 而永不被采样</span>
+<span class="tok-kw">class</span> <span class="tok-fn">QNet</span>(nn.Module):
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(self, n_obs, n_act):
+        <span class="tok-fn">super</span>().<span class="tok-fn">__init__</span>()
+        self.net = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(n_obs, <span class="tok-num">64</span>), nn.<span class="tok-fn">ReLU</span>(), nn.<span class="tok-fn">Linear</span>(<span class="tok-num">64</span>, <span class="tok-num">64</span>), nn.<span class="tok-fn">ReLU</span>(), nn.<span class="tok-fn">Linear</span>(<span class="tok-num">64</span>, n_act))
+    <span class="tok-kw">def</span> <span class="tok-fn">forward</span>(self, x):
+        <span class="tok-kw">return</span> self.<span class="tok-fn">net</span>(x)
+<span class="tok-kw">class</span> PERBuffer:
+    <span class="tok-str">"""比例优先级经验池：采样概率与 $p_i^\alpha$ 成正比"""</span>
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(self, capacity, alpha):
+        self.capacity, self.alpha = capacity, alpha
+        self.buffer, self.priorities = [], np.<span class="tok-fn">zeros</span>(capacity, dtype=np.float32)
+        self.pos, self.max_prio = <span class="tok-num">0</span>, <span class="tok-num">1.0</span>  <span class="tok-com"># 新经验默认最大优先级，保证至少被学一次</span>
+    <span class="tok-kw">def</span> <span class="tok-fn">add</span>(self, transition):
+        <span class="tok-kw">if</span> <span class="tok-bi">len</span>(self.buffer) &lt; self.capacity: self.buffer.<span class="tok-fn">append</span>(transition)
+        <span class="tok-kw">else</span>: self.buffer[self.pos] = transition
+        self.priorities[self.pos] = self.max_prio
+        self.pos = (self.pos + <span class="tok-num">1</span>) % self.capacity
+    <span class="tok-kw">def</span> <span class="tok-fn">sample</span>(self, batch, beta):
+        prios = self.priorities[:<span class="tok-bi">len</span>(self.buffer)]
+        probs = prios ** self.alpha; probs /= probs.<span class="tok-fn">sum</span>()
+        idx = np.random.<span class="tok-fn">choice</span>(<span class="tok-bi">len</span>(self.buffer), batch, p=probs, replace=<span class="tok-kw">False</span>)
+        weights = (<span class="tok-bi">len</span>(self.buffer) * probs[idx]) ** (-beta)  <span class="tok-com"># 重要性采样权重：高概率经验权重小</span>
+        weights /= weights.<span class="tok-fn">max</span>()  <span class="tok-com"># 归一化到 $[0,1]$，稳定训练</span>
+        <span class="tok-kw">return</span> idx, [self.buffer[i] <span class="tok-kw">for</span> i <span class="tok-kw">in</span> idx], torch.<span class="tok-fn">tensor</span>(weights, dtype=torch.float32)
+    <span class="tok-kw">def</span> <span class="tok-fn">update_priorities</span>(self, idx, td_errors):
+        new_prios = np.<span class="tok-fn">abs</span>(td_errors) + EPS  <span class="tok-com"># 优先级由 $TD$ 误差决定</span>
+        self.priorities[idx] = new_prios
+        self.max_prio = <span class="tok-bi">max</span>(self.max_prio, new_prios.<span class="tok-fn">max</span>())
+env = gym.<span class="tok-fn">make</span>(<span class="tok-str">"CartPole-v1"</span>)
+n_obs, n_act = env.observation_space.shape[<span class="tok-num">0</span>], env.action_space.n
+q_net, target_net = <span class="tok-fn">QNet</span>(n_obs, n_act), <span class="tok-fn">QNet</span>(n_obs, n_act)
+target_net.<span class="tok-fn">load_state_dict</span>(q_net.<span class="tok-fn">state_dict</span>())
+optimizer = torch.optim.<span class="tok-fn">Adam</span>(q_net.<span class="tok-fn">parameters</span>(), lr=LR)
+buffer = <span class="tok-fn">PERBuffer</span>(CAPACITY, ALPHA)
+<span class="tok-kw">def</span> <span class="tok-fn">select_action</span>(state, epsilon):
+    <span class="tok-kw">if</span> random.<span class="tok-fn">random</span>() &lt; epsilon: <span class="tok-kw">return</span> env.action_space.<span class="tok-fn">sample</span>()  <span class="tok-com"># $\epsilon$-贪心探索</span>
+    <span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>(): <span class="tok-kw">return</span> <span class="tok-fn">q_net</span>(torch.<span class="tok-fn">tensor</span>(state, dtype=torch.float32)).<span class="tok-fn">argmax</span>().<span class="tok-fn">item</span>()
+steps, epsilon = <span class="tok-num">0</span>, <span class="tok-num">1.0</span>
+<span class="tok-kw">for</span> episode <span class="tok-kw">in</span> <span class="tok-bi">range</span>(<span class="tok-num">200</span>):
+    state, _ = env.<span class="tok-fn">reset</span>(seed=episode)
+    done, ep_reward = <span class="tok-kw">False</span>, <span class="tok-num">0</span>
+    <span class="tok-kw">while</span> <span class="tok-kw">not</span> done:
+        action = <span class="tok-fn">select_action</span>(state, epsilon)
+        next_state, reward, terminated, truncated, _ = env.<span class="tok-fn">step</span>(action)
+        done = terminated <span class="tok-kw">or</span> truncated
+        buffer.<span class="tok-fn">add</span>((state, action, reward, next_state, <span class="tok-bi">float</span>(done)))
+        state, ep_reward, steps = next_state, ep_reward + reward, steps + <span class="tok-num">1</span>
+        epsilon = <span class="tok-bi">max</span>(<span class="tok-num">0.05</span>, epsilon * <span class="tok-num">0.995</span>)
+        beta = <span class="tok-bi">min</span>(BETA1, BETA0 + steps * (BETA1 - BETA0) / <span class="tok-num">20000</span>)  <span class="tok-com"># $\beta$ 线性退火到 $1$</span>
+        <span class="tok-kw">if</span> <span class="tok-bi">len</span>(buffer.buffer) &gt;= BATCH:
+            idx, batch_data, weights = buffer.<span class="tok-fn">sample</span>(BATCH, beta)
+            s, a, r, s2, d = <span class="tok-bi">zip</span>(*batch_data)
+            s_t = torch.<span class="tok-fn">tensor</span>(np.<span class="tok-fn">array</span>(s), dtype=torch.float32); s2_t = torch.<span class="tok-fn">tensor</span>(np.<span class="tok-fn">array</span>(s2), dtype=torch.float32)
+            a_t = torch.<span class="tok-fn">tensor</span>(a, dtype=torch.int64).<span class="tok-fn">unsqueeze</span>(<span class="tok-num">1</span>)
+            r_t, d_t = torch.<span class="tok-fn">tensor</span>(r, dtype=torch.float32), torch.<span class="tok-fn">tensor</span>(d, dtype=torch.float32)
+            q = <span class="tok-fn">q_net</span>(s_t).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, a_t).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)
+            <span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():  <span class="tok-com"># Double DQN：在线网选动作，目标网评估，避免高估</span>
+                next_a = <span class="tok-fn">q_net</span>(s2_t).<span class="tok-fn">argmax</span>(<span class="tok-num">1</span>, keepdim=<span class="tok-kw">True</span>)
+                max_next_q = <span class="tok-fn">target_net</span>(s2_t).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, next_a).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)
+                y = r_t + GAMMA * max_next_q * (<span class="tok-num">1</span> - d_t)
+            td_errors = (y - q).<span class="tok-fn">detach</span>().<span class="tok-fn">numpy</span>()  <span class="tok-com"># 用于更新优先级</span>
+            loss = (weights * (y - q) ** <span class="tok-num">2</span>).<span class="tok-fn">mean</span>()  <span class="tok-com"># 重要性采样加权损失</span>
+            optimizer.<span class="tok-fn">zero_grad</span>(); loss.<span class="tok-fn">backward</span>(); optimizer.<span class="tok-fn">step</span>()
+            buffer.<span class="tok-fn">update_priorities</span>(idx, td_errors)
+        <span class="tok-kw">if</span> steps % <span class="tok-num">100</span> == <span class="tok-num">0</span>: target_net.<span class="tok-fn">load_state_dict</span>(q_net.<span class="tok-fn">state_dict</span>())  <span class="tok-com"># 每 $100$ 步同步目标网络</span>
+    <span class="tok-kw">if</span> (episode + <span class="tok-num">1</span>) % <span class="tok-num">50</span> == <span class="tok-num">0</span>: <span class="tok-bi">print</span>(f<span class="tok-str">"Episode {episode + 1}: reward={ep_reward:.1f}, epsilon={epsilon:.3f}, beta={beta:.3f}"</span>)
+env.<span class="tok-fn">close</span>()</code></pre>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑨ 代码讲解</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>开头先定义超参数与 $Q$ 网络：$\alpha=0.6$ 控制优先程度，$\beta$ 从 $0.4$ 退火到 $1.0$，经验池容量为 $10000$，批量为 $64$，$\gamma=0.99$，学习率为 $10^{-3}$；$QNet$ 是两层隐藏层各 $64$ 维的全连接网络，输出每个动作的 $Q$ 值，为后续 $TD$ 目标提供 $Q$ 估计。</li>
+<li>$PERBuffer$ 是比例优先级经验池：内部用列表存经验，用与容量等长的数组存优先级，环形指针记录写入位置；$add$ 方法在池满时覆盖最旧经验，并把新经验优先级设为当前最大优先级 $p_{\max}$，因此新经验不会因尚未算出 $TD$ 误差而被长期忽略。</li>
+<li>$sample$ 方法按比例优先级采样：先取 $p_i^\alpha$ 并归一化得到采样概率 $P(i)=\frac{p_i^\alpha}{\sum_k p_k^\alpha}$，再用不放回方式抽取一批经验；同时计算重要性采样权重 $w_i=(N\cdot P(i))^{-\beta}$，并除以批次内最大权重归一化到 $[0,1]$，高概率经验得到更小权重，从而纠正分布偏差。</li>
+<li>$update\_priorities$ 方法在每次学习后刷新优先级：用 $TD$ 误差的绝对值加 $EPS$ 得到新优先级，即 $p_i=|\delta_i|+\epsilon$，其中 $\delta_i$ 为该经验的 $TD$ 误差，$\epsilon=10^{-6}$ 避免优先级为 $0$ 而永不被采样；同时用新优先级的最大值更新 $p_{\max}$，使后续新经验仍能获得足够高的初始优先级。</li>
+<li>训练主循环沿用 $DQN$ 与第 $8$ 课的 Double $DQN$ 做法：用 $\epsilon$ 贪心选择动作并与环境交互，每步把经验存入经验池，并按 $0.995$ 的因子衰减 $\epsilon$、按步数把 $\beta$ 线性退火到 $1$；当池中经验数达到批量 $64$ 后开始采样学习，用在线网络选动作、用目标网络评估得到 $TD$ 目标 $y$，避免 $Q$ 值高估。</li>
+<li>损失与网络同步：先用 $y$ 与当前 $Q$ 值之差得到 $TD$ 误差 $\delta$，并用它刷新优先级；损失为重要性采样加权均方误差，形式为 $L=\frac{1}{B}\sum_i w_i (y_i-q_i)^2$，即用权重 $w_i$ 加权每条经验的平方误差；每 $100$ 步把在线网络参数复制给目标网络，并在 $200$ 回合训练中定期打印奖励以观察学习进展。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑩ 超参数</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<table class="data"><tr><th>参数</th><th>常用取值</th><th>说明</th></tr>
+<tr><td>$\alpha$ 优先程度指数</td><td>$0.6$</td><td>控制 $p_i^\alpha$ 对采样概率的影响；$\alpha=0$ 时退化为均匀采样，$\alpha$ 越大越偏向高 $TD$ 误差经验，但过大容易反复学习噪声大的经验。</td></tr>
+<tr><td>$\beta$ 重要性采样退火系数</td><td>$0.4$ 到 $1.0$</td><td>初始值较小以容忍分布偏差，训练中线性退火到 $1$，使加权损失逐步恢复无偏性；若全程固定为 $0$，则相当于忽略重要性采样权重 $w_i$ 的纠正作用。</td></tr>
+<tr><td>$\epsilon$ 优先级平滑项</td><td>$10^{-6}$</td><td>加在 $|\delta_i|$ 上得到 $p_i=|\delta_i|+\epsilon$，保证优先级不为 $0$，避免 $TD$ 误差恰好为 $0$ 的经验永不被采样；取值过大会削弱优先级之间的差异。</td></tr>
+<tr><td>经验池容量 $N$</td><td>$10000$</td><td>决定可保存经验的数量上限与采样概率分母 $\sum_k p_k^\alpha$ 的覆盖范围；容量过小会过早丢弃旧经验，容量过大则低优先级旧经验长期占据采样分母，训练初期可先用较小容量加快启动。</td></tr>
+<tr><td>采样批量 $B$</td><td>$64$</td><td>每次从经验池抽取的经验条数；批量过小会使 $TD$ 目标 $y$ 与优先级更新不稳定，批量过大则单步计算量增大且高优先级经验被重复抽中的收益递减，常与学习率 $10^{-3}$ 配合调试。</td></tr>
+</table>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑪ 常见坑</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>忘记用重要性采样权重加权损失：只按 $P(i)$ 优先采样却不乘 $w_i$，会使高 $TD$ 误差经验被过度学习，$Q$ 估计出现系统性偏差；检查损失是否写成 $w_i$ 加权的均方误差，并确认 $w_i$ 已除以批次最大值归一化到 $[0,1]$。</li>
+<li>新经验优先级或 $\beta$ 退火设置不当：若不给新经验赋 $p_{\max}$，它可能在 $TD$ 误差未知时长期不被采样；若 $\beta$ 全程固定在 $0.4$ 不退火到 $1$，后期仍残留分布偏差；应在 $add$ 时赋最大优先级，并在训练步数达到 $20000$ 前把 $\beta$ 线性退火到 $1$。</li>
+<li>采样后不更新优先级或用未分离的 $TD$ 误差更新：每次学习后必须调用更新方法，把 $|\delta_i|+\epsilon$ 写回优先级数组，否则高优先级经验会被反复采样而低优先级经验长期得不到纠正；计算 $\delta_i$ 时要先调用 detach 分离 $y$ 与 $q$ 的差，避免梯度经优先级路径回传到 $Q$ 网络。</li>
+<li>$\alpha$ 设得过大或把排序优先级与比例优先级混用：$\alpha$ 接近 $1$ 时采样几乎只集中在少数高误差经验上，容易过拟合噪声和异常奖励，且 $Q$ 更新方差增大；先从 $\alpha=0.6$ 开始调试，若训练不稳定再降到 $0.4$，不要在未实现全局排序的情况下直接按排名倒数计算 $P(i)$。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑫ 练习题</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p class="qa-q"><b>练习题 1</b> 在 DQN 的均匀经验回放中，所有经验被等概率抽中。PER 认为这并不高效。请结合 $p_i=|\delta_i|+\epsilon$、$P(i)=\frac{p_i^\alpha}{\sum_k p_k^\alpha}$ 和 $w_i=(N\cdot P(i))^{-\beta}$ 等公式，解释：(1) 为什么用 $TD$ 误差的绝对值 $|\delta_i|$ 作为优先级是合理的；(2) $\alpha$ 如何控制优先程度，$\alpha=0$ 时会发生什么；(3) 优先采样为什么会引入偏差，重要性采样权重 $w_i$ 和 $\beta$ 的退火是如何纠正它的；(4) 为什么新经验要先赋予最大优先级 $p_{\max}$；(5) 比例优先级与排序优先级有何区别，PER 与 Double DQN、Dueling DQN 能否叠加，为什么？</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>核心结论：PER 不是改变 $Q$ 的学习目标，而是把有限的训练机会优先分配给“最值得学”的经验，再用重要性采样权重把由此带来的分布偏差纠正回来。</p>
+<p>(1) 优先级由 $TD$ 误差决定。一次更新能改进多少 $Q$ 值，主要取决于 $TD$ 误差 $\delta_i$。若 $|\delta_i|$ 很大，说明当前 $Q(s,a)$ 与 $TD$ 目标差距大，这条经验提供的学习信号最强；若 $|\delta_i|$ 很小，说明当前估计已接近目标，反复抽它几乎学不到东西，浪费算力。因此定义 $p_i=|\delta_i|+\epsilon$，其中 $\epsilon$ 是一个很小的正数，它保证 $p_i&gt;0$，使每条经验都有被抽中的可能，避免某条经验因误差恰好为 $0$ 而永远得不到采样。</p>
+<p>(2) 比例优先级与 $\alpha$。把优先级转化为采样概率为 $P(i)=\frac{p_i^\alpha}{\sum_k p_k^\alpha}$，其中 $\alpha$ 控制优先程度。当 $\alpha=0$ 时，对所有 $i$ 都有 $p_i^\alpha=1$，于是 $P(i)=\frac{1}{N}$，退化为均匀采样；$\alpha$ 越大，高优先级经验被抽中的概率越高。实际常取 $\alpha=0.6$ 左右，在优先学习与保持多样性之间折中，避免只反复学习少数几条高误差经验。</p>
+<p>排序优先级是另一种实现：按 $|\delta_i|$ 从大到小排序，设第 $i$ 条经验的排名为 $rank(i)$，取 $p_i=\frac{1}{rank(i)}$。它只关心相对顺序，对 $|\delta_i|$ 的绝对尺度和个别极大误差不敏感，因而更稳健；缺点是每次 $|\delta_i|$ 变化都要维护全局排序，实现与计算代价更高，实践中比例优先级配合求和树更常用。</p>
+<p>(3) 重要性采样纠正分布偏差。优先采样使高 $P(i)$ 的经验在训练批次中出现的频率高于均匀分布下的频率，直接用它做梯度下降会高估这部分经验的期望损失，产生偏差，甚至放大噪声或异常经验的影响。为此引入 $w_i=(N\cdot P(i))^{-\beta}$：$P(i)$ 越大，$w_i$ 越小，起到“降权”作用；并把批次内的 $w_i$ 除以 $\max_i w_i$ 归一化，使最大权重为 $1$，避免权重尺度过大导致训练不稳定。加权损失为 $L=\frac{1}{B}\sum_{i\in\mathcal{B}} w_i\cdot\delta_i^2$，对在线网络参数 $\theta$ 做梯度下降后，再用新的 $|\delta_i|+\epsilon$ 更新这些经验的优先级。通常 $\beta$ 从 $\beta=0.4$ 开始，训练后期线性退火到 $\beta=1$：前期容忍少量偏差以换取更快的学习，后期充分纠正，恢复近似无偏的学习。</p>
+<p>(4) 新经验先给最大优先级。刚存入的经验还没有计算过 $\delta_i$，无法得到真实优先级，若给 $0$ 或很小值，可能长期得不到采样，从而错过重要新信息。因此先赋予当前最大优先级 $p_{\max}$，即 $p_i=p_{\max}$，保证它至少有机会被抽中一次；被抽中并算出新的 $\delta_i$ 后，再按 $p_i=|\delta_i|+\epsilon$ 更新为真实优先级。</p>
+<p>(5) 与 Double DQN 和 Dueling DQN 正交，可以叠加。PER 只改变从经验池中抽取经验的分布 $P(i)$，不改变网络结构，也不改变 $TD$ 目标的计算方式。Double DQN 改变的是 $TD$ 目标中动作的选择与评估方式，Dueling DQN 改变的是 $Q$ 网络的结构，把 $Q(s,a)$ 分解为状态价值 $V(s)$ 与优势 $A(s,a)$ 的组合。三者作用在不同环节，互不冲突，因此可以叠加使用，这也是 Rainbow 等方法同时采用它们的原因。</p>
+</div></details>
+<p class="qa-q"><b>练习题 2</b> 设经验池中有 $N=4$ 条经验，它们的 $TD$ 误差分别为 $\delta_1=1.5$，$\delta_2=-0.5$，$\delta_3=0.3$，$\delta_4=-0.1$。取 $\epsilon=0.1$，$\alpha=1$，$\beta=1$，批次大小 $B=2$。已知比例优先级的定义为 $p_i=|\delta_i|+\epsilon$，采样概率为 $P(i)=\frac{p_i^\alpha}{\sum_k p_k^\alpha}$，重要性采样权重为 $w_i=(N\cdot P(i))^{-\beta}$，归一化权重为 $\tilde{w}_i=\frac{w_i}{\max_j w_j}$，加权损失为 $L=\frac{1}{B}\sum_{i\in\mathcal{B}} \tilde{w}_i\cdot\delta_i^2$。请完成以下计算：（1）求每条经验的优先级 $p_1$，$p_2$，$p_3$，$p_4$ 及其总和；（2）求每条经验的采样概率 $P(1)$，$P(2)$，$P(3)$，$P(4)$，并与均匀采样概率 $\frac{1}{N}$ 比较，经验 $1$ 被抽中的概率是均匀采样的多少倍；（3）求每条经验的重要性采样权重 $w_1$，$w_2$，$w_3$，$w_4$ 及其归一化权重 $\tilde{w}_1$，$\tilde{w}_2$，$\tilde{w}_3$，$\tilde{w}_4$；（4）设某次采样恰好抽中经验 $1$ 和经验 $4$，用归一化权重计算加权损失 $L$，并计算不加权时的损失 $L_0$，比较两者并解释权重的作用；（5）训练后，经验 $1$ 和经验 $4$ 的新 $TD$ 误差绝对值分别变为 $|\delta_1'|=0.3$ 和 $|\delta_4'|=1.9$，求更新后的优先级 $p_1'$ 和 $p_4'$，并求此时存入一条新经验应赋予的优先级 $p_{\mathrm{new}}$；同时说明若 $\alpha=0$ 或 $\beta=0$，（2）和（3）的结果会如何变化。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>（1）由 $p_i=|\delta_i|+\epsilon$ 且 $\epsilon=0.1$，得 $p_1=|1.5|+0.1=1.6$，$p_2=|-0.5|+0.1=0.6$，$p_3=|0.3|+0.1=0.4$，$p_4=|-0.1|+0.1=0.2$。总和为 $\sum_k p_k=1.6+0.6+0.4+0.2=2.8$。这说明 $|\delta_i|$ 越大，$p_i$ 越大，经验 $1$ 最值得学习。（2）当 $\alpha=1$ 时，$p_i^\alpha=p_i$，分母为 $\sum_k p_k^\alpha=2.8$，于是 $P(1)=\frac{1.6}{2.8}\approx0.5714$，$P(2)=\frac{0.6}{2.8}\approx0.2143$，$P(3)=\frac{0.4}{2.8}\approx0.1429$，$P(4)=\frac{0.2}{2.8}\approx0.0714$，且 $0.5714+0.2143+0.1429+0.0714=1.0$。均匀采样概率为 $\frac{1}{N}=\frac{1}{4}=0.25$。因此 $\frac{P(1)}{0.25}\approx2.2857$，即经验 $1$ 被抽中的概率约为均匀采样的 $2.2857$ 倍；而 $\frac{P(4)}{0.25}\approx0.2857$，经验 $4$ 仅为均匀采样的 $0.2857$ 倍。（3）当 $\beta=1$ 时，$w_i=(N\cdot P(i))^{-1}=\frac{1}{N\cdot P(i)}$，$N=4$，得 $w_1=\frac{1}{4\times0.5714}=\frac{1}{2.2857}\approx0.4375$，$w_2=\frac{1}{4\times0.2143}=\frac{1}{0.8571}\approx1.1667$，$w_3=\frac{1}{4\times0.1429}=\frac{1}{0.5714}=1.75$，$w_4=\frac{1}{4\times0.0714}=\frac{1}{0.2857}=3.5$。最大权重为 $\max_j w_j=3.5$，归一化得 $\tilde{w}_1=\frac{0.4375}{3.5}=0.125$，$\tilde{w}_2=\frac{1.1667}{3.5}\approx0.3333$，$\tilde{w}_3=\frac{1.75}{3.5}=0.5$，$\tilde{w}_4=\frac{3.5}{3.5}=1.0$。可见 $P(i)$ 越大，$w_i$ 越小，例如 $\frac{P(1)}{P(4)}\approx8$，而 $\frac{w_1}{w_4}=\frac{0.4375}{3.5}=0.125=\frac{1}{8}$，两者恰好抵消，且对每条经验都有 $P(i)\cdot w_i=\frac{1}{N}=0.25$，这正是 $\beta=1$ 时完全纠正分布偏差的体现。（4）先算 $\delta_1^2=1.5^2=2.25$，$\delta_4^2=(-0.1)^2=0.01$。批次为 $\mathcal{B}=\{1,4\}$，$B=2$，用归一化权重得 $L=\frac{1}{B}\sum_{i\in\mathcal{B}}\tilde{w}_i\cdot\delta_i^2=\frac{1}{2}\left(0.125\times2.25+1.0\times0.01\right)=\frac{1}{2}\left(0.28125+0.01\right)=\frac{0.29125}{2}\approx0.1456$。不加权时 $L_0=\frac{1}{2}\left(2.25+0.01\right)=\frac{2.26}{2}=1.13$。数值上 $L$ 小于 $L_0$，主要原因是归一化把最大权重定为 $1.0$，整体缩小了损失尺度，不能只比较绝对值；关键看相对贡献：不加权时两项之比为 $\frac{2.25}{0.01}=225$，加权后为 $\frac{0.28125}{0.01}=28.125$，恰为 $225$ 除以采样概率之比 $8$，说明高优先级经验因被多抽而被降权，低优先级经验被升权，从而在期望上恢复均匀采样的无偏估计。（5）更新优先级仍用 $p_i'=|\delta_i'|+\epsilon$，得 $p_1'=0.3+0.1=0.4$，$p_4'=1.9+0.1=2.0$，未被采样的经验 $2$ 和经验 $3$ 的优先级不变，仍为 $p_2=0.6$ 和 $p_3=0.4$。此时池内最大优先级为 $p_{\max}=\max\{0.4,0.6,0.4,2.0\}=2.0$，故新经验应赋予 $p_{\mathrm{new}}=p_{\max}=2.0$，保证它至少被学习一次。若 $\alpha=0$，则对每条经验都有 $p_i^\alpha=1$，分母为 $4$，$P(i)=\frac{1}{4}=0.25$，退化为均匀采样；若 $\beta=0$，则 $w_i=(N\cdot P(i))^0=1$，归一化后仍为 $1$，不做任何纠正，优先采样带来的偏差会保留下来。本题取 $\beta=1$，相当于 $\beta$ 退火到终点的情形，纠正最强。综上，最终结果为 $p_1=1.6$，$p_2=0.6$，$p_3=0.4$，$p_4=0.2$；$P(1)\approx0.5714$，$P(2)\approx0.2143$，$P(3)\approx0.1429$，$P(4)\approx0.0714$；$w_1\approx0.4375$，$w_2\approx1.1667$，$w_3=1.75$，$w_4=3.5$，归一化后为 $0.125$，$0.3333$，$0.5$，$1.0$；$L\approx0.1456$，$L_0=1.13$；$p_1'=0.4$，$p_4'=2.0$，$p_{\mathrm{new}}=2.0$。</p>
+</div></details>
+<p class="qa-q"><b>练习题 3</b> 基于本课给出的 PER 代码，做一组消融对照实验，验证 $\alpha$ 与 $\beta$ 的作用，并说明改哪几行、改成什么、预期看到什么现象。</p>
+<p class="qa-q">本课代码的关键设定是：比例优先级经验池 PERBuffer，$\alpha$ 控制优先程度，$\beta$ 从 $0.4$ 退火到 $1$ 纠正优先采样带来的分布偏差，新经验先赋予当前最大优先级 $p_{\max}$，批次大小 $B=64$，训练 $200$ 个回合，环境为 CartPole-v1。</p>
+<p class="qa-q">请完成以下任务：</p>
+<p class="qa-q">1. 设计对照组：保持原代码不变作为完整 PER 组；把 $\alpha$ 改为 $0$ 作为均匀采样组；保持 $\alpha=0.6$ 不变，但去掉重要性采样权重 $w_i$ 的纠正作用作为无权重组。说明每一组具体改哪一行代码、改成什么。</p>
+<p class="qa-q">2. 说明实验方法：如何固定随机种子、如何记录每 $20$ 个回合的平均奖励、每组至少重复几次才能排除单次运行的偶然性，以及为什么不能只看最后一个回合的奖励。</p>
+<p class="qa-q">3. 预测并解释三组的学习曲线差异：哪一组学得最快、最稳定，哪一组退化为普通 DQN，哪一组前期可能学得不慢但后期波动更大、最终平均奖励更低或更不稳定，并用 $P(i)=\frac{p_i^\alpha}{\sum_k p_k^\alpha}$、$w_i=(N\cdot P(i))^{-\beta}$ 和 $p_i=|\delta_i|+\epsilon$ 解释原因，其中 $\delta_i$ 是 $TD$ 误差，$N$ 是当前经验池大小。</p>
+<p class="qa-q">4. 如果实验结果与预测相反，例如 $\alpha=0$ 组反而学得最快，或者无权重组反而最稳定，可能是什么原因，应如何检查代码或调整 $\alpha$、$\beta$、$\epsilon$ 与学习率等设置。</p>
+<p class="qa-q">注意：不要只写改 $\alpha$ 和 $\beta$ 的数值，要给出关键改动代码片段，并说明预期现象与判断标准。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>参考答案</p>
+<p>一、实验分组与关键改动</p>
+<p>完整 PER 组：不改任何采样代码，作为基准。$\alpha=0.6$，$\beta$ 从 $0.4$ 退火到 $1$，新经验先给 $p_{\max}$，损失按 $w_i$ 加权。</p>
+<p>均匀采样组：只改常量定义这一行，原来 $\alpha=0.6$，改为 $\alpha=0$。</p>
+<pre class="code"><span class="ln-col">1</span><code>ALPHA, BETA0, BETA1 = <span class="tok-num">0.0</span>, <span class="tok-num">0.4</span>, <span class="tok-num">1.0</span></code></pre>
+<p>原理：当 $\alpha=0$ 时，$p_i^0=1$，对所有 $i$ 都成立，于是 $P(i)=\frac{1}{N}$，与均匀采样完全相同，$|\delta_i|$ 再大也不会被优先抽中。</p>
+<p>无权重组：保持 $\alpha=0.6$ 不变，只改 PERBuffer 的 sample 方法中计算权重的那一行。</p>
+<pre class="code"><span class="ln-col">1</span><code>weights = np.<span class="tok-fn">ones</span>(batch, dtype=np.float32)</code></pre>
+<p>原来那一行是计算 $w_i=(N\cdot P(i))^{-\beta}$ 并归一化，改为全 $1$ 后，相当于 $w_i=1$，即损失不再按采样概率纠正。等价的改法是调用采样时固定 $\beta=0$，因为 $(N\cdot P(i))^0=1$，但直接改权重行更直观，也不会与 $\beta$ 从 $0.4$ 退火到 $1$ 的逻辑混淆。注意不要改网络结构、$TD$ 目标和新经验给 $p_{\max}$ 的逻辑，否则三组就不再是单一变量对照。</p>
+<p>二、实验方法</p>
+<p>每次运行前固定随机种子，例如：</p>
+<pre class="code"><span class="ln-col">1
+2
+3</span><code>np.random.<span class="tok-fn">seed</span>(<span class="tok-num">0</span>)
+random.<span class="tok-fn">seed</span>(<span class="tok-num">0</span>)
+torch.<span class="tok-fn">manual_seed</span>(<span class="tok-num">0</span>)</code></pre>
+<p>每组用 $0$、$1$、$2$ 这三个不同种子各跑一次，共 $3$ 次，取平均曲线并看波动范围。只跑一次很容易被随机性误导。记录每 $20$ 个回合的平均奖励，例如把每个回合的奖励存入列表，每 $20$ 个回合求一次平均值并打印。不能只看最后一个回合的奖励，因为 CartPole-v1 单个回合的奖励波动很大，一个回合满分 $500$ 与提前失败可能只差一次动作选择，要看平均奖励是否稳定上升、是否稳定超过 $195$ 附近。</p>
+<p>三、预期现象</p>
+<p>完整 PER 组：学得最快，也相对最稳定。在相同种子下，它通常最先使每 $20$ 个回合的平均奖励明显上升，并最先稳定在高奖励区。原因是 $|\delta_i|$ 大的经验被优先采样，$Q$ 估计误差大的地方得到更多训练信号，同时 $w_i$ 又把高优先级经验的损失压低，纠正了分布偏差。</p>
+<p>均匀采样组：退化为普通 DQN。学习曲线上升更慢，需要更多回合才能达到同样的平均奖励，尤其在前期，大量 $|\delta_i|$ 很小的经验被反复抽中，几乎不能改进 $Q$ 值，样本效率更低。最终平均奖励可能也能接近完整组，但达到时间更晚。</p>
+<p>无权重组：前期可能学得并不慢，甚至短暂更快，因为高优先级经验被反复学习，损失下降很快。但后期波动更大，平均奖励曲线上下起伏更明显，最终平均奖励更低或更不稳定。原因是没有 $w_i$ 纠正，频繁被抽中的经验在期望中被过度代表，$Q$ 会向这些经验过拟合，$TD$ 目标的偏差被放大。</p>
+<p>四、原因小结</p>
+<p>用公式看：$p_i=|\delta_i|+\epsilon$ 决定谁值得学，$P(i)=\frac{p_i^\alpha}{\sum_k p_k^\alpha}$ 决定抽中概率，$w_i=(N\cdot P(i))^{-\beta}$ 决定纠正强度，损失为 $L=\frac{1}{B}\sum_i w_i\cdot\delta_i^2$。$\alpha$ 只管优先程度，$\beta$ 只管纠正程度，两者缺一不可。$\beta$ 从 $0.4$ 退火到 $1$ 的含义是训练早期允许一定偏差以换取学习速度，后期纠正作用逐渐增强，最终恢复近似无偏的学习。</p>
+<p>五、如果结果与预测相反，如何排查</p>
+<p>如果 $\alpha=0$ 组反而最快，先检查优先级是否真的在更新：`update_priorities` 是否被调用，传入的索引与 $TD$ 误差是否对应；如果所有经验的优先级一直停留在 $p_{\max}$，完整组本身就已经退化为均匀采样，对照就没有意义。再检查 $\alpha$ 是否过大，例如 $\alpha=1.0$ 时高优先级经验可能被过度重复，$Q$ 会不稳定，这时应把 $\alpha$ 调回 $0.6$ 附近。</p>
+<p>如果无权重组反而最稳定，先检查权重是否真的乘到了损失上：只在 sample 里算出 $w_i$ 但训练时不用，等于没有做消融。再检查是否只跑了一个种子，或者 CartPole-v1 对当前超参数来说太简单，均匀采样已经足够，PER 的优势被任务难度掩盖。这时应重复 $3$ 次以上取平均，或适当调大学习难度、减小 $B$、检查 $\beta$ 的退火是否真的从 $0.4$ 走到了 $1$。</p>
+<p>结论判断标准：不是看单次最高奖励，而是看三组在相同种子下的平均曲线，哪一组更早稳定上升、后期波动更小、最终平均奖励更高。完整 PER 组应同时满足更早上升和更稳定，均匀组应更慢，无权重组应更波动，这才说明 $\alpha$ 提高了样本效率，$\beta$ 与 $w_i$ 提高了稳定性。</p>
+</div></details>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">参考文献</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>Schaul et al. 2016, Prioritized Experience Replay, arXiv:1511.05952</li>
+<li>Mnih et al. 2013, Playing Atari with Deep Reinforcement Learning, arXiv:1312.5602</li>
+<li>Van Hasselt et al. 2016, Deep Reinforcement Learning with Double Q-learning, arXiv:1509.06461</li>
+<li>Sutton &amp; Barto 2018, Reinforcement Learning: An Introduction, 第6章</li>
+</ol>
+</div></details>
+<div class="pager">
+<a href="lesson-9.html">← 上一课：Dueling DQN</a>
+<a href="../rl.html">← 返回 RL 精讲目录</a>
+<span>第 11 课（即将更新）</span>
+</div>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="../assets/effects.js?v=cf3e1f8"></script>
+<script src="../assets/detail-rail.js?v=cf3e1f8"></script>
+<script src="../assets/sub-effects.js?v=cf3e1f8"></script>
+</body>
+</html>
