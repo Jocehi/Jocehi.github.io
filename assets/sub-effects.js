@@ -1182,6 +1182,59 @@
     }, 2500);
   }
 
+  /* ============================================================
+     16 · 新增 · SegmentedControl：导航栏滑动 pill（全站）
+     ============================================================ */
+  function setupNavPill() {
+    var inner = document.querySelector('.site-nav .nav-inner');
+    var links = document.querySelector('.site-nav .nav-links');
+    if (!inner || !links) return;
+    var active = links.querySelector('a.active');
+    var brand = inner.querySelector('.brand');
+    var target = active || brand;
+    if (!target) return;
+    var pill = document.createElement('span');
+    pill.className = 'sx-nav-pill';
+    pill.setAttribute('aria-hidden', 'true');
+    inner.insertBefore(pill, inner.firstChild);
+    function tint() {
+      /* 首页/博客没有 active 项，pill 停在品牌上，用首页粉色 */
+      if (!active) return 'rgba(224,82,138,.12)';
+      var c = window.getComputedStyle(target).color || '';
+      var m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (!m) return 'rgba(224,82,138,.12)';
+      return 'rgba(' + m[1] + ',' + m[2] + ',' + m[3] + ',.12)';
+    }
+    function place(el, animate) {
+      var r = el.getBoundingClientRect();
+      var ir = inner.getBoundingClientRect();
+      if (!animate) pill.style.transition = 'none';
+      pill.style.left = (r.left - ir.left) + 'px';
+      pill.style.top = (r.top - ir.top) + 'px';
+      pill.style.width = r.width + 'px';
+      pill.style.height = r.height + 'px';
+      pill.style.background = tint();
+      if (!animate) {
+        void pill.offsetWidth;
+        pill.style.transition = '';
+      }
+    }
+    /* 初始停在品牌处，随后滑到当前栏目（首页则直接在品牌上淡入） */
+    place(brand || target, false);
+    pill.style.opacity = '0';
+    function slideIn() {
+      place(target, true);
+      pill.style.opacity = '1';
+    }
+    requestAnimationFrame(function () { requestAnimationFrame(slideIn); });
+    window.addEventListener('load', function () { place(target, false); });
+    var rt = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(rt);
+      rt = setTimeout(function () { place(target, false); }, 120);
+    });
+  }
+
   function injectStyle() {
     if (document.getElementById('sx-style')) return;
     var css = [
@@ -1240,6 +1293,7 @@
      ============================================================ */
   function start() {
     var path = location.pathname || '';
+    setupNavPill();
     var isBriefIndex = /\/briefing\.html$/.test(path);
     var isBriefIssue = /\/briefing\/[^/]+\.html$/.test(path);
     var isPaper = /\/papers\/[^/]+\.html$/.test(path);

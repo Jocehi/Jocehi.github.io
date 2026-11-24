@@ -51,8 +51,7 @@ a:hover{text-decoration:underline}
 .nav-links a{padding:.42rem .8rem;border-radius:999px;color:var(--dim);
   font-weight:600;font-size:.92rem;white-space:nowrap}
 .nav-links a:hover{color:var(--accent);background:rgba(217,119,6,.09);text-decoration:none}
-.nav-links a.active{color:var(--accent);background:transparent;box-shadow:none;font-weight:700;position:relative}
-.nav-links a.active::after{content:"";position:absolute;left:50%;bottom:1px;width:5px;height:5px;border-radius:50%;background:currentColor;transform:translateX(-50%);animation:nav-dot-in .35s ease}@keyframes nav-dot-in{from{opacity:0;transform:translateX(-50%) scale(.4)}to{opacity:1;transform:translateX(-50%) scale(1)}}
+.nav-links a.active{color:var(--accent);background:transparent;box-shadow:none;font-weight:700}
 @media (max-width:640px){.nav-inner{gap:.9rem;padding:0 .9rem}.nav-links{mask-image:linear-gradient(90deg,#000 82%,transparent);-webkit-mask-image:linear-gradient(90deg,#000 82%,transparent)}.nav-links a{padding:.42rem .6rem}}
 
 /* ---- 标题 / 元信息 / 直觉句 ---- */
@@ -331,3 +330,10 @@ details.qa[open ] .ans{animation:sx-sec-in .3s ease}
 @media (prefers-reduced-motion: reduce){
   .filter-indicator,.lesson-card.sx-filter-in,details.sec[open ] .sec-body,details.qa[open ] .ans{transition:none;animation:none}
 }
+
+/* ---- dissolve 改造第三轮（2026-11-24）：导航栏 SegmentedControl ---- */
+.site-nav .nav-inner{position:relative}
+.site-nav .brand,.site-nav .nav-links{position:relative;z-index:1}
+.sx-nav-pill{position:absolute;left:0;top:0;border-radius:999px;pointer-events:none;z-index:0;
+  transition:left .35s cubic-bezier(.4,0,.2,1),top .35s cubic-bezier(.4,0,.2,1),width .35s cubic-bezier(.4,0,.2,1),height .35s cubic-bezier(.4,0,.2,1),opacity .25s ease}
+@media (prefers-reduced-motion: reduce){.sx-nav-pill{transition:none}}

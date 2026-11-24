@@ -46,8 +46,7 @@ li{margin:.3rem 0}
 .nav-links a{padding:.42rem .8rem;border-radius:999px;color:#5b6478;
   font-weight:600;font-size:.92rem;white-space:nowrap;transition:color .15s ease,background .15s ease}
 .nav-links a:hover{color:#c2437c;background:#fdf0f5;text-decoration:none}
-.nav-links a.active{color:#c2437c;background:transparent;box-shadow:none;font-weight:700;position:relative}
-.nav-links a.active::after{content:"";position:absolute;left:50%;bottom:1px;width:5px;height:5px;border-radius:50%;background:currentColor;transform:translateX(-50%);animation:nav-dot-in .35s ease}@keyframes nav-dot-in{from{opacity:0;transform:translateX(-50%) scale(.4)}to{opacity:1;transform:translateX(-50%) scale(1)}}
+.nav-links a.active{color:#c2437c;background:transparent;box-shadow:none;font-weight:700}
 @media (max-width:640px){
   
   .nav-inner{gap:.9rem;padding:0 .9rem}
@@ -400,3 +399,10 @@ footer{border-top:1px solid rgba(28,26,23,.08);padding-top:1.4rem}
 @media (prefers-reduced-motion: reduce){
   .next-done{transition:none}
 }
+
+/* ---- dissolve 改造第三轮（2026-11-24）：导航栏 SegmentedControl ---- */
+.site-nav .nav-inner{position:relative}
+.site-nav .brand,.site-nav .nav-links{position:relative;z-index:1}
+.sx-nav-pill{position:absolute;left:0;top:0;border-radius:999px;pointer-events:none;z-index:0;
+  transition:left .35s cubic-bezier(.4,0,.2,1),top .35s cubic-bezier(.4,0,.2,1),width .35s cubic-bezier(.4,0,.2,1),height .35s cubic-bezier(.4,0,.2,1),opacity .25s ease}
+@media (prefers-reduced-motion: reduce){.sx-nav-pill{transition:none}}
