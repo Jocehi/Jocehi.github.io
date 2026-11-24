@@ -391,3 +391,12 @@ footer{border-top:1px solid rgba(28,26,23,.08);padding-top:1.4rem}
 @media (prefers-reduced-motion: reduce){
   #playerPlay.sx-pop,.archive-toggle.sx-swap{animation:none}
 }
+
+/* ---- dissolve 改造第二轮（2026-11-24）：TaskCheck 明日计划完成态 ---- */
+.next-done{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.5px solid #e0528a;background:#fff;color:transparent;font-size:12px;line-height:1;cursor:pointer;transition:background .18s ease,color .18s ease,transform .15s ease;vertical-align:middle;padding:0}
+.next-done:hover{transform:scale(1.12)}
+.next-done.on{background:#e0528a;color:#fff}
+.entry-sec.done p{text-decoration:line-through;opacity:.55}
+@media (prefers-reduced-motion: reduce){
+  .next-done{transition:none}
+}

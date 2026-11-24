@@ -1071,6 +1071,117 @@
     });
   }
 
+  /* ============================================================
+     13 · 新增 · Tooltip：术语表悬停解释（论文页）
+     ============================================================ */
+  function cleanTip(s) {
+    s = (s || '').replace(/\s+/g, ' ').trim();
+    s = s.replace(/\$([^$]+)\$/g, function (m, inner) {
+      return inner.replace(/\\[a-zA-Z]+\{([^}]*)\}/g, '$1').replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '');
+    });
+    if (s.length > 120) s = s.slice(0, 120).replace(/\s+\S*$/, '') + '…';
+    return s;
+  }
+  function setupTermTooltips() {
+    var kv = document.querySelector('dl.kv');
+    var article = document.querySelector('.article');
+    if (!kv || !article) return;
+    var terms = [];
+    Array.prototype.forEach.call(kv.querySelectorAll('dt'), function (dt) {
+      var dd = dt.nextElementSibling;
+      if (!dd || dd.tagName !== 'DD') return;
+      var term = (dt.textContent || '').trim();
+      var tip = cleanTip(dd.textContent || '');
+      if (term && tip && term.length >= 2) terms.push({ term: term, tip: tip });
+    });
+    if (!terms.length) return;
+    terms.sort(function (a, b) { return b.term.length - a.term.length; });
+    var done = {};
+    var SKIP = { PRE: 1, CODE: 1, A: 1, DL: 1, FIGURE: 1, ASIDE: 1, SCRIPT: 1, STYLE: 1, BUTTON: 1, SUMMARY: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1 };
+    function inSkip(node) {
+      var p = node.parentElement;
+      while (p && p !== article) {
+        if (SKIP[p.tagName]) return true;
+        if (p.classList && (p.classList.contains('katex') || p.classList.contains('sx-term'))) return true;
+        p = p.parentElement;
+      }
+      return false;
+    }
+    var walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, null);
+    var nodes = [], n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    nodes.forEach(function (node) {
+      if (inSkip(node)) return;
+      var cur = node, guard = 0;
+      while (cur && cur.nodeValue && guard++ < 8) {
+        var text = cur.nodeValue, best = null;
+        terms.forEach(function (t) {
+          if (done[t.term]) return;
+          var idx = text.indexOf(t.term);
+          if (idx >= 0 && (!best || idx < best.idx)) best = { term: t, idx: idx };
+        });
+        if (!best) break;
+        done[best.term.term] = true;
+        var span = document.createElement('span');
+        span.className = 'sx-term';
+        span.setAttribute('tabindex', '0');
+        span.setAttribute('data-tip', best.term.tip);
+        var before = cur.splitText(best.idx);
+        var after = before.splitText(best.term.term.length);
+        span.textContent = before.nodeValue;
+        before.parentNode.replaceChild(span, before);
+        cur = after;
+      }
+    });
+  }
+
+  /* ============================================================
+     14 · 新增 · Print：核心论点逐行打印出现（论文页）
+     ============================================================ */
+  function setupThesisPrint() {
+    var th = document.querySelector('.thesis');
+    if (!th || !('IntersectionObserver' in window)) return;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        printReveal(th);
+        io.disconnect();
+      });
+    }, { threshold: 0.2 });
+    io.observe(th);
+  }
+
+  /* ============================================================
+     15 · 新增 · BarChart：实验条形图滚入时生长（论文页）
+     ============================================================ */
+  function setupBarGrow() {
+    var bars = Array.prototype.slice.call(document.querySelectorAll('.bar-row .bar'));
+    if (!bars.length || !('IntersectionObserver' in window)) return;
+    bars.forEach(function (bar) {
+      var w = bar.style.width || '';
+      if (!w) return;
+      bar.dataset.sxW = w;
+      bar.style.width = '0%';
+    });
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.bar-row'));
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var row = en.target;
+        var bar = row.querySelector('.bar');
+        if (bar && bar.dataset.sxW) {
+          setTimeout(function () { bar.style.width = bar.dataset.sxW; }, Math.max(0, rows.indexOf(row)) * 70);
+        }
+        io.unobserve(row);
+      });
+    }, { threshold: 0.3 });
+    rows.forEach(function (row) { io.observe(row); });
+    /* 兜底：2.5 秒后无论如何恢复宽度，绝不让图表一直空着 */
+    setTimeout(function () {
+      bars.forEach(function (bar) { if (bar.dataset.sxW) bar.style.width = bar.dataset.sxW; });
+    }, 2500);
+  }
+
   function injectStyle() {
     if (document.getElementById('sx-style')) return;
     var css = [
@@ -1141,6 +1252,11 @@
       if (canCanvas) setupImageReveal();
       setupPrint();
       setupProgressSteps();
+    }
+    if (isPaper) {
+      setupTermTooltips();
+      setupThesisPrint();
+      setupBarGrow();
     }
     if (isLesson) {
       setupSmoothSections();

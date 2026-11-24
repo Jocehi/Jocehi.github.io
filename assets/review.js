@@ -20,6 +20,11 @@
     try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; }
   }
   function store(items) { try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) {} }
+
+  /* TaskCheck：明日计划完成态（打勾划掉，本地保存） */
+  var DONE_KEY = 'jocehi-review-done-v1';
+  function loadDone() { try { return JSON.parse(localStorage.getItem(DONE_KEY)) || {}; } catch (e) { return {}; } }
+  function storeDone(d) { try { localStorage.setItem(DONE_KEY, JSON.stringify(d)); } catch (e) {} }
   function today() {
     var d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -29,9 +34,11 @@
   }
   function fmt(s) { return esc(s).replace(/\n/g, '<br>'); }
   function tip(msg) { tipEl.textContent = msg; setTimeout(function () { tipEl.textContent = ''; }, 3000); }
-  function section(label, text) {
+  function section(label, text, id, isDone) {
     if (!text || !text.trim()) return '';
-    return '<div class="entry-sec"><h3>' + label + '</h3><p>' + fmt(text) + '</p></div>';
+    var btn = '';
+    if (id) btn = ' <button type="button" class="next-done' + (isDone ? ' on' : '') + '" data-done="' + id + '" aria-pressed="' + (isDone ? 'true' : 'false') + '" aria-label="标记明日计划完成">✓</button>';
+    return '<div class="entry-sec' + (isDone ? ' done' : '') + '"><h3>' + label + btn + '</h3><p>' + fmt(text) + '</p></div>';
   }
 
   function render() {
@@ -39,19 +46,28 @@
       return a.date === b.date ? (a.id < b.id ? 1 : -1) : (a.date < b.date ? 1 : -1);
     });
     emptyEl.hidden = items.length > 0;
+    var done = loadDone();
     listEl.innerHTML = items.map(function (it) {
       return '<article class="card entry"><div class="entry-head"><b>' + esc(it.date) + '</b>'
         + '<span><button data-edit="' + it.id + '">编辑</button><button data-del="' + it.id + '">删除</button></span></div>'
         + section('今天做了什么', it.did)
         + section('做得好的', it.good)
         + section('待改进的', it.bad)
-        + section('明日计划', it.next)
+        + section('明日计划', it.next, it.id, !!done[it.id])
         + '</article>';
     }).join('');
   }
 
   listEl.addEventListener('click', function (e) {
     var t = e.target;
+    if (t.hasAttribute('data-done')) {
+      var d = loadDone();
+      var did = t.getAttribute('data-done');
+      if (d[did]) delete d[did]; else d[did] = 1;
+      storeDone(d);
+      render();
+      return;
+    }
     var id = t.getAttribute('data-edit') || t.getAttribute('data-del');
     if (!id) return;
     var items = load();
@@ -59,8 +75,7 @@
     items.forEach(function (x) { if (x.id === id) it = x; });
     if (!it) return;
     if (t.hasAttribute('data-del')) {
-      /* 不可逆操作的确认交给滑动条（assets/sub-effects.js）；没有接管时才回落到 confirm */
-      if (!window.__sxSlideConfirm && !confirm('确定删除 ' + it.date + ' 的复盘吗？')) return;
+      if (!confirm('确定删除 ' + it.date + ' 的复盘吗？')) return;
       store(items.filter(function (x) { return x.id !== id; }));
       if (editingId === id) resetForm();
       render();
@@ -105,18 +120,6 @@
   });
 
   cancelBtn.addEventListener('click', resetForm);
-
-  /* 清空全部：确认由 assets/sub-effects.js 的滑动条接管 */
-  var clearAllBtn = document.getElementById('rvClearAll');
-  if (clearAllBtn) {
-    clearAllBtn.addEventListener('click', function () {
-      if (!window.__sxSlideConfirm && !confirm('确定清空全部复盘吗？此操作不可撤销。')) return;
-      store([]);
-      if (editingId) resetForm();
-      render();
-      tip('已清空全部复盘');
-    });
-  }
 
   exportBtn.addEventListener('click', function () {
     var items = load().sort(function (a, b) { return a.date < b.date ? -1 : 1; });

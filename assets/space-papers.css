@@ -303,3 +303,12 @@ details.qa[open ] .ans{animation:sx-sec-in .3s ease}
 @media (prefers-reduced-motion: reduce){
   .filter-indicator,.paper-card.sx-filter-in,details.qa[open ] .ans{transition:none;animation:none}
 }
+
+/* ---- dissolve 改造第二轮（2026-11-24）：术语 Tooltip / 条形图生长 ---- */
+.sx-term{border-bottom:1px dashed var(--accent);cursor:help;position:relative}
+.sx-term::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%) translateY(4px);width:max-content;max-width:280px;background:#1c1a17;color:#fff;font-size:.82rem;line-height:1.55;padding:.55rem .75rem;border-radius:10px;box-shadow:0 4px 16px rgba(28,26,23,.25);opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;z-index:30;white-space:normal;text-align:left;font-weight:400}
+.sx-term:hover::after,.sx-term:focus::after{opacity:1;transform:translateX(-50%) translateY(0)}
+.bar-row .bar{transition:width .8s cubic-bezier(.4,0,.2,1)}
+@media (prefers-reduced-motion: reduce){
+  .sx-term::after,.bar-row .bar{transition:none}
+}
