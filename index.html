@@ -44,10 +44,11 @@
     <div class="card-body">
     <p class="eyebrow">Daily Briefing · 11 Items</p>
     <h2>📰 World Model 每日简报</h2>
-    <p class="meta">2026 年 11 月 23 日（周一）· 正式发布 0 条 · 论文 11 条</p>
-    <p><b>LaST1.0：不重建视频、只预测与控制有关的未来潜变量</b>：RLBench 92.0%、LIBERO 99.0%、LIBERO-Plus 86.3%。另有 10 篇世界模型新论文。</p>
-    <p><a href="briefing/2026-11-23.html">阅读完整简报 →</a></p>
+    <p class="meta">2026 年 11 月 24 日（周二）· 正式发布 1 条 · 论文 10 条</p>
+    <p><b>小鹏 X-World 1.6：Virtual City 把真实道路变成可重复的 AI 驾驶考场</b>：轨迹终点误差比 1.0 降低 20.9%。另有 10 篇世界模型新论文。</p>
+    <p><a href="briefing/2026-11-24.html">阅读完整简报 →</a></p>
     <ul class="archive">
+      <li><span class="date">2026-11-24</span><a href="briefing/2026-11-24.html">世界模型日报</a></li>
       <li><span class="date">2026-11-23</span><a href="briefing/2026-11-23.html">世界模型日报</a></li>
       <li><span class="date">2026-11-22</span><a href="briefing/2026-11-22.html">世界模型日报</a></li>
       <li><span class="date">2026-11-21</span><a href="briefing/2026-11-21.html">世界模型日报</a></li>
@@ -65,12 +66,13 @@
   <section class="card latest reveal split" id="papers" style="--d:.08s">
     <div class="card-img" style="--imgw:318px"><img src="assets/card-papers.jpg" alt="Interactive World Model 论文精读"></div>
     <div class="card-body">
-    <p class="eyebrow">Paper Deep Read · Day 8</p>
+    <p class="eyebrow">Paper Deep Read · Day 9</p>
     <h2>📄 Interactive World Model 论文精读</h2>
-    <p class="meta">第 8 篇 · 2026 年 11 月 23 日 · TD-MPC2</p>
-    <p><b>TD-MPC2：隐式世界模型 + 规划 + TD 自举</b> — 不重建观测、只预测奖励与价值，同一套超参数在 104 个任务上全胜，317M 参数单智能体学会 80 个任务。</p>
-    <p><a href="papers/tdmpc2.html">阅读完整精读 →</a></p>
+    <p class="meta">第 9 篇 · 2026 年 11 月 24 日 · GAIA-1</p>
+    <p><b>GAIA-1：多模态下一个 token 预测的自动驾驶世界模型</b> — DINO 蒸馏分词器把视频离散化，6.5B 参数自回归 Transformer 学习动作与文本条件下的未来，视频扩散解码器还原高清视频。</p>
+    <p><a href="papers/gaia-1.html">阅读完整精读 →</a></p>
     <ul class="archive">
+      <li><span class="date">2026-11-24</span><a href="papers/gaia-1.html">第 9 篇 · GAIA-1：A Generative World Model for Autonomous Driving</a><span class="note"> — Hu et al., 2023</span></li>
       <li><span class="date">2026-11-23</span><a href="papers/tdmpc2.html">第 8 篇 · TD-MPC2：Scalable, Robust World Models for Continuous Control</a><span class="note"> — Hansen et al., 2023</span></li>
       <li><span class="date">2026-11-22</span><a href="papers/dreamerv3.html">第 7 篇 · DreamerV3：Mastering Diverse Domains through World Models</a><span class="note"> — Hafner et al., 2023</span></li>
       <li><span class="date">2026-11-21</span><a href="papers/iris.html">第 6 篇 · IRIS：Transformers are Sample-Efficient World Models</a><span class="note"> — Micheli et al., 2022</span></li>
@@ -87,12 +89,13 @@
   <section class="card latest reveal split" id="rl" style="--d:.16s">
     <div class="card-img" style="--imgw:318px"><img src="assets/card-rl.jpg" alt="RL 算法每日精讲"></div>
     <div class="card-body">
-    <p class="eyebrow">RL Lesson · Lesson 9</p>
+    <p class="eyebrow">RL Lesson · Lesson 10</p>
     <h2>🤖 RL 算法每日精讲</h2>
-    <p class="meta">第 9 课 · 2026 年 11 月 23 日 · Dueling DQN · 约 35 分钟</p>
-    <p><b>Dueling DQN</b> — 把动作价值拆成状态价值与优势函数，分别学习再合并，动作价值差异小的状态下样本效率更高。含 10 步 LaTeX 推导、均值中心化聚合公式、可运行的 CartPole Dueling DQN Python 代码、3 道练习题附参考答案，讲解视频制作中。</p>
-    <p><a href="rl/lesson-9.html">开始学习 →</a></p>
+    <p class="meta">第 10 课 · 2026 年 11 月 24 日 · 优先经验回放 PER · 约 30 分钟</p>
+    <p><b>优先经验回放 PER</b> — 按 TD 误差给经验定优先级，优先回放最值得学的经验，再用重要性采样权重纠正分布偏差。含 8 步 LaTeX 推导、比例优先级与重要性采样权重公式、可运行的 CartPole PER Python 代码、3 道练习题附参考答案，讲解视频制作中。</p>
+    <p><a href="rl/lesson-10.html">开始学习 →</a></p>
     <ul class="archive">
+      <li><span class="date">2026-11-24</span><a href="rl/lesson-10.html">第 10 课 · 优先经验回放 PER</a></li>
       <li><span class="date">2026-11-23</span><a href="rl/lesson-9.html">第 9 课 · Dueling DQN</a></li>
       <li><span class="date">2026-11-22</span><a href="rl/lesson-8.html">第 8 课 · Double DQN</a></li>
       <li><span class="date">2026-11-21</span><a href="rl/lesson-7.html">第 7 课 · DQN 深度 Q 网络</a></li>
