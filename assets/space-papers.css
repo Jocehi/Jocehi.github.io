@@ -318,3 +318,6 @@ details.qa[open ] .ans{animation:sx-sec-in .3s ease}
 .sx-nav-pill{position:absolute;left:0;top:0;border-radius:999px;pointer-events:none;z-index:0;
   transition:left .35s cubic-bezier(.4,0,.2,1),top .35s cubic-bezier(.4,0,.2,1),width .35s cubic-bezier(.4,0,.2,1),height .35s cubic-bezier(.4,0,.2,1),opacity .25s ease}
 @media (prefers-reduced-motion: reduce){.sx-nav-pill{transition:none}}
+
+/* 长公式横向滚动，不撑破正文列 */
+.katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%;scrollbar-width:thin}
