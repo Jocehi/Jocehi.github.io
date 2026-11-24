@@ -211,13 +211,17 @@ footer{text-align:center;color:var(--faint);font-size:.85rem;margin-top:2.5rem}
 .player-close{border:0;background:none;cursor:pointer;color:var(--faint);font-size:1.2rem;padding:.2rem .3rem}
 .player-close:hover{color:var(--ink)}
 .player-fab{position:fixed;right:1rem;bottom:1rem;z-index:60;width:48px;height:48px;border-radius:50%;
-  border:2px solid rgba(255,255,255,.9);background:#e0528a;
-  color:#fff;font-size:1.3rem;cursor:pointer;box-shadow:0 8px 20px rgba(224,82,138,.4)}
+  border:2px solid rgba(255,255,255,.9);background-color:#262022;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ccircle cx='24' cy='24' r='21' fill='none' stroke='rgba(255,255,255,.12)'/%3E%3Ccircle cx='24' cy='24' r='15' fill='none' stroke='rgba(255,255,255,.08)'/%3E%3Ccircle cx='24' cy='5' r='2.5' fill='rgba(255,255,255,.75)'/%3E%3C/svg%3E");
+  background-size:cover;
+  color:#fff;font-size:0;cursor:pointer;box-shadow:0 8px 20px rgba(29,35,51,.3)}
+/* 迷你黑胶：粉色唱片芯 + 白色音符，亮点跟着转 */
+.player-fab::before{content:"";position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:#e0528a;box-shadow:0 0 0 1px rgba(255,255,255,.25)}
+.player-fab::after{content:"♪";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;line-height:1;color:#fff}
 /* 最小化修复：.player 自带 display:flex 会盖掉 hidden 的默认隐藏，必须显式写出来 */
 .player[hidden],.player-fab[hidden]{display:none}
 body.has-player{padding-bottom:6rem}
-.player-fab.playing{animation:fabPulse 1.8s ease-in-out infinite}
-@keyframes fabPulse{0%,100%{box-shadow:0 8px 20px rgba(224,82,138,.4)}50%{box-shadow:0 8px 26px rgba(224,82,138,.75)}}
+.player-fab.playing{animation:sx-spin 8s linear infinite}
 @media (max-width:640px){
   .player{gap:.5rem;padding:.55rem .6rem}
   #playerVol{display:none}
@@ -315,7 +319,7 @@ body::before{content:"";position:fixed;inset:0;z-index:70;pointer-events:none;op
 /* 播放器：浮岛，细线 + 分层柔影 */
 .player{border:1px solid var(--line);border-radius:20px;
   box-shadow:0 1px 2px rgba(60,40,20,.06),0 16px 36px rgba(188,148,96,.26)}
-.player-fab{box-shadow:0 1px 2px rgba(60,40,20,.06),0 10px 24px rgba(224,82,138,.4)}
+.player-fab{box-shadow:0 1px 2px rgba(60,40,20,.06),0 10px 24px rgba(29,35,51,.28)}
 @media (hover:none){
   .card.split:hover{transform:none}
   .card.split:hover .card-img img{transform:none}
@@ -477,6 +481,6 @@ footer{border-top:1px solid rgba(28,26,23,.08);padding-top:1.4rem}
 }
 @media (prefers-reduced-motion: reduce){
   .px-card{animation:none}
-  .px-vinyl,.player.playing .player-note{animation:none}
+  .px-vinyl,.player.playing .player-note,.player-fab.playing{animation:none}
   .player-expanded.playing .px-eq i{animation:none}
 }
