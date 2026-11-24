@@ -20,7 +20,8 @@
 <p class="meta">前置知识：DQN、Double DQN</p>
 <div class="thesis">把动作价值拆成状态好坏与动作优劣，分别学习再合并。</div>
 <div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
-<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · Dueling DQN · 制作中，完成后将更新到此处</p>
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-9-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · Dueling DQN · 8 分 28 秒</p>
 </div>
 <details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
 <p>本课考虑离散动作的马尔可夫决策过程，智能体在每个时刻观察状态 $s$，选择动作 $a$，环境返回奖励 $r$ 并转移到下一状态 $s'$，目标是学习使长期折扣回报最大的策略。DQN 直接用一个神经网络估计每个状态动作对的动作价值 $Q(s, a)$，但在许多状态下，不同动作的价值差异很小，真正重要的是状态本身的好坏；例如在游戏画面中，大多数动作都不会立即改变局面，网络却要为每个动作单独学习相近的数值，样本效率较低。Dueling DQN 要解决的正是如何在不改变动作价值定义和训练目标的前提下，让网络更高效地学习状态价值，并把动作之间的相对优势分离出来，其核心分解为 $Q(s, a) = V(s) + A(s, a)$，其中 $V(s)$ 表示状态 $s$ 的价值，$A(s, a)$ 表示动作 $a$ 的优势。它适用于状态空间高维、动作空间离散、奖励稀疏或动作价值差异较小的任务，例如 Atari 游戏、机器人离散控制和离散推荐选择。输入是当前状态 $s$，通常为图像或特征向量；输出是该状态下每个候选动作 $a$ 的估计动作价值 $Q(s, a)$，智能体据此选择价值最大的动作，训练时仍使用经验回放和目标网络，并以折扣因子 $\gamma$ 衡量未来奖励的重要性。</p>
