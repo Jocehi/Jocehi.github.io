@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function () {
     titleEl.textContent = PLAYLIST[idx].title;
     bar.style.width = '0%';
     curEl.textContent = '0:00';
+    renderList();
     if (autoplay) audio.play().catch(function () {});
   }
   function setPlayingUI() {
@@ -42,6 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
     playBtn.setAttribute('aria-label', audio.paused ? '播放' : '暂停');
     fab.classList.toggle('playing', !audio.paused);
     playBtn.classList.remove('sx-pop'); void playBtn.offsetWidth; playBtn.classList.add('sx-pop');
+    if (exPlay) { exPlay.textContent = audio.paused ? '▶' : '❚❚'; renderList(); }
   }
   playBtn.addEventListener('click', function () {
     if (audio.paused) audio.play().catch(function () {});
@@ -51,17 +53,18 @@ document.addEventListener('DOMContentLoaded', function () {
   nextBtn.addEventListener('click', function () { load(idx + 1, true); });
   audio.addEventListener('play', setPlayingUI);
   audio.addEventListener('pause', setPlayingUI);
-  audio.addEventListener('loadedmetadata', function () { durEl.textContent = fmt(audio.duration); });
+  audio.addEventListener('loadedmetadata', function () { durEl.textContent = fmt(audio.duration); syncExpanded(); });
   audio.addEventListener('timeupdate', function () {
     if (audio.duration) bar.style.width = (audio.currentTime / audio.duration * 100) + '%';
     curEl.textContent = fmt(audio.currentTime);
+    syncExpanded();
   });
   audio.addEventListener('ended', function () { load(idx + 1, true); });
   progress.addEventListener('click', function (e) {
     var r = progress.getBoundingClientRect();
     if (audio.duration) audio.currentTime = (e.clientX - r.left) / r.width * audio.duration;
   });
-  vol.addEventListener('input', function () { audio.volume = parseFloat(vol.value); });
+  vol.addEventListener('input', function () { audio.volume = parseFloat(vol.value); if (exVol) exVol.value = vol.value; });
   audio.volume = parseFloat(vol.value);
   closeBtn.addEventListener('click', function () {
     /* 最小化：只收起播放条，音乐继续放，右下角留一个音符按钮点回来 */
@@ -72,5 +75,91 @@ document.addEventListener('DOMContentLoaded', function () {
     player.hidden = false;
     fab.hidden = true;
   });
+  /* ---- MiniPlayer：展开大播放器 ---- */
+  var expandBtn = document.getElementById('playerExpand');
+  var overlay = null, exPlay = null, exTitle = null, exBar = null, exProgress = null,
+      exCur = null, exDur = null, exVol = null, exList = null;
+  function buildExpanded() {
+    overlay = document.createElement('div');
+    overlay.className = 'player-expanded';
+    overlay.hidden = true;
+    overlay.innerHTML =
+      '<div class="px-backdrop"></div>' +
+      '<div class="px-card" role="dialog" aria-label="播放器">' +
+        '<div class="px-head"><span class="px-eyebrow">正在播放 · NOW PLAYING</span>' +
+        '<button class="px-close" aria-label="收起">✕</button></div>' +
+        '<div class="px-note">♪</div>' +
+        '<div class="px-title"></div>' +
+        '<div class="px-list"></div>' +
+        '<div class="px-progress"><div class="px-bar"></div></div>' +
+        '<div class="px-times"><span class="px-cur">0:00</span><span class="px-dur">0:00</span></div>' +
+        '<div class="px-controls">' +
+          '<button class="px-prev" aria-label="上一首">⏮</button>' +
+          '<button class="px-play" aria-label="播放">▶</button>' +
+          '<button class="px-next" aria-label="下一首">⏭</button>' +
+        '</div>' +
+        '<label class="px-vol">音量 <input type="range" min="0" max="1" step="0.05" value="0.8" aria-label="音量"></label>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    exPlay = overlay.querySelector('.px-play');
+    exTitle = overlay.querySelector('.px-title');
+    exBar = overlay.querySelector('.px-bar');
+    exProgress = overlay.querySelector('.px-progress');
+    exCur = overlay.querySelector('.px-cur');
+    exDur = overlay.querySelector('.px-dur');
+    exVol = overlay.querySelector('.px-vol input');
+    exList = overlay.querySelector('.px-list');
+    exPlay.addEventListener('click', function () {
+      if (audio.paused) audio.play().catch(function () {});
+      else audio.pause();
+    });
+    overlay.querySelector('.px-prev').addEventListener('click', function () { load(idx - 1, true); });
+    overlay.querySelector('.px-next').addEventListener('click', function () { load(idx + 1, true); });
+    overlay.querySelector('.px-close').addEventListener('click', hideExpanded);
+    overlay.querySelector('.px-backdrop').addEventListener('click', hideExpanded);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && overlay && !overlay.hidden) hideExpanded();
+    });
+    exProgress.addEventListener('click', function (e) {
+      var r = exProgress.getBoundingClientRect();
+      if (audio.duration) audio.currentTime = (e.clientX - r.left) / r.width * audio.duration;
+    });
+    exVol.addEventListener('input', function () { audio.volume = parseFloat(exVol.value); vol.value = exVol.value; });
+    exList.addEventListener('click', function (e) {
+      var t = e.target && e.target.closest ? e.target.closest('.px-track') : null;
+      if (!t) return;
+      load(parseInt(t.getAttribute('data-i'), 10), true);
+    });
+    renderList();
+  }
+  function renderList() {
+    if (!exList) return;
+    exList.innerHTML = PLAYLIST.map(function (t, i) {
+      return '<button class="px-track' + (i === idx ? ' on' : '') + '" data-i="' + i + '">' +
+        '<span class="px-track-note">' + (i === idx && !audio.paused ? '♪' : '○') + '</span>' +
+        '<span class="px-track-title">' + t.title + '</span></button>';
+    }).join('');
+  }
+  function syncExpanded() {
+    if (!overlay || overlay.hidden) return;
+    exTitle.textContent = PLAYLIST[idx].title;
+    exPlay.textContent = audio.paused ? '▶' : '❚❚';
+    exCur.textContent = fmt(audio.currentTime);
+    exDur.textContent = fmt(audio.duration);
+    exBar.style.width = audio.duration ? (audio.currentTime / audio.duration * 100) + '%' : '0%';
+    exVol.value = audio.volume;
+  }
+  function showExpanded() {
+    if (!overlay) buildExpanded();
+    overlay.hidden = false;
+    syncExpanded();
+  }
+  function hideExpanded() {
+    if (overlay) overlay.hidden = true;
+  }
+  if (expandBtn) expandBtn.addEventListener('click', showExpanded);
+  titleEl.style.cursor = 'pointer';
+  titleEl.title = '点击展开大播放器';
+  titleEl.addEventListener('click', showExpanded);
   load(0, false);
 });

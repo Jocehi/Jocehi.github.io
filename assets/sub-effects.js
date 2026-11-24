@@ -1235,6 +1235,52 @@
     });
   }
 
+  /* ============================================================
+     17 · 新增 · 阅读进度条（文章页）与回到顶部（全站）
+     ============================================================ */
+  function setupReadingProgress() {
+    var fill = document.createElement('div');
+    fill.className = 'sx-progress-fill';
+    var bar = document.createElement('div');
+    bar.className = 'sx-progress';
+    bar.appendChild(fill);
+    document.body.appendChild(bar);
+    var active = document.querySelector('.nav-links a.active');
+    var c = active ? window.getComputedStyle(active).color : '';
+    var m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    fill.style.background = m ? 'rgb(' + m[1] + ',' + m[2] + ',' + m[3] + ')' : '#e0528a';
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var h = document.documentElement.scrollHeight - window.innerHeight;
+      var p = h > 0 ? Math.min(1, Math.max(0, window.scrollY / h)) : 0;
+      fill.style.width = (p * 100).toFixed(2) + '%';
+    }
+    function onScroll() {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    update();
+  }
+  function setupBackToTop() {
+    var btn = document.createElement('button');
+    btn.className = 'sx-top' + (document.getElementById('playerFab') ? ' sx-top-player' : '');
+    btn.setAttribute('aria-label', '回到顶部');
+    btn.textContent = '↑';
+    document.body.appendChild(btn);
+    var shown = false;
+    function update() {
+      var show = window.scrollY > 600;
+      if (show === shown) return;
+      shown = show;
+      btn.classList.toggle('show', show);
+    }
+    window.addEventListener('scroll', function () { requestAnimationFrame(update); }, { passive: true });
+    btn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    update();
+  }
+
   function injectStyle() {
     if (document.getElementById('sx-style')) return;
     var css = [
@@ -1247,6 +1293,17 @@
       'font-size:.9rem;color:#1d2333;opacity:0;transition:opacity .25s ease,transform .25s ease;',
       'max-width:min(90vw,420px);}',
       '.sx-toast{opacity:1;}',
+      /* 阅读进度条 */
+      '.sx-progress{position:fixed;left:0;top:0;right:0;height:3px;z-index:70;pointer-events:none;background:transparent;}',
+      '.sx-progress-fill{display:block;height:100%;width:0%;background:#e0528a;}',
+      /* 回到顶部 */
+      '.sx-top{position:fixed;right:1rem;bottom:1rem;z-index:65;width:44px;height:44px;border-radius:50%;',
+      'border:1px solid #f1e3e6;background:#fffdf8;color:#1d2333;font-size:1.15rem;cursor:pointer;',
+      'box-shadow:0 8px 20px rgba(29,35,51,.14);opacity:0;visibility:hidden;transform:translateY(8px);',
+      'transition:opacity .25s ease,transform .25s ease,visibility .25s;}',
+      '.sx-top.show{opacity:1;visibility:visible;transform:none;}',
+      '.sx-top:hover{background:#fdf0f5;}',
+      '.sx-top-player{bottom:5.25rem;}',
       '.sx-toast-out{opacity:0;transform:translateX(-50%) translateY(-6px);}',
       '.sx-toast-msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
       '.sx-toast-undo{border:0;background:#e0528a;color:#fff;border-radius:999px;padding:.25rem .8rem;',
@@ -1294,6 +1351,7 @@
   function start() {
     var path = location.pathname || '';
     setupNavPill();
+    setupBackToTop();
     var isBriefIndex = /\/briefing\.html$/.test(path);
     var isBriefIssue = /\/briefing\/[^/]+\.html$/.test(path);
     var isPaper = /\/papers\/[^/]+\.html$/.test(path);
@@ -1306,6 +1364,7 @@
       if (canCanvas) setupImageReveal();
       setupPrint();
       setupProgressSteps();
+      setupReadingProgress();
     }
     if (isPaper) {
       setupTermTooltips();
@@ -1321,6 +1380,7 @@
     if (isBriefIndex || isBriefIssue) {
       if (canCanvas) setupBriefing();
     }
+    if (isBriefIssue) setupReadingProgress();
     if (isForm) {
       setupMorphButton();
       setupSlideConfirm();

@@ -406,3 +406,40 @@ footer{border-top:1px solid rgba(28,26,23,.08);padding-top:1.4rem}
 .sx-nav-pill{position:absolute;left:0;top:0;border-radius:999px;pointer-events:none;z-index:0;
   transition:left .35s cubic-bezier(.4,0,.2,1),top .35s cubic-bezier(.4,0,.2,1),width .35s cubic-bezier(.4,0,.2,1),height .35s cubic-bezier(.4,0,.2,1),opacity .25s ease}
 @media (prefers-reduced-motion: reduce){.sx-nav-pill{transition:none}}
+
+/* ---- dissolve 改造第四轮（2026-11-24）：MiniPlayer 展开 ---- */
+.player-expand{border:0;background:transparent;color:#5b6472;font-size:1rem;line-height:1;cursor:pointer;padding:.3rem;border-radius:50%;transition:background .15s ease,color .15s ease}
+.player-expand:hover{background:#fdf0f5;color:#c2437c}
+.player-expanded{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center}
+.player-expanded[hidden]{display:none}
+.px-backdrop{position:absolute;inset:0;background:rgba(29,35,51,.45);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.px-card{position:relative;width:min(420px,calc(100vw - 2rem));background:#fffdf8;border-radius:20px;padding:1.3rem 1.5rem 1.5rem;box-shadow:0 24px 64px rgba(29,35,51,.35);text-align:center;animation:px-in .25s ease}
+@keyframes px-in{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+.px-head{display:flex;align-items:center;justify-content:space-between}
+.px-eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.14em;color:#e0528a}
+.px-close{border:0;background:transparent;color:#5b6472;font-size:1rem;cursor:pointer;padding:.3rem;border-radius:50%}
+.px-close:hover{background:#fdf0f5;color:#c2437c}
+.px-note{width:76px;height:76px;border-radius:50%;background:#e0528a;color:#fff;font-size:2rem;display:flex;align-items:center;justify-content:center;margin:.7rem auto .9rem;box-shadow:0 10px 24px rgba(224,82,138,.35)}
+.px-title{font-weight:700;font-size:1.05rem;margin-bottom:.8rem}
+.px-list{margin-bottom:.9rem}
+.px-track{display:flex;align-items:center;gap:.6rem;width:100%;border:0;background:transparent;padding:.5rem .7rem;border-radius:10px;cursor:pointer;font-size:.92rem;color:#1d2333;text-align:left}
+.px-track:hover{background:#f3efe6}
+.px-track.on{background:rgba(224,82,138,.1);color:#c2437c;font-weight:700}
+.px-track-note{flex:0 0 auto;width:1.1rem;text-align:center}
+.px-progress{height:8px;background:#f3efe6;border-radius:999px;cursor:pointer;overflow:hidden}
+.px-bar{height:100%;width:0%;background:#e0528a;border-radius:999px}
+.px-times{display:flex;justify-content:space-between;font-size:.8rem;color:#5b6472;margin:.4rem 0 .9rem}
+.px-controls{display:flex;justify-content:center;align-items:center;gap:1.1rem}
+.px-play{width:56px;height:56px;border-radius:50%;border:0;background:#e0528a;color:#fff;font-size:1.25rem;cursor:pointer;box-shadow:0 8px 20px rgba(224,82,138,.4);transition:transform .15s ease}
+.px-play:active{transform:scale(.94)}
+.px-prev,.px-next{width:44px;height:44px;border-radius:50%;border:0;background:#f3efe6;color:#1d2333;font-size:1rem;cursor:pointer;transition:transform .15s ease}
+.px-prev:active,.px-next:active{transform:scale(.94)}
+.px-vol{display:flex;align-items:center;justify-content:center;gap:.6rem;margin-top:1.1rem;font-size:.85rem;color:#5b6472}
+.px-vol input{width:140px;accent-color:#e0528a}
+@media (max-width:640px){
+  .player-expanded{align-items:flex-end}
+  .px-card{width:100%;border-radius:20px 20px 0 0}
+}
+@media (prefers-reduced-motion: reduce){
+  .px-card{animation:none}
+}
