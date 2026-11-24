@@ -42,6 +42,8 @@ document.addEventListener('DOMContentLoaded', function () {
     playBtn.textContent = audio.paused ? '▶' : '❚❚';
     playBtn.setAttribute('aria-label', audio.paused ? '播放' : '暂停');
     fab.classList.toggle('playing', !audio.paused);
+    player.classList.toggle('playing', !audio.paused);
+    if (overlay) overlay.classList.toggle('playing', !audio.paused);
     playBtn.classList.remove('sx-pop'); void playBtn.offsetWidth; playBtn.classList.add('sx-pop');
     if (exPlay) { exPlay.textContent = audio.paused ? '▶' : '❚❚'; renderList(); }
   }
@@ -86,9 +88,9 @@ document.addEventListener('DOMContentLoaded', function () {
     overlay.innerHTML =
       '<div class="px-backdrop"></div>' +
       '<div class="px-card" role="dialog" aria-label="播放器">' +
-        '<div class="px-head"><span class="px-eyebrow">正在播放 · NOW PLAYING</span>' +
+        '<div class="px-head"><span class="px-live"><span class="px-eq"><i></i><i></i><i></i><i></i></span>正在播放 · NOW PLAYING</span>' +
         '<button class="px-close" aria-label="收起">✕</button></div>' +
-        '<div class="px-note">♪</div>' +
+        '<div class="px-vinyl"><svg viewBox="0 0 128 128" aria-hidden="true"><circle cx="64" cy="64" r="59" fill="none" stroke="rgba(255,255,255,.09)"/><circle cx="64" cy="64" r="51" fill="none" stroke="rgba(255,255,255,.07)"/><circle cx="64" cy="64" r="43" fill="none" stroke="rgba(255,255,255,.07)"/><circle cx="64" cy="64" r="35" fill="none" stroke="rgba(255,255,255,.06)"/></svg><span class="px-vinyl-label"></span></div>' +
         '<div class="px-title"></div>' +
         '<div class="px-list"></div>' +
         '<div class="px-progress"><div class="px-bar"></div></div>' +
@@ -142,6 +144,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   function syncExpanded() {
     if (!overlay || overlay.hidden) return;
+    overlay.classList.toggle('playing', !audio.paused);
     exTitle.textContent = PLAYLIST[idx].title;
     exPlay.textContent = audio.paused ? '▶' : '❚❚';
     exCur.textContent = fmt(audio.currentTime);
