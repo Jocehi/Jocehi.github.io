@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Transformers are Sample-Efficient World Models · 第 6 篇 · Jocehi 的论文精读</title>
-<link rel="stylesheet" href="../assets/space-papers.css?v=b3736fd">
+<link rel="stylesheet" href="../assets/space-papers.css?v=aa0a2f4">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
 <link href="https://fonts.googleapis.com/css2?family=Water+Brush&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/katex/katex.min.css?v=b3736fd">
@@ -41,7 +41,7 @@
 <p>$$\mathcal{L}(E,D,\mathcal{E}) = \|x - D(z)\|_1 + \|\mathrm{sg}(E(x)) - \mathcal{E}(z)\|_2^2 + \|\mathrm{sg}(\mathcal{E}(z)) - E(x)\|_2^2 + \mathcal{L}_{\mathrm{perceptual}}(x, D(z))$$</p>
 <p>式中第一项是 $L_1$ 重建损失，中间两项是承诺损失（$\mathrm{sg}(\cdot)$ 是 stop-gradient 算子，阻止梯度流过被截断的一侧，让编码输出与嵌入表互相靠近），最后一项是感知损失；梯度通过直通估计器（straight-through estimator）传过不可微的最近邻量化。值得注意的是，作者去掉了 VQGAN 的判别器，等于用了一个加感知损失的 VQ-VAE。</p>
 <p>Transformer $G$ 是世界模型的动力学核心，基于 minGPT 实现。它吃进交错的帧 token 与动作 token 序列 $(z_0^1,\dots,z_0^K,a_0,z_1^1,\dots,z_1^K,a_1,\dots,z_t^1,\dots,z_t^K,a_t)$，训练时取 $L=20$ 步的片段，序列总长 $L(K+1)=340$；结构是 10 层 GPT-2 式 block，嵌入维 $D=256$、4 个注意力头，三处 dropout 均为 0.1。在每个时间步 $t$，它建模三个分布：转移 $\hat{z}_{t+1} \sim p_G(\hat{z}_{t+1} \mid z_{\leq t}, a_{\leq t})$、奖励 $\hat{r}_t \sim p_G(\hat{r}_t \mid z_{\leq t}, a_{\leq t})$、回合终止 $\hat{d}_t \sim p_G(\hat{d}_t \mid z_{\leq t}, a_{\leq t})$，其中 $z_{\leq t}$ 表示到 $t$ 为止的全部历史 token，$a_{\leq t}$ 是历史动作。</p>
-<p>一个关键细节是“token 级自回归”：转移分布进一步分解为 $\hat{z}_{t+1}^k \sim p_G(\hat{z}_{t+1}^k \mid z_{\leq t}, a_{\leq t}, z_{t+1}^{<k})$，即预测下一帧的第 $k$ 个 token 时，以同一帧里已经预测出的前 $k-1$ 个 token $z_{t+1}^{<k}$ 为条件。转移与终止用交叉熵训练，奖励按奖励函数不同用均方误差或交叉熵。这种分解让模型能表达多模态的未来——同一初始帧可以想象出不同的敌人配置，而不是被迫输出一个平均化的未来。</p>
+<p>一个关键细节是“token 级自回归”：转移分布进一步分解为 $\hat{z}_{t+1}^k \sim p_G(\hat{z}_{t+1}^k \mid z_{\leq t}, a_{\leq t}, z_{t+1}^{&lt;k})$，即预测下一帧的第 $k$ 个 token 时，以同一帧里已经预测出的前 $k-1$ 个 token $z_{t+1}^{&lt;k}$ 为条件。转移与终止用交叉熵训练，奖励按奖励函数不同用均方误差或交叉熵。这种分解让模型能表达多模态的未来——同一初始帧可以想象出不同的敌人配置，而不是被迫输出一个平均化的未来。</p>
 <ul><li>编码器把 $64\times 64$ 帧压成 $K=16$ 个 token，词表 $N=512$，最近邻量化 $z_t^k = \arg\min_i \|y_t^k - e_i\|_2$。</li><li>损失 = $L_1$ 重建 + 承诺损失 + 感知损失，等权重；直通估计器传梯度；无判别器。</li><li>Transformer：10 层、$D=256$、4 头，输入为 $L=20$ 步、总长 340 的帧-动作交错序列。</li><li>每步建模转移、奖励、终止三个分布，且转移在 token 级自回归，可表达多模态未来。</li></ul>
 <h2 class="sec-num">训练与推理流程</h2>
 <p>训练分 600 个 epoch，每 epoch 在真实环境收集 200 步（500 个收集 epoch 共 100k 步），世界模型与行为学习各做 200 个训练步。三个组件按顺序启动：自编码器从第 5 个 epoch 开始训，Transformer 从第 25 个 epoch 开始，actor-critic 从第 50 个 epoch 开始——先有可用的 token 语言，再学动力学，最后才在想象里练策略。优化器是 Adam，学习率 $10^{-4}$，$\beta_1=0.9$、$\beta_2=0.999$，梯度裁剪范数 10.0。</p>

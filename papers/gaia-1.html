@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GAIA-1: A Generative World Model for Autonomous Driving · 第 9 篇 · Jocehi 的论文精读</title>
-<link rel="stylesheet" href="../assets/space-papers.css?v=b3736fd">
+<link rel="stylesheet" href="../assets/space-papers.css?v=aa0a2f4">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
 <link href="https://fonts.googleapis.com/css2?family=Water+Brush&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/katex/katex.min.css?v=b3736fd">
@@ -40,8 +40,8 @@
 <p>输入编码上，每帧图像经预训练图像分词器离散化为 $n=576$ 个 token；文本用预训练 T5-large 编码，每步 $m=32$ 个 token；动作用速度与曲率 $l=2$ 个标量，各经线性层映射。全部映射到 $d=4096$ 维共享空间，每步按“文本—图像—动作”顺序交错排列，全序列为 $(\mathbf{c}_1,\mathbf{z}_1,\mathbf{a}_1,\ldots,\mathbf{c}_T,\mathbf{z}_T,\mathbf{a}_T)$，位置编码用可学习的时空分解嵌入（$T$ 个时间嵌入加 $m+n+l=610$ 个空间嵌入）。</p>
 <p>图像分词器是全卷积 2D U-Net 编码器 $E_\theta$，下采样因子 $D=16$，$288\times512$ 的图像压成 $18\times32=576$ 个 token，词表 $K=8192$，比特压缩比约 $470$ 倍。关键设计是 DINO 蒸馏：用量化特征与预训练 DINO 特征的余弦相似度损失，把压缩偏向语义而非高频细节；图 3 显示，蒸馏后的 token 嵌入按语义类别（车辆、路面、天空）聚类，而基础 VQ-GAN 的 token 则杂乱得多。</p>
 <p>世界模型是自回归 transformer，训练目标是给定全部历史 token 预测下一个图像 token：</p>
-<p>$$L_{\text{world model}}=-\sum_{t=1}^{T}\sum_{i=1}^{n}\log p(z_{t,i}\mid\mathbf{z}_{<t},z_{t,j<i},\mathbf{c}_{\leq t},\mathbf{a}_{<t})$$</p>
-<p>其中 $z_{t,i}$ 是第 $t$ 帧第 $i$ 个图像 token，$\mathbf{z}_{<t}$ 是此前所有帧的图像 token，$z_{t,j<i}$ 是同帧中位置在 $i$ 之前的 token，$\mathbf{c}_{\leq t}$ 是截至 $t$ 的文本 token，$\mathbf{a}_{<t}$ 是 $t$ 之前的动作 token。这个目标把“预测未来”变成了“预测下一个 token”，与语言模型完全同构。训练时随机丢弃条件 token，使模型同时学会无条件、动作条件与文本条件三种生成模式。</p>
+<p>$$L_{\text{world model}}=-\sum_{t=1}^{T}\sum_{i=1}^{n}\log p(z_{t,i}\mid\mathbf{z}_{&lt;t},z_{t,j&lt;i},\mathbf{c}_{\leq t},\mathbf{a}_{&lt;t})$$</p>
+<p>其中 $z_{t,i}$ 是第 $t$ 帧第 $i$ 个图像 token，$\mathbf{z}_{&lt;t}$ 是此前所有帧的图像 token，$z_{t,j&lt;i}$ 是同帧中位置在 $i$ 之前的 token，$\mathbf{c}_{\leq t}$ 是截至 $t$ 的文本 token，$\mathbf{a}_{&lt;t}$ 是 $t$ 之前的动作 token。这个目标把“预测未来”变成了“预测下一个 token”，与语言模型完全同构。训练时随机丢弃条件 token，使模型同时学会无条件、动作条件与文本条件三种生成模式。</p>
 <p>视频解码器是 3D U-Net 扩散模型，带分解的空间与时间注意力；用 $\mathbf{v}$-参数化与 $L_1$/$L_2$ 加权损失：</p>
 <p>$$L_{\text{video}}=\mathbb{E}_{\mathbf{\epsilon},t'}\left[\lVert\mathbf{\epsilon}_{\theta}(\mathbf{x}^{t'},t',\mathbf{z},\mathbf{m})-\mathbf{\epsilon}\rVert^{2}_{2}\right]$$</p>
 <p>其中 $\mathbf{\epsilon}_\theta$ 是去噪视频模型，$\mathbf{\epsilon}$ 是去噪目标（$\mathbf{v}$-参数化），$t'\sim U(0,1)$ 是采样的扩散时间，$\mathbf{x}^{t'}=\alpha_{t'}\mathbf{x}+\sigma_{t'}\mathbf{\epsilon}$ 是加噪视频，$\alpha_{t'}$ 与 $\sigma_{t'}$ 是由噪声表定义的系数，$\mathbf{z}$ 是条件图像 token 序列，$\mathbf{m}$ 是按训练任务给出的图像掩码序列。单模型多任务联合训练（图像生成、视频生成、自回归解码、视频插值），每步以 $p=0.15$ 的概率随机掩盖条件 token，以提升泛化与时间一致性。</p>

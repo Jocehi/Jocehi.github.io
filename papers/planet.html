@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Learning Latent Dynamics for Planning from Pixels · 第 2 篇 · Jocehi 的论文精读</title>
-<link rel="stylesheet" href="../assets/space-papers.css?v=b3736fd">
+<link rel="stylesheet" href="../assets/space-papers.css?v=aa0a2f4">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
 <link href="https://fonts.googleapis.com/css2?family=Water+Brush&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/katex/katex.min.css?v=b3736fd">
@@ -44,7 +44,7 @@ o_t &\sim p(o_t \mid s_t) \\
 r_t &\sim p(r_t \mid s_t)
 \end{aligned}
 $$</p>
-<p>其中 $t$ 是离散时间步，$s_t$ 是环境的隐状态，$o_t$ 是图像观测，$a_t$ 是连续动作向量，$r_t$ 是标量奖励；论文用正体 $p$ 表示真实动力学、用斜体 $p$ 表示学到的模型。目标是实现一个策略 $p(a_t \mid o_{\leq t}, a_{<t})$，最大化期望累积奖励 $\mathbb{E}_p[\sum_{t=1}^{T} r_t]$，期望取自环境与策略的分布。</p>
+<p>其中 $t$ 是离散时间步，$s_t$ 是环境的隐状态，$o_t$ 是图像观测，$a_t$ 是连续动作向量，$r_t$ 是标量奖励；论文用正体 $p$ 表示真实动力学、用斜体 $p$ 表示学到的模型。目标是实现一个策略 $p(a_t \mid o_{\leq t}, a_{&lt;t})$，最大化期望累积奖励 $\mathbb{E}_p[\sum_{t=1}^{T} r_t]$，期望取自环境与策略的分布。</p>
 <p>RSSM 是论文的模型核心，它把隐状态拆成两部分：</p>
 <p>$$
 \begin{aligned}
@@ -62,9 +62,9 @@ $$</p>
 <h2 class="sec-num">训练与推理流程</h2>
 <p>训练用变分推断。由编码器出发，对观测序列的对数似然可得变分下界：</p>
 <p>$$
-\ln p(o_{1:T} \mid a_{1:T}) \geq \sum_{t=1}^{T}\Big(\mathbb{E}_{q(s_t \mid o_{\leq t}, a_{<t})}[\ln p(o_t \mid s_t)] - \mathbb{E}_{q(s_{t-1} \mid o_{\leq t-1}, a_{<t-1})}[\mathrm{KL}[q(s_t \mid o_{\leq t}, a_{<t}) \parallel p(s_t \mid s_{t-1}, a_{t-1})]]\Big)
+\ln p(o_{1:T} \mid a_{1:T}) \geq \sum_{t=1}^{T}\Big(\mathbb{E}_{q(s_t \mid o_{\leq t}, a_{&lt;t})}[\ln p(o_t \mid s_t)] - \mathbb{E}_{q(s_{t-1} \mid o_{\leq t-1}, a_{&lt;t-1})}[\mathrm{KL}[q(s_t \mid o_{\leq t}, a_{&lt;t}) \parallel p(s_t \mid s_{t-1}, a_{t-1})]]\Big)
 $$</p>
-<p>第一项是重建项，即在编码器推断的后验下、模型重建当前观测的对数似然期望；第二项是复杂度项，即后验 $q(s_t \mid o_{\leq t}, a_{<t})$ 与一步先验 $p(s_t \mid s_{t-1}, a_{t-1})$ 之间的 KL 散度，它逼着转移模型去匹配编码器看到观测后推断出的状态。奖励的损失与观测完全类比。用单样本重参数化估计这些期望，就能以梯度上升高效优化。</p>
+<p>第一项是重建项，即在编码器推断的后验下、模型重建当前观测的对数似然期望；第二项是复杂度项，即后验 $q(s_t \mid o_{\leq t}, a_{&lt;t})$ 与一步先验 $p(s_t \mid s_{t-1}, a_{t-1})$ 之间的 KL 散度，它逼着转移模型去匹配编码器看到观测后推断出的状态。奖励的损失与观测完全类比。用单样本重参数化估计这些期望，就能以梯度上升高效优化。</p>
 <p>标准目标有个盲区：转移函数只通过每步的 KL 项接受训练，梯度从不穿过由多个转移串成的链条，因此模型只被要求“一步准”，而不被要求“多步准”。Latent overshooting 正是为此而生：先定义多步预测分布 $p(s_t \mid s_{t-d}) \triangleq \int \prod_{τ=t-d+1}^{t} p(s_τ \mid s_{τ-1}) \, ds_{t-d+1:t-1}$，即从 $d$ 步之前的状态出发、反复应用转移并积分掉中间状态得到的分布，其中 $d$ 是预测距离、$τ$ 是中间时间步；再把变分下界推广到所有距离 $1 \leq d \leq D$ 的平均：</p>
 <p>$$
 \frac{1}{D}\sum_{d=1}^{D} \ln p_d(o_{1:T}) \geq \sum_{t=1}^{T}\Big(\mathbb{E}_{q(s_t \mid o_{\leq t})}[\ln p(o_t \mid s_t)] - \frac{1}{D}\sum_{d=1}^{D} β_d \, \mathbb{E}[\mathrm{KL}[q(s_t \mid o_{\leq t}) \parallel p(s_t \mid s_{t-1})]]\Big)
