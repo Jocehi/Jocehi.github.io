@@ -19,7 +19,8 @@
 <p class="meta">前置知识：DQN</p>
 <div class="thesis">优先回放 $TD$ 误差大的经验，学得更快。</div>
 <div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
-<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · 优先经验回放 PER · 30 分钟 · 制作中，完成后将更新到此处</p>
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-10-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · 优先经验回放 PER · 8 分 57 秒</p>
 </div>
 <details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
 <p>在第 7 课的 DQN 中，智能体把交互得到的经验存入经验回放池，再从中均匀随机采样小批量来训练 $Q$ 网络。均匀采样虽然打破了相邻样本的相关性、提高了数据利用率，但它默认所有经验同等重要，这与实际学习并不相符：许多经验的 $TD$ 误差已经很小、几乎学不到新东西，而少数关键经验，例如首次获得奖励、稀有转移或犯下大错的经验，往往 $TD$ 误差很大、最值得反复学习，却可能很久才被随机抽中一次。PER 要解决的正是经验利用效率低、重要经验学习慢的问题。它适用于离散动作值函数方法，特别适合奖励稀疏、关键转移罕见、样本昂贵或训练步数有限的任务，如 Atari 游戏、机器人控制与仿真环境。输入是智能体与环境交互产生的经验流、当前 $Q$ 网络与目标网络，以及优先级指数 $\alpha$ 与重要性采样指数 $\beta$ 等超参数；每条经验为 $ (s, a, r, s') $ 形式的四元组。输出是经过优先采样训练后更准确的动作价值函数 $Q(s,a)$，以及随之改进的贪心策略 $\pi(s)=\arg\max_a Q(s,a)$，从而在相同交互次数下更快收敛、取得更高回报。</p>
