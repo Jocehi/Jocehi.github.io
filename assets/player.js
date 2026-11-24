@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
       '<div class="px-card" role="dialog" aria-label="播放器">' +
         '<div class="px-head"><span class="px-live"><span class="px-eq"><i></i><i></i><i></i><i></i></span>正在播放 · NOW PLAYING</span>' +
         '<button class="px-close" aria-label="收起">✕</button></div>' +
-        '<div class="px-vinyl"><svg viewBox="0 0 128 128" aria-hidden="true"><circle cx="64" cy="64" r="59" fill="none" stroke="rgba(255,255,255,.09)"/><circle cx="64" cy="64" r="51" fill="none" stroke="rgba(255,255,255,.07)"/><circle cx="64" cy="64" r="43" fill="none" stroke="rgba(255,255,255,.07)"/><circle cx="64" cy="64" r="35" fill="none" stroke="rgba(255,255,255,.06)"/></svg><span class="px-vinyl-label"></span></div>' +
+        '<div class="px-vinyl"><svg viewBox="0 0 128 128" aria-hidden="true"><circle cx="64" cy="64" r="59" fill="none" stroke="rgba(255,255,255,.09)"/><circle cx="64" cy="64" r="51" fill="none" stroke="rgba(255,255,255,.07)"/><circle cx="64" cy="64" r="43" fill="none" stroke="rgba(255,255,255,.07)"/><circle cx="64" cy="64" r="35" fill="none" stroke="rgba(255,255,255,.06)"/></svg><span class="px-vinyl-label"></span><span class="px-vinyl-dot"></span></div>' +
         '<div class="px-title"></div>' +
         '<div class="px-list"></div>' +
         '<div class="px-progress"><div class="px-bar"></div></div>' +
