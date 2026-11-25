@@ -19,7 +19,8 @@
 <p class="meta">前置知识：MDP、自动微分基础</p>
 <div class="thesis">用整条轨迹的回报加权，提升好动作的概率。</div>
 <div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
-<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · REINFORCE 策略梯度 · 30 分钟 · 制作中，完成后将更新到此处</p>
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-11-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · REINFORCE 策略梯度 · 11 分 29 秒</p>
 </div>
 <details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
 <p>REINFORCE 要解决的是在马尔可夫决策过程 $MDP$ 中直接学习随机策略 $\pi_\theta(a \mid s)$ 的问题，其中 $s$ 为状态，$a$ 为动作，$\theta$ 为策略网络的参数，目标是最大化期望折扣回报 $J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}[\sum_{t=0}^{\infty} \gamma^t r_t]$，其中 $\tau$ 为轨迹，$r_t$ 为 $t$ 时刻奖励，$\gamma \in [0, 1]$ 为折扣因子。它适用于动作空间为离散或连续、策略需要随机化、以及价值函数难以准确估计的场景，例如机器人控制、游戏与序列决策任务，而不适用于需要极高样本效率或奖励极其稀疏且回合极长的任务。输入为与环境交互得到的完整回合轨迹 $\tau = (s_0, a_0, r_0, s_1, a_1, r_1, \dots)$、学习率 $\alpha$ 与折扣因子 $\gamma$；输出为优化后的策略参数 $\theta$，即一个可直接采样动作的策略 $\pi_\theta$，学习后在新状态 $s$ 下按 $\pi_\theta(a \mid s)$ 选择动作以获得更高的长期回报。</p>
