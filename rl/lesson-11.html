@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 11 课 · REINFORCE 策略梯度 · Jocehi 的 RL 精讲</title>
+<link rel="stylesheet" href="../assets/space-rl.css?v=f432614">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Water+Brush&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/katex/katex.min.css?v=b3736fd">
+  <script defer src="../assets/katex/katex.min.js?v=b3736fd"></script>
+  <script defer src="../assets/katex/auto-render.min.js?v=b3736fd" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
+</head>
+<body>
+<header class="site-nav"><div class="nav-inner"><a class="brand" href="../index.html"><img src="../avatar.webp" alt="Jocehi"><span>Jocehi</span></a><nav class="nav-links" aria-label="主导航"><a href="../papers.html">论文精读</a><a href="../rl.html" class="active">RL 精讲</a><a href="../briefing.html">每日简报</a><a href="../review.html">每日复盘</a><a href="../diary.html">日记</a><a href="../blog.html">博客</a></nav></div></header>
+<div class="wrap">
+<h1>第 11 课 · REINFORCE 策略梯度</h1>
+<p class="meta">REINFORCE · RL 算法每日精讲 · 2026-11-25 · 策略梯度 · 进阶 · 约 30 分钟</p>
+<p class="meta">前置知识：MDP、自动微分基础</p>
+<div class="thesis">用整条轨迹的回报加权，提升好动作的概率。</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · REINFORCE 策略梯度 · 30 分钟 · 制作中，完成后将更新到此处</p>
+</div>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>REINFORCE 要解决的是在马尔可夫决策过程 $MDP$ 中直接学习随机策略 $\pi_\theta(a \mid s)$ 的问题，其中 $s$ 为状态，$a$ 为动作，$\theta$ 为策略网络的参数，目标是最大化期望折扣回报 $J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}[\sum_{t=0}^{\infty} \gamma^t r_t]$，其中 $\tau$ 为轨迹，$r_t$ 为 $t$ 时刻奖励，$\gamma \in [0, 1]$ 为折扣因子。它适用于动作空间为离散或连续、策略需要随机化、以及价值函数难以准确估计的场景，例如机器人控制、游戏与序列决策任务，而不适用于需要极高样本效率或奖励极其稀疏且回合极长的任务。输入为与环境交互得到的完整回合轨迹 $\tau = (s_0, a_0, r_0, s_1, a_1, r_1, \dots)$、学习率 $\alpha$ 与折扣因子 $\gamma$；输出为优化后的策略参数 $\theta$，即一个可直接采样动作的策略 $\pi_\theta$，学习后在新状态 $s$ 下按 $\pi_\theta(a \mid s)$ 选择动作以获得更高的长期回报。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">② 核心思想</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>策略梯度定理给出目标 $J(\theta)$ 对 $\theta$ 的梯度可表示为沿轨迹的期望，即 $\nabla_\theta J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}[\sum_{t} G_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)]$，从而无需对环境动力学求导。</li>
+<li>对数导数技巧 $\nabla_\theta \log \pi_\theta(a_t \mid s_t) = \nabla_\theta \pi_\theta(a_t \mid s_t) / \pi_\theta(a_t \mid s_t)$ 把对策略概率的求导转化为可由自动微分计算的对数概率梯度，是算法可实现的关键。</li>
+<li>REINFORCE 用蒙特卡洛采样得到的整条轨迹回报 $G_t$ 作为 $t$ 时刻动作 $a_t$ 的权重：回报高则增大 $\pi_\theta(a_t \mid s_t)$，回报低则减小它，从而直接提升好动作的概率。</li>
+<li>该算法是无偏但高方差的估计：单条轨迹的 $G_t$ 噪声很大，引入与动作无关的基线 $b(s_t)$，用 $G_t - b(s_t)$ 代替 $G_t$，可在不改变期望梯度的前提下显著降低方差。</li>
+<li>REINFORCE 是回合制、在线的蒙特卡洛策略梯度方法：必须等到回合结束才能计算 $G_t$ 并更新 $\theta$，更新后旧轨迹即失效，不能像经验回放那样反复利用。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">③ 与已学方法对比</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>与第8课 Double DQN、第9课 Dueling DQN 和第10课 PER 相比，REINFORCE 从基于价值的方法转向直接优化策略：它不再学习 $Q(s, a)$ 并通过 $\max_a Q(s, a)$ 选动作，而是直接参数化并优化 $\pi_\theta(a \mid s)$，从而能自然处理连续动作与随机策略，并避免 $Q$ 值高估与动作空间离散化的限制；但代价是样本效率大幅下降、方差高、只能用完整回合的蒙特卡洛回报 $G_t$ 更新，且无法复用第10课 PER 那样的旧经验，训练更不稳定、收敛更慢，通常需要基线、归一化回报或更先进的 Actor-Critic、PPO 等方法来改进。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">④ 学习流程</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="agent-env" role="img" aria-label="智能体与环境交互循环"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrA" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6472"/></marker></defs><rect x="20" y="45" width="170" height="80" rx="12" fill="#d97706"/><text x="105" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">智能体 Agent</text><text x="105" y="103" text-anchor="middle" font-size="12" fill="#ffedd5">策略 π · 价值 V</text><rect x="450" y="45" width="170" height="80" rx="12" fill="#0f766e"/><text x="535" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">环境 Environment</text><text x="535" y="103" text-anchor="middle" font-size="12" fill="#ccfbf1">状态 s · 奖励 r</text><path d="M195,65 L445,65" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="55" text-anchor="middle" font-size="12" fill="#5b6472">动作 a</text><path d="M445,105 L195,105" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="125" text-anchor="middle" font-size="12" fill="#5b6472">观测 s′ · 奖励 r</text></svg></div>
+<ol class="flow">
+<li><span class="chip kind-compute">计算</span><b>初始化参数</b>初始化策略参数 $\theta$、学习率 $\alpha$ 与折扣因子 $\gamma$，输入为超参数，输出为待训练的策略 $\pi_\theta$。</li>
+<li><span class="chip kind-observe">观察</span><b>观察状态</b>在时刻 $t$ 读取环境当前状态 $s_t$，作为策略网络的输入，输出为状态表示。</li>
+<li><span class="chip kind-decide">决策</span><b>选择动作</b>按策略 $\pi_\theta(a_t \mid s_t)$ 采样动作 $a_t$，输入为 $s_t$ 与 $\theta$，输出为待执行的动作 $a_t$。</li>
+<li><span class="chip kind-act">行动</span><b>执行动作</b>将 $a_t$ 作用于环境，输入为动作 $a_t$，输出为环境待返回的奖励与下一状态。</li>
+<li><span class="chip kind-feedback">反馈</span><b>获得反馈</b>环境返回奖励 $r_t$ 与下一状态 $s_{t+1}$，并记录 $(s_t, a_t, r_t)$ 到当前回合轨迹 $\tau$ 中。</li>
+<li><span class="chip kind-compute">计算</span><b>计算折扣回报</b>回合结束后由后向前计算每个时刻的回报 $G_t = \sum_{k=t}^{T-1} \gamma^{k-t} r_k$，输入为整条轨迹 $\tau$ 与 $\gamma$，输出为各时刻的 $G_t$。若使用基线，再用 $G_t - b(s_t)$ 代替 $G_t$ 作为权重。</li>
+<li><span class="chip kind-update">更新</span><b>更新策略参数</b>按 $\theta \leftarrow \theta + \alpha \sum_{t=0}^{T-1} G_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)$ 沿梯度上升更新 $\theta$，输入为 $G_t$ 与对数概率梯度，输出为更新后的策略 $\pi_\theta$。</li>
+<li><span class="chip kind-loop">循环</span><b>循环下一回合</b>判断是否达到预设回合数，若未达到则清空当前轨迹 $\tau$ 并开始新回合，若已达到则停止训练并输出最终策略 $\pi_\theta$。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑤ 关键公式</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="formula-card">
+<h4>策略梯度定理</h4>
+<div>$$\nabla_\theta J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}\left[\sum_{t=0}^{T-1} G_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)\right]$$</div>
+<p>该式把目标 $J(\theta)$ 的梯度写成沿策略 $\pi_\theta$ 采样轨迹 $\tau$ 的期望，期望内每一项都由回报 $G_t$ 加权对数概率梯度 $\nabla_\theta \log \pi_\theta(a_t \mid s_t)$ 构成。它表明无需对环境动力学求导，只需沿轨迹采样并估计期望即可得到梯度方向。</p>
+<ul>
+<li>$\nabla_\theta J(\theta)$：目标 $J(\theta)$ 对参数 $\theta$ 的梯度，即策略改进方向</li>
+<li>$\mathbb{E}_{\tau \sim \pi_\theta}$：在策略 $\pi_\theta$ 下对轨迹 $\tau$ 取期望</li>
+<li>$G_t$：从时刻 $t$ 起的折扣回报，用于评价动作 $a_t$ 的好坏</li>
+<li>$\pi_\theta(a_t \mid s_t)$：在状态 $s_t$ 下采取动作 $a_t$ 的概率，由参数 $\theta$ 决定</li>
+<li>$\nabla_\theta \log \pi_\theta(a_t \mid s_t)$：对数概率对 $\theta$ 的梯度，可由自动微分直接计算</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>折扣回报</h4>
+<div>$$G_t = \sum_{k=t}^{T-1} \gamma^{k-t} r_k$$</div>
+<p>该式把时刻 $t$ 之后的所有奖励按 $\gamma$ 的幂次折扣后求和，越远的奖励权重越小。它把整条轨迹的未来收益压缩为 $t$ 时刻的一个标量评分 $G_t$，作为该时刻动作的权重。</p>
+<ul>
+<li>$G_t$：从时刻 $t$ 起的折扣回报</li>
+<li>$\gamma$：折扣因子，取值在 $[0, 1]$ 区间内，越接近 $1$ 越重视远期奖励</li>
+<li>$r_k$：时刻 $k$ 获得的即时奖励</li>
+<li>$k$：求和下标，从当前时刻 $t$ 开始遍历到回合结束</li>
+<li>$T$：回合总步数，$T-1$ 为最后一个时刻的下标</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>REINFORCE 更新规则</h4>
+<div>$$\theta \leftarrow \theta + \alpha \sum_{t=0}^{T-1} G_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)$$</div>
+<p>该式用一条采样轨迹的蒙特卡洛估计代替策略梯度定理中的期望，沿估计梯度方向以步长 $\alpha$ 更新 $\theta$。回报 $G_t$ 越大，对应动作 $a_t$ 的对数概率被提升得越多，从而好动作在未来更可能被选中。</p>
+<ul>
+<li>$\theta$：策略网络的参数，更新对象</li>
+<li>$\alpha$：学习率，控制每次沿梯度上升的步长</li>
+<li>$G_t$：时刻 $t$ 的折扣回报，作为动作权重的标量</li>
+<li>$\nabla_\theta \log \pi_\theta(a_t \mid s_t)$：对数概率梯度，指示如何改变 $\theta$ 才能增大 $\pi_\theta(a_t \mid s_t)$</li>
+<li>$\sum_{t=0}^{T-1}$：对回合内所有时刻求和，累计每个动作的贡献</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>带基线的策略梯度更新</h4>
+<div>$$\theta \leftarrow \theta + \alpha \sum_{t=0}^{T-1} \big(G_t - b(s_t)\big) \nabla_\theta \log \pi_\theta(a_t \mid s_t)$$</div>
+<p>该式用优势 $G_t - b(s_t)$ 代替原始回报 $G_t$ 作为权重，基线 $b(s_t)$ 只依赖状态 $s_t$ 而与动作 $a_t$ 无关。由于基线项不改变期望梯度，它在保持无偏的同时减小了 $G_t$ 的波动，从而显著降低估计方差。</p>
+<ul>
+<li>$b(s_t)$：状态 $s_t$ 的基线，常取价值估计 $V(s_t)$，用于衡量该状态的平均回报水平</li>
+<li>$G_t - b(s_t)$：优势估计：实际回报超出基线的部分，为正表示动作优于平均水平</li>
+<li>$\alpha$：学习率</li>
+<li>$\nabla_\theta \log \pi_\theta(a_t \mid s_t)$：对数概率梯度</li>
+<li>$\theta$：策略参数</li>
+</ul>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑥ 数学推导</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol class="mathnotes">
+<li>
+<p>从目标出发：我们要最大化期望折扣回报 $J(\theta)$，它是对所有可能轨迹 $\tau$ 按策略 $\pi_\theta$ 出现概率加权的平均回报。</p>
+</li>
+<li>
+<p>直接对 $J(\theta)$ 求导会遇到环境转移概率的导数，而环境动力学通常未知、也不可微，因此不能直接对环境求导。</p>
+</li>
+<li>
+<p>关键在于轨迹概率可分解为初始状态分布、策略与环境转移的乘积，其中只有策略项含 $\theta$，对 $\log$ 求导后环境项的导数为零、从而被消去。</p>
+</li>
+<li>
+<p>利用对数导数恒等式把策略概率的梯度改写为概率本身乘以对数概率梯度，再与轨迹概率相乘，恰好还原为在策略下采样的期望形式。</p>
+</li>
+<li>
+<p>于是得到策略梯度定理：</p>
+<div>$$ \nabla_\theta J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta}\left[\sum_{t=0}^{T-1} G_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)\right] $$</div></li>
+<li>
+<p>其中 $G_t$ 是从时刻 $t$ 起的折扣回报，它把未来奖励折算到 $t$ 时刻，作为该时刻动作 $a_t$ 的好坏评分。</p>
+</li>
+<li>
+<p>实际中无法枚举所有轨迹，只能用一条采样轨迹的蒙特卡洛估计代替期望，得到单样本梯度估计 $\hat{g}$，再沿梯度上升方向更新参数。</p>
+<div>$$ \theta \leftarrow \theta + \alpha \sum_{t=0}^{T-1} G_t \nabla_\theta \log \pi_\theta(a_t \mid s_t) $$</div></li>
+<li>
+<p>该估计是无偏的，因为蒙特卡洛采样的期望等于真实梯度；但单条轨迹的 $G_t$ 波动很大，所以方差很高。</p>
+</li>
+<li>
+<p>引入只依赖状态 $s_t$、与动作 $a_t$ 无关的基线 $b(s_t)$，用 $G_t - b(s_t)$ 代替 $G_t$：由于基线项的期望梯度为零，期望不变，但 $G_t$ 的波动被中心化后方差下降。</p>
+</li>
+<li>
+<p>小数值例子：设一回合共 $3$ 步，奖励为 $r_0=1$、$r_1=0$、$r_2=2$，折扣因子 $\gamma=0.9$，则从 $t=0$ 起的回报为 $G_0=1+0.9\times 0+0.9^2\times 2=2.62$，从 $t=2$ 起的回报为 $G_2=2$。</p>
+</li>
+<li>
+<p>若基线 $b(s_0)=1.5$，则 $t=0$ 时的优势为 $G_0-b(s_0)=1.12$，为正说明该动作优于平均水平，更新时会增大 $\pi_\theta(a_0 \mid s_0)$；若某时刻回报低于基线，优势为负，对应动作概率会被减小。</p>
+</li>
+<li>
+<p>由此可见，$G_t$ 决定更新的方向与幅度，基线只起方差缩减作用；但必须等回合结束才能算出全部 $G_t$，这正是 REINFORCE 回合制、在线更新的来源。</p>
+</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑦ 伪代码</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="pseudo">
+<h4>初始化策略参数 $\theta$，学习率 $\alpha$，折扣因子 $\gamma \in [0, 1]$</h4>
+<div class="step"><span class="stepnum">·</span> 对每个回合 $e = 1, 2, \dots$ 执行以下步骤：</div>
+<div class="step"><span class="stepnum">·</span> 根据策略 $\pi_\theta$ 与环境交互，采样完整轨迹 $\tau = (s_0, a_0, r_0, s_1, a_1, r_1, \dots, s_T)$</div>
+<div class="step"><span class="stepnum">·</span> 对每个时刻 $t = 0, 1, \dots, T-1$，计算折扣回报 $G_t = \sum_{k=t}^{T-1} \gamma^{k-t} r_k$</div>
+<div class="step"><span class="stepnum">·</span> 计算梯度估计</div>
+<div class="step formula-line"><div>$$\hat{g} = \sum_{t=0}^{T-1} G_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)$$</div></div>
+<div class="step"><span class="stepnum">·</span> 更新参数 $\theta \leftarrow \theta + \alpha \hat{g}$</div>
+</div>
+<div class="pseudo">
+<h4>带基线的 REINFORCE 变体：</h4>
+<div class="step"><span class="stepnum">·</span> 初始化策略参数 $\theta$ 与价值基线参数 $w$，学习率 $\alpha$ 与 $\alpha_w$</div>
+<div class="step"><span class="stepnum">·</span> 对每个回合，采样轨迹 $\tau$，并计算每个时刻的回报 $G_t$</div>
+<div class="step"><span class="stepnum">·</span> 用基线 $b_w(s_t)$ 计算优势估计 $\hat{A}_t = G_t - b_w(s_t)$</div>
+<div class="step"><span class="stepnum">·</span> 更新策略</div>
+<div class="step formula-line"><div>$$\theta \leftarrow \theta + \alpha \sum_{t=0}^{T-1} \hat{A}_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)$$</div></div>
+<div class="step"><span class="stepnum">·</span> 更新基线</div>
+<div class="step formula-line"><div>$$w \leftarrow w - \alpha_w \nabla_w \sum_{t=0}^{T-1} (G_t - b_w(s_t))^2$$</div></div>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑧ Python 代码（可运行）</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<pre class="code"><button class="copybtn">复制代码</button><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76</span><code><span class="tok-kw">import</span> gymnasium <span class="tok-kw">as</span> gym
+<span class="tok-kw">import</span> torch
+<span class="tok-kw">import</span> torch.nn <span class="tok-kw">as</span> nn
+<span class="tok-kw">import</span> torch.optim <span class="tok-kw">as</span> optim
+
+<span class="tok-com"># 超参数：CartPole 状态 4 维、动作 2 个</span>
+GAMMA = <span class="tok-num">0.99</span>  <span class="tok-com"># 折扣因子 $\gamma$</span>
+LR_PI = <span class="tok-num">3</span>e-<span class="tok-num">3</span>  <span class="tok-com"># 策略学习率 $\alpha$</span>
+LR_V = <span class="tok-num">1</span>e-<span class="tok-num">2</span>  <span class="tok-com"># 基线学习率 $\alpha_w$</span>
+EPISODES = <span class="tok-num">300</span>
+
+<span class="tok-kw">class</span> <span class="tok-fn">PolicyNet</span>(nn.Module):
+    <span class="tok-str">"""策略网络：输出动作概率分布 $\pi(a|s)$"""</span>
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(self, obs_dim, act_dim):
+        <span class="tok-fn">super</span>().<span class="tok-fn">__init__</span>()
+        self.net = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(obs_dim, <span class="tok-num">64</span>), nn.<span class="tok-fn">ReLU</span>(), nn.<span class="tok-fn">Linear</span>(<span class="tok-num">64</span>, act_dim))
+    <span class="tok-kw">def</span> <span class="tok-fn">forward</span>(self, x):
+        <span class="tok-kw">return</span> torch.<span class="tok-fn">softmax</span>(self.<span class="tok-fn">net</span>(x), dim=-<span class="tok-num">1</span>)  <span class="tok-com"># 保证概率和为 1</span>
+
+<span class="tok-kw">class</span> <span class="tok-fn">ValueNet</span>(nn.Module):
+    <span class="tok-str">"""基线网络：拟合 $V(s)$，用 $G_t - V(s_t)$ 做优势以降低方差"""</span>
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(self, obs_dim):
+        <span class="tok-fn">super</span>().<span class="tok-fn">__init__</span>()
+        self.net = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(obs_dim, <span class="tok-num">64</span>), nn.<span class="tok-fn">ReLU</span>(), nn.<span class="tok-fn">Linear</span>(<span class="tok-num">64</span>, <span class="tok-num">1</span>))
+    <span class="tok-kw">def</span> <span class="tok-fn">forward</span>(self, x):
+        <span class="tok-kw">return</span> self.<span class="tok-fn">net</span>(x).<span class="tok-fn">squeeze</span>(-<span class="tok-num">1</span>)
+
+<span class="tok-kw">def</span> <span class="tok-fn">compute_returns</span>(rewards, gamma=GAMMA):
+    <span class="tok-str">"""从后向前递推计算折扣回报 $G_t$，需等回合结束才能得到"""</span>
+    returns, G = [], <span class="tok-num">0.0</span>
+    <span class="tok-kw">for</span> r <span class="tok-kw">in</span> <span class="tok-bi">reversed</span>(rewards):
+        G = r + gamma * G
+        returns.<span class="tok-fn">insert</span>(<span class="tok-num">0</span>, G)
+    <span class="tok-kw">return</span> torch.<span class="tok-fn">tensor</span>(returns, dtype=torch.float32)
+
+<span class="tok-kw">def</span> <span class="tok-fn">main</span>():
+    env = gym.<span class="tok-fn">make</span>(<span class="tok-str">"CartPole-v1"</span>)
+    policy = <span class="tok-fn">PolicyNet</span>(env.observation_space.shape[<span class="tok-num">0</span>], env.action_space.n)
+    value = <span class="tok-fn">ValueNet</span>(env.observation_space.shape[<span class="tok-num">0</span>])
+    opt_pi = optim.<span class="tok-fn">Adam</span>(policy.<span class="tok-fn">parameters</span>(), lr=LR_PI)
+    opt_v = optim.<span class="tok-fn">Adam</span>(value.<span class="tok-fn">parameters</span>(), lr=LR_V)
+    <span class="tok-kw">for</span> ep <span class="tok-kw">in</span> <span class="tok-bi">range</span>(<span class="tok-num">1</span>, EPISODES + <span class="tok-num">1</span>):
+        states, actions, rewards = [], [], []  <span class="tok-com"># 采样一条完整轨迹 $\tau$</span>
+        state, _ = env.<span class="tok-fn">reset</span>(seed=ep)
+        done = <span class="tok-kw">False</span>
+        <span class="tok-kw">while</span> <span class="tok-kw">not</span> done:
+            s = torch.<span class="tok-fn">tensor</span>(state, dtype=torch.float32)
+            probs = <span class="tok-fn">policy</span>(s)
+            action = torch.distributions.<span class="tok-fn">Categorical</span>(probs).<span class="tok-fn">sample</span>()  <span class="tok-com"># 按 $\pi$ 采样以探索</span>
+            state, reward, terminated, truncated, _ = env.<span class="tok-fn">step</span>(action.<span class="tok-fn">item</span>())
+            done = terminated <span class="tok-kw">or</span> truncated
+            states.<span class="tok-fn">append</span>(s)
+            actions.<span class="tok-fn">append</span>(action)
+            rewards.<span class="tok-fn">append</span>(reward)
+        returns = <span class="tok-fn">compute_returns</span>(rewards)  <span class="tok-com"># 蒙特卡洛回报：整条轨迹的 $G_t$</span>
+        states_t = torch.<span class="tok-fn">stack</span>(states)
+        actions_t = torch.<span class="tok-fn">stack</span>(actions)
+        baseline = <span class="tok-fn">value</span>(states_t).<span class="tok-fn">detach</span>()  <span class="tok-com"># 基线不参与策略梯度，避免梯度串扰</span>
+        advantages = returns - baseline  <span class="tok-com"># $\hat{A}_t = G_t - b(s_t)$，无偏且降方差</span>
+        <span class="tok-com"># $\log \pi(a_t|s_t)$：gather 取实际执行动作的概率，再取对数</span>
+        log_probs = torch.<span class="tok-fn">log</span>(<span class="tok-fn">policy</span>(states_t).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, actions_t.<span class="tok-fn">unsqueeze</span>(<span class="tok-num">1</span>)).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>))
+        <span class="tok-com"># 策略损失取负号：优化器做梯度下降，等价于沿 $+\hat{A}_t \nabla \log \pi$ 上升</span>
+        policy_loss = -(log_probs * advantages).<span class="tok-fn">mean</span>()
+        value_loss = ((returns - <span class="tok-fn">value</span>(states_t)) ** <span class="tok-num">2</span>).<span class="tok-fn">mean</span>()  <span class="tok-com"># MSE 拟合回报，训练基线</span>
+        opt_pi.<span class="tok-fn">zero_grad</span>()
+        policy_loss.<span class="tok-fn">backward</span>()  <span class="tok-com"># 自动微分得到 $\nabla \log \pi$，无需对环境求导</span>
+        opt_pi.<span class="tok-fn">step</span>()
+        opt_v.<span class="tok-fn">zero_grad</span>()
+        value_loss.<span class="tok-fn">backward</span>()
+        opt_v.<span class="tok-fn">step</span>()
+        <span class="tok-kw">if</span> ep % <span class="tok-num">50</span> == <span class="tok-num">0</span>:
+            <span class="tok-bi">print</span>(f<span class="tok-str">"回合 {ep}: 总奖励 {sum(rewards):.0f}  首步回报 {returns[0]:.1f}"</span>)
+    env.<span class="tok-fn">close</span>()
+
+<span class="tok-kw">if</span> __name__ == <span class="tok-str">"__main__"</span>:
+    <span class="tok-fn">main</span>()</code></pre>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑨ 代码讲解</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>超参数与网络结构：开头的 `GAMMA`、`LR_PI`、`LR_V`、`EPISODES` 分别设定折扣与学习率等训练配置；`PolicyNet` 用两层全连接加 `ReLU` 输出经 `softmax` 归一化的动作概率分布 $\pi_\theta(a_t \mid s_t)$，保证各动作概率之和为 $1$；`ValueNet` 输出标量 $V(s_t)$，作为与动作无关的基线 $b(s_t)$，用于后续估计优势。</li>
+<li>`compute_returns` 从后向前递推计算折扣回报：对奖励序列倒序执行 $G_t = r_t + \gamma G_{t+1}$，得到每个时刻 $t$ 的蒙特卡洛回报 $G_t$。这一步只能在回合结束后进行，因为只有拿到整条轨迹 $\tau$ 才能知道后续奖励；它正是 REINFORCE 无偏但高方差的来源，单条轨迹的 $G_t$ 噪声会直接进入梯度估计。</li>
+<li>采样一条完整轨迹：主循环每次用 `env.reset(seed=ep)` 开始新回合，在每一步把状态 $s_t$ 转为张量送入策略网络，再用 `Categorical` 按 $\pi_\theta(a_t \mid s_t)$ 采样动作 $a_t$ 以实现探索；执行 `env.step` 后把 $s_t$、$a_t$ 与奖励 $r_t$ 分别存入 `states`、`actions`、`rewards`，直到 `terminated` 或 `truncated` 为真才结束回合，期间不做任何参数更新。</li>
+<li>计算基线与优势：回合结束后先由 `compute_returns` 得到 $G_t$，再用 `value` 网络得到基线并调用 `.detach()`，即 $b(s_t) = V(s_t)$，然后计算优势 $\hat{A}_t = G_t - b(s_t)$。`detach` 的关键作用是让基线不参与策略梯度，避免 $V(s_t)$ 的梯度串扰到策略更新；优势为正则强化该动作，为负则抑制该动作。</li>
+<li>构造策略损失：用 `policy(states_t)` 得到所有时刻的动作概率，再用 `gather` 取出实际执行动作 $a_t$ 对应的概率并取对数，得到 $\log \pi_\theta(a_t \mid s_t)$；损失定义为 $-\hat{A}_t \log \pi_\theta(a_t \mid s_t)$ 在时间维度的均值，即代码中的 `policy_loss`。取负号是因为优化器做梯度下降，下降该损失等价于沿 $+\hat{A}_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)$ 的方向做梯度上升，自动微分会直接给出 $\nabla_\theta \log \pi_\theta(a_t \mid s_t)$，无需对环境动力学求导。</li>
+<li>分别更新策略与基线：基线损失为 $(G_t - V(s_t))^2$ 的均值，即用均方误差拟合蒙特卡洛回报 $G_t$，使 $V(s_t)$ 逐步逼近真实的 $V^\pi(s_t)$；随后对 `opt_pi` 和 `opt_v` 分别执行 `zero_grad`、`backward`、`step`，两个网络用各自的优化器和学习率更新、互不干扰。每 $50$ 个回合打印总奖励与首步回报 $G_0$，可据此判断学习是否收敛、方差是否过大。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑩ 超参数</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<table class="data"><tr><th>参数</th><th>常用取值</th><th>说明</th></tr>
+<tr><td>折扣因子 $\gamma$（GAMMA）</td><td>$0.99$</td><td>决定 $G_t$ 中未来奖励的权重，$G_t = \sum_{k=0}^{\infty} \gamma^k r_{t+k}$；$\gamma$ 越接近 $1$，回报越看重长远、方差越大，CartPole 这类需要持续平衡的任务通常取 $0.99$ 左右，$\gamma$ 过小会使策略短视。</td></tr>
+<tr><td>策略学习率 $\alpha$（LR_PI）</td><td>$3\times10^{-3}$</td><td>控制 $\theta$ 沿策略梯度方向的更新步长；过大容易使 $\pi_\theta(a_t \mid s_t)$ 剧烈震荡甚至坍缩到确定性策略，过小则 $300$ 个回合内难以学会平衡，通常比基线学习率小一个量级。</td></tr>
+<tr><td>基线学习率 $\alpha_w$（LR_V）</td><td>$1\times10^{-2}$</td><td>控制 $V(s_t)$ 拟合 $G_t$ 的速度；基线需要快速跟上回报尺度以有效降低方差，因此常取比策略学习率更大的值，但过大也会使 $V(s_t)$ 震荡、优势 $\hat{A}_t$ 不稳定。</td></tr>
+<tr><td>训练回合数（EPISODES）</td><td>$300$</td><td>REINFORCE 是回合制在线算法，每个回合只产生一条轨迹 $\tau$、只做一次更新，因此需要足够多的回合来平均掉 $G_t$ 的噪声；在 CartPole-v1 上 $300$ 个回合通常可观察到总奖励从几十上升到接近 $500$，若仍未收敛可适当增加。</td></tr>
+<tr><td>隐藏层宽度（PolicyNet 与 ValueNet）</td><td>$64$</td><td>两个网络均为 $64$ 维隐藏层；对 $4$ 维状态、$2$ 个动作的 CartPole 已足够表达 $\pi_\theta(a_t \mid s_t)$ 与 $V(s_t)$，增大到 $128$ 或 $256$ 通常收益有限，反而会增加单轨迹更新的计算量与过拟合风险。</td></tr>
+</table>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑪ 常见坑</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>基线忘记 `detach`：若直接用 `value` 网络的输出而不调用 `detach` 计算优势，$V(s_t)$ 的梯度会流入策略损失，使策略更新同时改变基线、基线更新又干扰策略，导致训练震荡。调试时检查优势是否由已调用 `detach` 的基线计算得到，并确认策略损失反向传播后基线网络的梯度仍为 `None`。</li>
+<li>策略损失符号或求和方式写错：漏掉负号会把梯度上升变成梯度下降，策略会越学越差；把均值误写为求和会使损失随回合长度变化，$T$ 越大更新步长越大。应固定使用取负号后的均值形式，并在前 $10$ 个回合打印损失，确认总奖励呈上升趋势。</li>
+<li>把旧轨迹当作经验回放反复使用：REINFORCE 是在线同策略算法，$\theta$ 更新后，旧轨迹 $\tau$ 不再服从新的 $\pi_\theta$，其 $G_t$ 不能再用于估计当前梯度。必须每回合重新采样、算完即弃；若想复用数据，需要改用重要性采样或 PPO 等离策略或近端策略方法，而不是直接在原有循环里加回放池。</li>
+<li>回报方差大、训练曲线剧烈抖动：单条轨迹的 $G_t$ 噪声大是正常现象，不要只看单个回合的总奖励下结论。应先检查基线是否在学习、优势 $\hat{A}_t = G_t - V(s_t)$ 的量级是否合理，再考虑对优势做归一化，即用 $(\hat{A}_t - \bar{A}) / \sigma_A$ 代替原始优势，并用 $5$ 条以上回合的滑动平均总奖励评估进展。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑫ 练习题</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p class="qa-q"><b>练习题 1</b> 请结合策略梯度定理，解释以下三个问题：第一，REINFORCE 在对目标 $J(\theta)$ 求导时，为什么不需要知道或对环境转移概率求导？第二，为什么用单条采样轨迹得到的梯度估计是无偏的，但方差却很高？第三，引入只依赖状态 $s_t$、与动作 $a_t$ 无关的基线 $b(s_t)$（例如 $V(s_t)$）后，为什么能降低方差而不改变期望梯度？并进一步说明，为什么 REINFORCE 必须是等回合结束后再更新的在线方法，而不能像第 10 课的 PER 那样把旧轨迹存入经验回放反复利用？</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>要点可分四步说明。</p>
+<p>1. 不需要对环境求导：目标为 $J(\theta)=\mathbb{E}_{\tau \sim \pi_\theta}[R(\tau)]$，其中 $\tau$ 为轨迹，$R(\tau)$ 为其总折扣回报。轨迹概率可分解为初始状态分布、策略 $\pi_\theta(a_t \mid s_t)$ 与环境转移概率 $p(s_{t+1} \mid s_t, a_t)$ 的乘积。对 $J(\theta)$ 求导时利用对数导数技巧 $\nabla_\theta \log \pi_\theta(a_t \mid s_t)=\nabla_\theta \pi_\theta(a_t \mid s_t)/\pi_\theta(a_t \mid s_t)$，并对 $\log p(\tau)$ 求导：只有策略项含 $\theta$，环境转移项与初始分布项的导数为 $0$，因此被消去。于是得到 $\nabla_\theta J(\theta)=\mathbb{E}_{\tau \sim \pi_\theta}[\sum_{t=0}^{T-1} G_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)]$，其中 $G_t$ 为从时刻 $t$ 起的折扣回报，$T$ 为回合长度。期望中的每一项都只需对可微的策略网络求 $\log \pi_\theta(a_t \mid s_t)$ 的梯度，可由自动微分完成，完全不需要环境模型或对环境求导。</p>
+<p>2. 无偏但高方差：实际中无法枚举所有轨迹，只能采样一条轨迹 $\tau$，用单样本估计 $\hat{g}=\sum_{t=0}^{T-1} G_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)$ 代替期望，并做梯度上升 $\theta \leftarrow \theta+\alpha \hat{g}$，其中 $\alpha$ 为学习率。由于采样分布恰为 $\pi_\theta$，有 $\mathbb{E}_{\tau \sim \pi_\theta}[\hat{g}]=\nabla_\theta J(\theta)$，故无偏。但 $G_t$ 是整条轨迹未来奖励的折扣和，受到后续所有随机动作、随机状态转移和随机奖励的累积影响，一条轨迹与另一条轨迹的 $G_t$ 可能相差很大；同时 $\log \pi_\theta(a_t \mid s_t)$ 的梯度也随采样动作而变。单样本没有平均作用，噪声直接进入更新，因此方差高、学习不稳定、需要很多回合才能收敛。</p>
+<p>3. 基线降方差且不引入偏差：把权重由 $G_t$ 改为 $G_t-b(s_t)$，其中 $b(s_t)$ 只依赖 $s_t$，与 $a_t$ 无关，常用 $V(s_t)$ 或其估计 $V_w(s_t)$ 充当。关键在于对固定 $s_t$，有 $\mathbb{E}_{a_t \sim \pi_\theta(\cdot \mid s_t)}[b(s_t)\nabla_\theta \log \pi_\theta(a_t \mid s_t)]=b(s_t)\sum_{a_t}\nabla_\theta \pi_\theta(a_t \mid s_t)=b(s_t)\nabla_\theta \sum_{a_t}\pi_\theta(a_t \mid s_t)=b(s_t)\nabla_\theta 1=0$。因此在期望中加入基线项不改变 $\nabla_\theta J(\theta)$，估计仍无偏。直观上，$G_t-b(s_t)$ 是优势 $\hat{A}_t$：它把 $G_t$ 中心化，去掉状态本身好坏带来的共同波动，只保留该动作相对平均水平的好坏。若 $\hat{A}_t&gt;0$，则增大 $\pi_\theta(a_t \mid s_t)$；若 $\hat{A}_t&lt;0$，则减小它。例如本课例子中 $G_0=2.62$、$b(s_0)=1.5$ 时，$\hat{A}_0=1.12&gt;0$，对应动作应被强化；而绝对值很大的 $G_t$ 经中心化后波动更小，故方差下降。但需注意，基线只能减小方差，不能消除由蒙特卡洛采样带来的全部方差，也不能改变 $G_t$ 需等回合结束才能算出的事实。</p>
+<p>4. 回合制在线更新，不能用经验回放：$G_t=\sum_{k=t}^{T-1}\gamma^{k-t}r_k$ 依赖 $t$ 之后直至回合结束的全部奖励 $r_k$，其中 $\gamma$ 为折扣因子，因此必须等回合结束才能计算全部 $G_t$ 并更新 $\theta$，不能像时序差分方法那样每步更新。更新后策略由 $\pi_\theta$ 变为 $\pi_{\theta'}$，旧轨迹是在旧策略下采样的，其分布不再是 $\pi_{\theta'}$，若直接重用，蒙特卡洛期望 $\mathbb{E}_{\tau \sim \pi_\theta}[\cdot]$ 的采样分布就错了，会引入偏差；而第 8 课 Double DQN 与第 10 课 PER 所用的 $Q$ 学习是异策略的，可用旧数据估计 $Q(s, a)$ 的最优值，REINFORCE 没有这种异策略修正机制，所以是同策略、在线的方法，旧轨迹更新后即失效。</p>
+</div></details>
+<p class="qa-q"><b>练习题 2</b> 设某回合共 $3$ 步，折扣因子为 $\gamma=0.9$，奖励依次为 $r_0=1$、$r_1=0$、$r_2=2$，实际执行的动作依次为 $a_0=1$、$a_1=0$、$a_2=1$。策略为单参数伯努利策略：对任意状态 $s_t$，有 $\pi_\theta(a_t=1 \mid s_t)=\theta$，$\pi_\theta(a_t=0 \mid s_t)=1-\theta$。当前参数为 $\theta=0.5$，学习率为 $\alpha=0.1$。基线取 $b(s_0)=1.5$、$b(s_1)=0.5$、$b(s_2)=1.0$。</p>
+<p class="qa-q">请完成以下计算：</p>
+<p class="qa-q">（1）从后向前递推，计算各时刻的折扣回报 $G_0$、$G_1$、$G_2$。
+（2）计算各时刻的优势 $A_t=G_t-b(s_t)$，其中 $t=0,1,2$，并说明每个 $A_t$ 的正负含义。
+（3）在 $\theta=0.5$ 处，计算各时刻的 $\nabla_\theta \log \pi_\theta(a_t \mid s_t)$。
+（4）用带基线的优势计算单样本策略梯度估计 $\hat{g}=\sum_{t=0}^{2} A_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)$，并做一次梯度上升更新 $\theta \leftarrow \theta+\alpha \hat{g}$，求更新后的 $\theta$。
+（5）作为对比，若不使用基线，即用 $G_t$ 直接代替 $A_t$，计算此时的梯度估计与更新后的 $\theta$，并结合结果说明基线为什么能起到稳定更新的作用。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>（1）折扣回报：按递推式 $G_t=r_t+\gamma G_{t+1}$ 从后向前计算，并规定回合结束后的 $G_3=0$，也可直接用 $G_2=r_2$ 作为起点。
+$G_2=r_2=2$。
+$G_1=r_1+\gamma G_2=0+0.9\times 2=1.8$。
+$G_0=r_0+\gamma G_1=1+0.9\times 1.8=1+1.62=2.62$。
+也可展开验证：$G_0=r_0+\gamma r_1+\gamma^2 r_2=1+0.9\times 0+0.9^2\times 2=2.62$。
+因此 $G_0=2.62$，$G_1=1.8$，$G_2=2$。</p>
+<p>（2）优势：
+$A_0=G_0-b(s_0)=2.62-1.5=1.12$。
+$A_1=G_1-b(s_1)=1.8-0.5=1.3$。
+$A_2=G_2-b(s_2)=2-1.0=1.0$。
+三个优势均为正，即 $A_t&gt;0$，表示这三个动作的实际回报都高于基线给出的平均水平，因此更新时都应增大对应已执行动作的概率：对 $t=0$ 与 $t=2$，增大 $\pi_\theta(a_t=1 \mid s_t)$；对 $t=1$，增大 $\pi_\theta(a_t=0 \mid s_t)$。若 $A_t&lt;0$，则应减小对应动作的概率。</p>
+<p>（3）对数概率梯度：当 $a_t=1$ 时，$\pi_\theta(a_t \mid s_t)=\theta$，$\log \pi_\theta(a_t \mid s_t)=\log \theta$，故 $\nabla_\theta \log \pi_\theta(a_t \mid s_t)=1/\theta$；当 $a_t=0$ 时，$\pi_\theta(a_t \mid s_t)=1-\theta$，$\log \pi_\theta(a_t \mid s_t)=\log(1-\theta)$，故 $\nabla_\theta \log \pi_\theta(a_t \mid s_t)=-1/(1-\theta)$。
+在 $\theta=0.5$ 处：
+$t=0$，$a_0=1$：$\nabla_\theta \log \pi_\theta(a_0 \mid s_0)=1/0.5=2$。
+$t=1$，$a_1=0$：$\nabla_\theta \log \pi_\theta(a_1 \mid s_1)=-1/0.5=-2$。
+$t=2$，$a_2=1$：$\nabla_\theta \log \pi_\theta(a_2 \mid s_2)=1/0.5=2$。</p>
+<p>（4）带基线的梯度估计与更新：
+$\hat{g}=A_0\times 2+A_1\times(-2)+A_2\times 2=1.12\times 2+1.3\times(-2)+1.0\times 2=2.24-2.60+2.00=1.64$。
+更新：$\theta \leftarrow \theta+\alpha \hat{g}=0.5+0.1\times 1.64=0.5+0.164=0.664$。
+因此更新后的参数为 $\theta=0.664$，对应的策略为 $\pi_\theta(a=1 \mid s)=0.664$，$\pi_\theta(a=0 \mid s)=0.336$。净效果为正，是因为 $t=0$ 与 $t=2$ 增大动作 $1$ 概率的推动强于 $t=1$ 增大动作 $0$ 概率的推动。</p>
+<p>（5）不使用基线的对比：
+$\hat{g}=G_0\times 2+G_1\times(-2)+G_2\times 2=2.62\times 2+1.8\times(-2)+2\times 2=5.24-3.60+4.00=5.64$。
+更新：$\theta \leftarrow \theta+\alpha \hat{g}=0.5+0.1\times 5.64=0.5+0.564=1.064$。
+这已经不是合法的概率参数，因为概率必须满足 $0\le \theta \le 1$，而 $1.064&gt;1$。可见，不用基线时单条轨迹的 $G_t$ 数值较大且未被中心化，梯度估计的量级被放大为带基线时的约 $3.44$ 倍，即 $5.64/1.64=3.44$，一次更新就把参数推出了合法范围；带基线时梯度为 $1.64$，更新后 $\theta=0.664$，仍在合法范围内，更新更稳定。需要强调的是，基线只改变单样本估计的数值大小与方差，在多次采样的期望意义下并不改变梯度方向的期望，这是因为 $b(s_t)$ 与动作 $a_t$ 无关。</p>
+<p>最终结果：带基线时 $\hat{g}=1.64$，$\theta=0.664$；不带基线时 $\hat{g}=5.64$，$\theta=1.064$，后者已超出概率的合法范围。</p>
+</div></details>
+<p class="qa-q"><b>练习题 3</b> 代码改造题：去掉基线 $b(s_t)$，做一次消融对比</p>
+<p class="qa-q">本课代码在 `CartPole-v1` 上训练 REINFORCE：策略网络输出 $\pi_\theta(a_t \mid s_t)$，基线网络拟合 $V(s_t)$，用优势 $\hat{A}_t = G_t - V(s_t)$ 加权对数概率梯度来更新 $\theta$。其中与基线直接相关的关键代码是：</p>
+<pre class="code"><span class="ln-col">1
+2
+3</span><code>baseline = <span class="tok-fn">value</span>(states_t).<span class="tok-fn">detach</span>()
+advantages = returns - baseline
+policy_loss = -(log_probs * advantages).<span class="tok-fn">mean</span>()</code></pre>
+<p class="qa-q">请只做“去掉基线”这一处改造，得到一个无基线版本的 REINFORCE，其他设置保持不变：折扣因子 $\gamma = 0.99$，策略学习率 $\alpha = 3 \times 10^{-3}$，训练回合数为 $300$，网络结构、采样方式和 `compute_returns` 的实现均不变。</p>
+<p class="qa-q">任务：
+（1）写出需要改哪几行、改成什么，并给出改动后的关键代码片段。
+（2）分别运行原版（含基线）和改造版（无基线），记录每 $50$ 回合的平均回报并画出学习曲线；如有条件，每个版本用不同随机种子重复 $3$ 次，比较平均曲线与曲线间的波动。
+（3）根据策略梯度定理和方差分析，预测并解释：去掉基线后，学习速度、曲线的平滑程度、最终平均回报和跨种子稳定性会发生什么变化？为什么在 `CartPole-v1` 中这种变化会特别明显？</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>参考答案：</p>
+<p><b>1. 改动目标</b></p>
+<p>让优势从 $\hat{A}_t = G_t - V(s_t)$ 退化为 $\hat{A}_t = G_t$，即取 $b(s_t) = 0$，同时停掉基线网络的训练，使原版与改造版的唯一差别就是有没有基线。</p>
+<p><b>2. 关键改动（共 $3$ 处）</b></p>
+<p>改动一：优势的计算。找到下面两行，删除基线，只保留回报：</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4
+5
+6</span><code><span class="tok-com"># 原代码</span>
+baseline = <span class="tok-fn">value</span>(states_t).<span class="tok-fn">detach</span>()
+advantages = returns - baseline
+
+<span class="tok-com"># 改后代码</span>
+advantages = returns  <span class="tok-com"># 此时优势就是整条轨迹的回报，不再减基线</span></code></pre>
+<p>改动二：基线网络的训练。找到策略损失之后以 `value_loss` 开头的几行，即基线损失的计算与 `opt_v` 的更新，把整段注释或删除，例如不再执行 `value_loss.backward()` 和 `opt_v.step()`。</p>
+<p>改动三（可选但推荐）：把不再使用的基线网络实例化与优化器一并注释或删除：</p>
+<pre class="code"><span class="ln-col">1
+2
+3
+4
+5</span><code><span class="tok-com"># 原代码</span>
+value = <span class="tok-fn">ValueNet</span>(env.observation_space.shape[<span class="tok-num">0</span>])
+opt_v = optim.<span class="tok-fn">Adam</span>(value.<span class="tok-fn">parameters</span>(), lr=LR_V)
+
+<span class="tok-com"># 改后代码：整段注释或删除</span></code></pre>
+<p>不要改动的地方：`policy_loss = -(log_probs * advantages).mean()` 的形式不变，`compute_returns` 不变，$\gamma$、$\alpha$、网络结构和按 $\pi_\theta(a_t \mid s_t)$ 采样的方式都不变。否则就不是只去掉基线的消融对比。</p>
+<p>易错点：不要只把 `.detach()` 去掉。那样会让 $V(s_t)$ 的梯度流入策略损失，基线不再是与动作无关的常数；也不要顺手把优势改成归一化版本或把 `.mean()` 改成求和，那是另外的改造，且会改变有效学习率。</p>
+<p><b>3. 预期现象</b></p>
+<p>（1）有基线时：$\hat{A}_t = G_t - V(s_t)$ 以 $V(s_t)$ 为中心，可正可负。好的动作得到正的 $\hat{A}_t$ 而被加强，差的动作得到负的 $\hat{A}_t$ 而被抑制。梯度估计 $\hat{g} = \sum_{t} \hat{A}_t \nabla_\theta \log \pi_\theta(a_t \mid s_t)$ 的方差较小，更新较稳定，平均回报通常稳步上升，$100$ 至 $200$ 回合后常明显超过 $200$ 分，$300$ 回合内常接近 $400$ 至 $500$ 分，曲线较平滑，不同随机种子的结果也较接近。</p>
+<p>（2）无基线时：$\hat{A}_t = G_t$，学习明显变慢、曲线呈锯齿状。相邻 $50$ 回合的平均回报可能大幅上下波动，$300$ 回合内可能仍在 $100$ 至 $300$ 分徘徊，或偶尔冲高后又回落；重复 $3$ 次时，不同种子的曲线差异明显更大。运行时间会略短，因为少了 `ValueNet` 的前向与反向计算，但这不是性能提升，不应误读为改进。</p>
+<p>（3）两种版本在期望上都是无偏的。去掉只依赖 $s_t$、与 $a_t$ 无关的 $b(s_t)$ 不改变 $\mathbb{E}[\hat{g}]$，也不改变 $\nabla_\theta J(\theta)$，差别只在方差。所以无基线版本不是一定学不到，而是同样 $300$ 回合内更不稳定、更依赖运气。</p>
+<p><b>4. 为什么在 `CartPole-v1` 中特别明显</b></p>
+<p>在 `CartPole-v1` 中，每步奖励都是 $r_t = 1$，因此对任意 $t$ 都有 $G_t &gt; 0$，且 $G_t$ 的大小主要由回合能坚持多长决定。无基线时，所有被采样到的动作都得到正权重而被加强，好动作与坏动作只能靠 $G_t$ 的大小来区分，信用分配的信噪比很低。</p>
+<p>有基线时，$V(s_t)$ 近似于从 $s_t$ 出发的期望回报，$G_t - V(s_t)$ 把共同的“活得久就有高回报”部分减掉了，只留下该动作相对平均水平的好坏，因此方差显著下降，更新方向更清晰。这正是本课核心结论的直接验证：基线不改变期望梯度，只起方差缩减作用。</p>
+</div></details>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">参考文献</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>Williams, R. J. 1992, Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning, Machine Learning</li>
+<li>Sutton, R. S., McAllester, D., Singh, S., &amp; Mansour, Y. 2000, Policy Gradient Methods for Reinforcement Learning with Function Approximation, Advances in Neural Information Processing Systems 12</li>
+<li>Sutton, R. S. &amp; Barto, A. G. 2018, Reinforcement Learning: An Introduction, 第13章 Policy Gradient Methods</li>
+</ol>
+</div></details>
+<div class="pager">
+<a href="lesson-10.html">← 上一课：优先经验回放 PER</a>
+<a href="../rl.html">← 返回 RL 精讲目录</a>
+<span>第 12 课（即将更新）</span>
+</div>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="../assets/effects.js?v=b3736fd"></script>
+<script src="../assets/detail-rail.js?v=b3736fd"></script>
+<script src="../assets/sub-effects.js?v=b3736fd"></script>
+</body>
+</html>
