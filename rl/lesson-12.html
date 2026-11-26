@@ -18,6 +18,10 @@
 <p class="meta">Actor-Critic 基础 · RL 算法每日精讲 · 2026-11-26 · Actor-Critic · 进阶 · 约 30 分钟</p>
 <p class="meta">前置知识：REINFORCE、TD 学习</p>
 <div class="thesis">演员学策略，评论家用价值估计指导更新</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-12-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · Actor-Critic 基础 · 9 分 33 秒</p>
+</div>
 <details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
 <p>本课解决的是：如何让智能体在未知环境中直接学习一个好的随机策略，同时克服纯策略梯度方法方差大、学得慢的问题。学员已学过 REINFORCE，它用整幕蒙特卡洛回报 $G_t$ 估计策略梯度，但必须等一幕结束才能更新，且回报波动很大；也学过 TD 学习，它能用 $r_t + \gamma V(s_{t+1})$ 自举估计价值并每步更新，但本身不直接给出策略。Actor-Critic 把两者结合起来：Actor 维护参数化策略 $\pi_\theta(a|s)$，负责在状态 $s$ 下选择动作 $a$；Critic 维护价值函数 $V_w(s)$，负责评价状态或动作的好坏，并用 TD 误差为 Actor 提供低方差的学习信号。适用场景包括连续动作控制、机器人操作、游戏与需要随机策略的任务，以及不能等到一幕结束、需要在线学习的长时或持续任务。输入是环境的当前状态 $s$、执行动作后得到的奖励 $r$ 与下一状态 $s'$，以及策略与价值网络的初始参数；输出是不断改进的策略 $\pi_\theta(a|s)$ 与更准确的价值估计 $V_w(s)$，最终用该策略与环境交互以获得更高的累计折扣回报。</p>
 </div></details>
