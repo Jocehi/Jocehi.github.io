@@ -134,6 +134,6 @@
 <script>(function(){var K='jocehi-paper-notes-4';var D='jocehi-paper-done-4';var B='jocehi-paper-bookmark-4';var ta=document.getElementById('paper-notes');try{ta.value=localStorage.getItem(K)||''}catch(e){}document.getElementById('save-notes').addEventListener('click',function(){try{localStorage.setItem(K,ta.value);document.getElementById('notes-saved').textContent='已保存 ✓'}catch(e){}});var done=document.querySelector('.btn-done'),bm=document.querySelector('.btn-bookmark');function paint(){var d=false,b=false;try{d=localStorage.getItem(D)==='1';b=localStorage.getItem(B)==='1'}catch(e){}done.textContent=d?'✓ 已读完':'标记读完';done.classList.toggle('done',d);bm.textContent=b?'★ 已收藏':'☆ 收藏';bm.classList.toggle('on',b)}done.addEventListener('click',function(){try{localStorage.setItem(D,localStorage.getItem(D)==='1'?'0':'1')}catch(e){}paint()});bm.addEventListener('click',function(){try{localStorage.setItem(B,localStorage.getItem(B)==='1'?'0':'1')}catch(e){}paint()});paint();})();</script>
 <script src="../assets/detail-rail.js?v=b3736fd"></script>
 <script src="../assets/search-index.js?v=720037e"></script>
-<script src="../assets/sub-effects.js?v=23942b2"></script>
+<script src="../assets/sub-effects.js?v=c053103"></script>
 </body>
 </html>
