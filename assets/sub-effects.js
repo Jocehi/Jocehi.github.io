@@ -1309,6 +1309,13 @@
       '.sx-toast-undo{border:0;background:#e0528a;color:#fff;border-radius:999px;padding:.25rem .8rem;',
       'font-size:.82rem;cursor:pointer;white-space:nowrap;}',
       '.sx-toast-undo:hover{background:#c2437c;}',
+      /* 导航滑动 pill：简报文章页不加载任何本地样式表，pill 样式必须随 JS 自带，
+         否则 pill 失去 position:absolute 会变成静态 flex 子项，挤在导航最左边当一块色块 */
+      '.site-nav .nav-inner{position:relative;}',
+      '.site-nav .brand,.site-nav .nav-links{position:relative;z-index:1;}',
+      '.sx-nav-pill{position:absolute;left:0;top:0;border-radius:999px;pointer-events:none;z-index:0;',
+      'transition:left .35s cubic-bezier(.4,0,.2,1),top .35s cubic-bezier(.4,0,.2,1),width .35s cubic-bezier(.4,0,.2,1),height .35s cubic-bezier(.4,0,.2,1),opacity .25s ease;}',
+      '@media (prefers-reduced-motion: reduce){.sx-nav-pill{transition:none;}}',
       /* 顶部归档图标 */
       '.sx-archive-icon{position:fixed;right:16px;top:14px;z-index:56;display:flex;align-items:center;gap:.3rem;',
       'background:#fffdf8;border:1px solid #e9d6bd;border-radius:999px;padding:.3rem .7rem;cursor:default;',
