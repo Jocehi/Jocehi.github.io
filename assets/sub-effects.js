@@ -1337,12 +1337,359 @@
       /* 按钮 morph */
       '.sx-spinner{display:inline-block;width:16px;height:16px;border-radius:50%;',
       'border:2px solid rgba(255,255,255,.45);border-top-color:#fff;animation:sx-spin .7s linear infinite;}',
-      '@keyframes sx-spin{to{transform:rotate(360deg)}}'
+      '@keyframes sx-spin{to{transform:rotate(360deg)}}',
+      /* ---- bencho 借鉴 · 搜索按钮与 ⌘K 浮层 ---- */
+      '.sx-search-btn{margin-left:auto;flex:0 0 auto;display:flex;align-items:center;gap:.4rem;',
+      'background:#f3efe6;border:1px solid #e3ded2;border-radius:999px;padding:.42rem .8rem;',
+      'font-size:.88rem;font-weight:600;color:#5b6478;cursor:pointer;font-family:inherit;}',
+      '.sx-search-btn:hover{background:#fdf0f5;color:#c2437c;border-color:#f1e3e6;}',
+      '.sx-search-btn kbd{font-family:inherit;font-size:.72rem;background:#fff;border:1px solid #e3ded2;',
+      'border-radius:5px;padding:.05rem .35rem;color:#8a8fa0;}',
+      '@media (max-width:640px){.sx-search-btn kbd{display:none}.sx-search-btn{padding:.42rem .6rem}}',
+      '.sx-palette{position:fixed;inset:0;z-index:90;}',
+      '.sx-palette[hidden]{display:none;}',
+      '.sx-palette-backdrop{position:absolute;inset:0;background:rgba(29,35,51,.38);backdrop-filter:blur(4px);}',
+      '.sx-palette-panel{position:relative;margin:12vh auto 0;width:min(600px,calc(100vw - 32px));',
+      'background:#fffdf8;border:1px solid #e3ded2;border-radius:16px;box-shadow:0 24px 64px rgba(29,35,51,.22);',
+      'overflow:hidden;animation:sx-pal-in .18s ease;}',
+      '@keyframes sx-pal-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}',
+      '.sx-palette-input{width:100%;border:0;border-bottom:1px solid #efe9dc;background:transparent;',
+      'padding:1rem 1.2rem;font-size:1.05rem;font-family:inherit;color:#1d2333;outline:none;}',
+      '.sx-palette-input::placeholder{color:#9aa0ae;}',
+      '.sx-palette-body{max-height:min(52vh,420px);overflow-y:auto;padding:.4rem .5rem .7rem;}',
+      '.sx-palette-group{font-size:.72rem;font-weight:700;letter-spacing:.08em;color:#8a8fa0;',
+      'padding:.7rem .7rem .3rem;text-transform:uppercase;}',
+      '.sx-palette-row{display:flex;align-items:baseline;gap:.6rem;width:100%;text-align:left;',
+      'border:0;background:transparent;padding:.55rem .7rem;border-radius:10px;cursor:pointer;font-family:inherit;}',
+      '.sx-palette-row:hover,.sx-palette-row.active{background:#fdf0f5;}',
+      '.sx-palette-row .t{font-size:.95rem;color:#1d2333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+      '.sx-palette-row .d{margin-left:auto;flex:0 0 auto;font-size:.78rem;color:#9aa0ae;white-space:nowrap;}',
+      '.sx-palette-empty{padding:1.2rem;text-align:center;color:#9aa0ae;font-size:.92rem;}',
+      '.sx-palette-hint{padding:.55rem 1.2rem;border-top:1px solid #efe9dc;font-size:.75rem;color:#9aa0ae;}',
+      '.sx-palette-hint b{color:#5b6478;font-weight:600;}',
+      /* ---- bencho 借鉴 · 章节胶囊导航 ---- */
+      '.sx-secnav{position:sticky;top:82px;z-index:40;display:flex;align-items:center;gap:.35rem;',
+      'overflow-x:auto;scrollbar-width:none;background:rgba(255,253,248,.92);backdrop-filter:blur(10px);',
+      'border:1px solid #e3ded2;border-radius:999px;padding:.3rem .5rem;margin:0 0 1.4rem;}',
+      '.sx-secnav::-webkit-scrollbar{display:none;}',
+      '.sx-secnav-label{flex:0 0 auto;font-size:.72rem;font-weight:700;color:#9aa0ae;padding:0 .35rem 0 .5rem;}',
+      '.sx-secnav a{flex:0 0 auto;padding:.32rem .7rem;border-radius:999px;font-size:.85rem;color:#5b6478;',
+      'white-space:nowrap;text-decoration:none;}',
+      '.sx-secnav a:hover{background:#fdf0f5;color:#c2437c;text-decoration:none;}',
+      '.sx-secnav a.active{background:#e0528a;color:#fff;font-weight:700;}',
+      'details.sec,h2.sec-num{scroll-margin-top:132px;}',
+      /* ---- bencho 借鉴 · 首页数据条 ---- */
+      '.sx-stats{display:flex;justify-content:center;gap:2.6rem;flex-wrap:wrap;padding:1.6rem 1rem .4rem;text-align:center;}',
+      '.sx-stats .num{font-size:1.7rem;font-weight:700;line-height:1.1;}',
+      '.sx-stats .lab{font-size:.82rem;color:#8a8fa0;margin-top:.15rem;}',
+      '@media (max-width:640px){.sx-stats{gap:1.6rem;padding-top:1.2rem}}',
+      /* ---- bencho 借鉴 · 半调圆点带（SVG 圆点，不用渐变） ---- */
+      '.sx-dots{height:42px;background-size:28px 42px;background-repeat:repeat-x;',
+      'background-position:center top;opacity:.55;}',
+      /* ---- bencho 借鉴 · 页脚 ---- */
+      '.sx-footer{border-top:1px solid #e3ded2;background:#fffdf8;}',
+      '.sx-footer-inner{max-width:1120px;margin:0 auto;padding:2.4rem 1.25rem 1.6rem;display:flex;gap:2.5rem;flex-wrap:wrap;}',
+      '.sx-footer-brand{flex:0 0 200px;min-width:200px;}',
+      '.sx-footer-name{font-family:"Water Brush","Yuji Boku",cursive;font-size:2rem;color:#141414;line-height:1;}',
+      '.sx-footer-brand p{margin:.7rem 0 0;font-size:.9rem;color:#5b6478;line-height:1.7;}',
+      '.sx-footer-cols{flex:1 1 560px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.5rem;}',
+      '.sx-footer-col{min-width:0;}',
+      '@media (max-width:720px){.sx-footer-cols{grid-template-columns:repeat(2,minmax(0,1fr));}}',
+      '.sx-footer-col h4{margin:0 0 .6rem;font-size:.78rem;letter-spacing:.08em;color:#8a8fa0;text-transform:uppercase;}',
+      '.sx-footer-col a{display:block;padding:.22rem 0;font-size:.9rem;color:#5b6478;text-decoration:none;}',
+      '.sx-footer-col a:hover{color:#c2437c;text-decoration:none;}',
+      '.sx-footer-bottom{border-top:1px solid #efe9dc;padding:.9rem 1.25rem;text-align:center;font-size:.8rem;color:#9aa0ae;}',
+      /* ---- bencho 借鉴 · 倾斜过渡 ---- */
+      '.sx-tilt{transition:transform .18s ease-out;will-change:transform;}'
     ].join('');
     var st = document.createElement('style');
     st.id = 'sx-style';
     st.appendChild(document.createTextNode(css));
     (document.head || document.documentElement).appendChild(st);
+  }
+
+  /* ============================================================
+     13 · bencho 借鉴（2026-11-27）
+     学 bencho.dev 的做法，按本站暖白 + 粉的身份改编，不照搬它的黑白灰：
+       SearchPalette   ⌘K 唤起的全站搜索浮层（分组 + 数量 + 键盘导航）
+       SectionCapsules 文章页章节胶囊导航（bencho Docs 的 "On this page"）
+       StatsStrip      首页数据条（bencho 的社会证明条，数字从存档现算）
+       Tilt / Magnetic 卡片 3D 倾斜 + 按钮磁吸（bencho 的 tilt / magnetic）
+       Halftone        半调圆点带（bencho 的 halftone 质感，SVG 圆点，不用渐变）
+       SiteFooter      全站页脚（大字标 + 分栏链接 + 各栏最新 3 条）
+       CodeCopy        给没有复制按钮的代码块补上（沿用 effects.js 的委托处理）
+     ============================================================ */
+
+  /* 半调圆点 SVG（data URI，圆点由大到小排三行，模拟 bencho 的渐隐质感） */
+  var DOTS_URI = 'data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2728%27%20height=%2742%27%3E%3Cg%20fill=%27%23d9cfc2%27%3E%3Ccircle%20cx=%277%27%20cy=%277%27%20r=%272.6%27/%3E%3Ccircle%20cx=%2721%27%20cy=%277%27%20r=%272.6%27/%3E%3Ccircle%20cx=%277%27%20cy=%2721%27%20r=%271.9%27/%3E%3Ccircle%20cx=%2721%27%20cy=%2721%27%20r=%271.9%27/%3E%3Ccircle%20cx=%277%27%20cy=%2735%27%20r=%271.2%27/%3E%3Ccircle%20cx=%2721%27%20cy=%2735%27%20r=%271.2%27/%3E%3C/g%3E%3C/svg%3E';
+
+  function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function makeDots() {
+    var d = document.createElement('div');
+    d.className = 'sx-dots';
+    d.setAttribute('aria-hidden', 'true');
+    d.style.backgroundImage = 'url("' + DOTS_URI + '")';
+    return d;
+  }
+
+  /* ---- ⌘K 全站搜索 ---- */
+  function setupSearchPalette() {
+    var navInner = document.querySelector('.site-nav .nav-inner');
+    var navLinks = navInner && navInner.querySelector('.nav-links');
+    if (!navInner || !navLinks) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sx-search-btn';
+    btn.setAttribute('aria-label', '搜索全站');
+    btn.innerHTML = '搜索 <kbd>⌘K</kbd>';
+    navInner.insertBefore(btn, navLinks.nextSibling);
+
+    var overlay = document.createElement('div');
+    overlay.className = 'sx-palette';
+    overlay.hidden = true;
+    overlay.innerHTML =
+      '<div class="sx-palette-backdrop"></div>' +
+      '<div class="sx-palette-panel" role="dialog" aria-label="站内搜索">' +
+      '<input class="sx-palette-input" type="text" placeholder="搜索论文、课程、简报…" autocomplete="off">' +
+      '<div class="sx-palette-body"></div>' +
+      '<div class="sx-palette-hint"><b>↑↓</b> 选择 · <b>Enter</b> 打开 · <b>Esc</b> 关闭</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    var input = overlay.querySelector('.sx-palette-input');
+    var body = overlay.querySelector('.sx-palette-body');
+    var index = window.SX_SEARCH_INDEX || [];
+    var GROUPS = ['论文精读', 'RL 精讲', '每日简报', '博客', '首页'];
+    var rows = [];
+    var active = -1;
+    var lastFocus = null;
+
+    function setActive(i) {
+      active = i;
+      rows.forEach(function (r, j) { r.classList.toggle('active', j === i); });
+      if (rows[i] && rows[i].scrollIntoView) rows[i].scrollIntoView({ block: 'nearest' });
+    }
+    function render(q) {
+      q = (q || '').trim().toLowerCase();
+      var html = '';
+      var list = [];
+      GROUPS.forEach(function (g) {
+        var items = index.filter(function (it) { return it.g === g; });
+        if (q) {
+          items = items.filter(function (it) {
+            return (it.t + ' ' + it.d + ' ' + (it.k || '')).toLowerCase().indexOf(q) !== -1;
+          });
+        } else {
+          items = items.slice(0, 3);
+        }
+        if (!items.length) return;
+        html += '<div class="sx-palette-group">' + g + ' · ' + items.length + '</div>';
+        items.forEach(function (it) {
+          list.push(it);
+          html += '<button type="button" class="sx-palette-row" data-u="' + escHtml(it.u) + '">' +
+            '<span class="t">' + escHtml(it.t) + '</span>' +
+            '<span class="d">' + escHtml(it.d) + '</span></button>';
+        });
+      });
+      if (!list.length) {
+        html = index.length
+          ? '<div class="sx-palette-empty">没找到相关内容，换个词试试</div>'
+          : '<div class="sx-palette-empty">搜索索引未加载</div>';
+      }
+      body.innerHTML = html;
+      rows = Array.prototype.slice.call(body.querySelectorAll('.sx-palette-row'));
+      setActive(rows.length ? 0 : -1);
+    }
+    function open() {
+      lastFocus = document.activeElement;
+      overlay.hidden = false;
+      input.value = '';
+      render('');
+      input.focus();
+    }
+    function close() {
+      overlay.hidden = true;
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+    btn.addEventListener('click', open);
+    overlay.querySelector('.sx-palette-backdrop').addEventListener('click', close);
+    input.addEventListener('input', function () { render(input.value); });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (rows.length) setActive((active + 1) % rows.length); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); if (rows.length) setActive((active - 1 + rows.length) % rows.length); }
+      else if (e.key === 'Enter') { if (rows[active]) location.href = rows[active].getAttribute('data-u'); }
+      else if (e.key === 'Escape') { close(); }
+    });
+    body.addEventListener('click', function (e) {
+      var r = e.target.closest && e.target.closest('.sx-palette-row');
+      if (r) location.href = r.getAttribute('data-u');
+    });
+    document.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); open(); }
+      else if (e.key === 'Escape' && !overlay.hidden) { close(); }
+    });
+  }
+
+  /* ---- 文章页章节胶囊导航 ---- */
+  function setupSectionCapsules() {
+    var path = location.pathname || '';
+    var isPaper = /\/papers\/[^/]+\.html$/.test(path);
+    var isLesson = /\/rl\/lesson-[^/]*\.html$/.test(path);
+    var secs = [];
+    if (isPaper) {
+      secs = Array.prototype.slice.call(document.querySelectorAll('h2.sec-num')).map(function (h) {
+        return { el: h, label: h.textContent.trim() };
+      });
+    } else if (isLesson) {
+      secs = Array.prototype.slice.call(document.querySelectorAll('details.sec')).map(function (d) {
+        var t = d.querySelector('.sec-title');
+        return { el: d, label: t ? t.textContent.trim() : '' };
+      }).filter(function (s) { return s.label; });
+    }
+    if (secs.length < 3) return;
+    var nav = document.createElement('nav');
+    nav.className = 'sx-secnav';
+    nav.setAttribute('aria-label', '本节导航');
+    var html = '<span class="sx-secnav-label">本节</span>';
+    secs.forEach(function (s, i) {
+      if (!s.el.id) s.el.id = 'sx-sec-' + i;
+      html += '<a href="#' + s.el.id + '" data-i="' + i + '">' + escHtml(s.label) + '</a>';
+    });
+    nav.innerHTML = html;
+    var first = secs[0].el;
+    first.parentNode.insertBefore(nav, first);
+    var links = Array.prototype.slice.call(nav.querySelectorAll('a'));
+    function spy() {
+      var y = window.scrollY + 150;
+      var cur = 0;
+      secs.forEach(function (s, i) {
+        if (s.el.getBoundingClientRect().top + window.scrollY <= y) cur = i;
+      });
+      links.forEach(function (a, i) { a.classList.toggle('active', i === cur); });
+    }
+    var ticking = false;
+    window.addEventListener('scroll', function () {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () { spy(); ticking = false; });
+    }, { passive: true });
+    nav.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a');
+      if (!a) return;
+      e.preventDefault();
+      var s = secs[+a.getAttribute('data-i')];
+      if (isLesson && s.el.tagName === 'DETAILS') s.el.open = true;
+      s.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    spy();
+  }
+
+  /* ---- 首页数据条 ---- */
+  function setupStatsStrip() {
+    var hero = document.getElementById('hero');
+    var contents = document.getElementById('contents');
+    if (!hero || !contents) return;
+    function count(sel) { return document.querySelectorAll(sel).length; }
+    var data = [
+      { n: count('#papers .archive li'), c: '#c2410c', l: '论文精读' },
+      { n: count('#rl .archive li'), c: '#d97706', l: 'RL 精讲' },
+      { n: count('#briefing .archive li'), c: '#0f766e', l: '每日简报' }
+    ];
+    if (!data[0].n && !data[1].n && !data[2].n) return;
+    var div = document.createElement('div');
+    div.className = 'sx-stats';
+    div.setAttribute('aria-label', '内容统计');
+    div.innerHTML = data.map(function (d) {
+      return '<div><div class="num" style="color:' + d.c + '">' + d.n + '</div><div class="lab">' + d.l + '</div></div>';
+    }).join('');
+    contents.parentNode.insertBefore(makeDots(), contents);
+    contents.parentNode.insertBefore(div, contents);
+  }
+
+  /* ---- 卡片 3D 倾斜 ---- */
+  var tiltReady = false;
+  function setupTilt() {
+    if (!window.matchMedia || !window.matchMedia('(pointer:fine)').matches) return;
+    setTimeout(function () { tiltReady = true; }, 1200);
+    var cards = document.querySelectorAll('.card.split, .paper-card, .lesson-card');
+    Array.prototype.forEach.call(cards, function (card) {
+      card.classList.add('sx-tilt');
+      card.addEventListener('pointermove', function (e) {
+        if (!tiltReady) return;
+        var r = card.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width - 0.5;
+        var y = (e.clientY - r.top) / r.height - 0.5;
+        card.style.transform = 'perspective(900px) rotateY(' + (x * 4).toFixed(2) +
+          'deg) rotateX(' + (-y * 4).toFixed(2) + 'deg)';
+      });
+      card.addEventListener('pointerleave', function () { card.style.transform = ''; });
+    });
+  }
+
+  /* ---- 按钮磁吸 ---- */
+  function setupMagnetic() {
+    if (!window.matchMedia || !window.matchMedia('(pointer:fine)').matches) return;
+    var els = document.querySelectorAll('.sx-search-btn, .copybtn, .spec-copy');
+    Array.prototype.forEach.call(els, function (el) {
+      el.style.transition = 'transform .15s ease-out';
+      el.addEventListener('pointermove', function (e) {
+        var r = el.getBoundingClientRect();
+        var dx = e.clientX - (r.left + r.width / 2);
+        var dy = e.clientY - (r.top + r.height / 2);
+        el.style.transform = 'translate(' + (dx * 0.2).toFixed(1) + 'px,' + (dy * 0.2).toFixed(1) + 'px)';
+      });
+      el.addEventListener('pointerleave', function () { el.style.transform = ''; });
+    });
+  }
+
+  /* ---- 全站页脚 ---- */
+  function setupSiteFooter() {
+    if (document.querySelector('.sx-footer')) return;
+    var index = window.SX_SEARCH_INDEX || [];
+    function latest(g, n) {
+      return index.filter(function (it) { return it.g === g; }).slice(0, n);
+    }
+    function col(title, listUrl, listLabel, links) {
+      var h = '<div class="sx-footer-col"><h4>' + title + '</h4>';
+      links.forEach(function (l) { h += '<a href="' + l.u + '">' + escHtml(l.label) + '</a>'; });
+      h += '<a href="' + listUrl + '">' + listLabel + ' →</a></div>';
+      return h;
+    }
+    var cols = '';
+    var p = latest('论文精读', 3);
+    var r = latest('RL 精讲', 3);
+    var b = latest('每日简报', 3);
+    if (p.length) cols += col('论文精读', '/papers.html', '全部精读', p.map(function (it) { return { u: it.u, label: it.d }; }));
+    if (r.length) cols += col('RL 精讲', '/rl.html', '全部课程', r.map(function (it) { return { u: it.u, label: it.t }; }));
+    if (b.length) cols += col('每日简报', '/briefing.html', '全部简报', b.map(function (it) { return { u: it.u, label: it.t }; }));
+    cols += '<div class="sx-footer-col"><h4>更多</h4>' +
+      '<a href="/review.html">每日复盘</a><a href="/diary.html">日记</a>' +
+      '<a href="/blog.html">博客</a><a href="https://github.com/Jocehi" target="_blank" rel="noopener">GitHub</a></div>';
+    var foot = document.createElement('footer');
+    foot.className = 'sx-footer';
+    foot.innerHTML =
+      '<div class="sx-footer-inner">' +
+      '<div class="sx-footer-brand"><span class="sx-footer-name">Jocehi</span>' +
+      '<p>世界模型 · 强化学习<br>每天一篇精读、每天一课 RL、每天一份简报。</p></div>' +
+      '<nav class="sx-footer-cols" aria-label="页脚导航">' + cols + '</nav></div>' +
+      '<div class="sx-footer-bottom">© 2026 Jocehi · jocehi.loc.cc</div>';
+    document.body.appendChild(makeDots());
+    document.body.appendChild(foot);
+  }
+
+  /* ---- 给没有复制按钮的代码块补上 ---- */
+  function setupCodeCopy() {
+    var pres = document.querySelectorAll('pre.code');
+    Array.prototype.forEach.call(pres, function (pre) {
+      if (pre.querySelector('.copybtn')) return;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'copybtn';
+      b.textContent = '复制代码';
+      pre.insertBefore(b, pre.firstChild);
+    });
   }
 
   /* ============================================================
@@ -1352,6 +1699,11 @@
     var path = location.pathname || '';
     setupNavPill();
     setupBackToTop();
+    setupSearchPalette();
+    setupCodeCopy();
+    setupMagnetic();
+    setupTilt();
+    setupSiteFooter();
     var isBriefIndex = /\/briefing\.html$/.test(path);
     var isBriefIssue = /\/briefing\/[^/]+\.html$/.test(path);
     var isPaper = /\/papers\/[^/]+\.html$/.test(path);
@@ -1359,13 +1711,16 @@
     var isPapersList = /\/papers\.html$/.test(path);
     var isRlList = /\/rl\.html$/.test(path);
     var isForm = /\/review\.html$/.test(path) || /\/diary\.html$/.test(path);
+    var isIndex = /(\/index\.html|\/)$/.test(path);
 
     if (isPaper || isLesson) {
       if (canCanvas) setupImageReveal();
       setupPrint();
       setupProgressSteps();
       setupReadingProgress();
+      setupSectionCapsules();
     }
+    if (isIndex) setupStatsStrip();
     if (isPaper) {
       setupTermTooltips();
       setupThesisPrint();
