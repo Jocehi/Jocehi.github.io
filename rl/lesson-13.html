@@ -19,7 +19,8 @@
 <p class="meta">前置知识：Actor-Critic 基础</p>
 <div class="thesis">多线程并行采样，用优势函数更新策略与价值。</div>
 <div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
-<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · A2C 与 A3C · 35 分钟 · 制作中，完成后将更新到此处</p>
+<video controls preload="metadata" playsinline style="width:100%;border-radius:8px;display:block;background:#1a2332;" src="../assets/video/lesson-13-explainer.mp4"></video>
+<p style="margin:.7rem 0 0;font-size:.88rem;color:#5b6472;">讲解视频 · A2C 与 A3C · 12 分 21 秒</p>
 </div>
 <details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
 <p>在连续控制、游戏与机器人等任务中，智能体需要在状态 $s_t$ 下选择动作 $a_t$，获得奖励 $r_t$ 并转移到下一状态 $s_{t+1}$，目标是学习使长期折扣回报期望最大的策略 $\pi_\theta(a|s)$。第 11 课的 REINFORCE 虽然思想直接，但用完整回合的蒙特卡罗回报 $G_t$ 估计梯度，方差大、必须等回合结束才能学习；第 12 课的 Actor-Critic 引入价值函数 $V_\phi(s)$ 作基线后方差下降，却仍是单线程顺序采样，相邻样本高度相关，训练不稳定且难以利用多核并行。A2C 与 A3C 正是为解决这一问题而设计的并行 Actor-Critic 方法，适用于 Atari 游戏、连续动作控制与多环境并行仿真等可同时运行多个环境副本的场景。输入是多个并行环境产生的轨迹片段，包括状态 $s_t$、动作 $a_t$、奖励 $r_t$ 与终止标志 $d_t$；输出是学到的随机策略 $\pi_\theta(a|s)$ 与价值估计 $V_\phi(s)$，部署时按策略采样动作或取概率最大的动作执行。</p>
