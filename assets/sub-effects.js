@@ -809,6 +809,11 @@
   }
 
   function setupBriefing() {
+    /* 2026-11-27 用户反馈：卡片右上角归档按钮与点卡片爆裂太容易误点，
+       误触后卡片飞走、撤销提示只留 3 秒，来不及点。改为不再给简报卡片接归档/爆裂，
+       点卡片什么也不做。streamCard / snapCard / wireBriefCard 保留未删，
+       以后想恢复时可在此处重新接线。 */
+    return;
     var cards = [];
     /* 简报期号页：每条新闻是一个 <article> */
     var arts = document.body.querySelectorAll('article');
