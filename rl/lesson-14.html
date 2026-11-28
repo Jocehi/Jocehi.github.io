@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 14 课 · TRPO 信赖域策略优化 · Jocehi 的 RL 精讲</title>
+<link rel="stylesheet" href="../assets/space-rl.css?v=f432614">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Water+Brush&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/katex/katex.min.css?v=b3736fd">
+  <script defer src="../assets/katex/katex.min.js?v=b3736fd"></script>
+  <script defer src="../assets/katex/auto-render.min.js?v=b3736fd" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false},{left:'\\[',right:'\\]',display:true}]})"></script>
+</head>
+<body>
+<header class="site-nav"><div class="nav-inner"><a class="brand" href="../index.html"><img src="../avatar.webp" alt="Jocehi"><span>Jocehi</span></a><nav class="nav-links" aria-label="主导航"><a href="../papers.html">论文精读</a><a href="../rl.html" class="active">RL 精讲</a><a href="../briefing.html">每日简报</a><a href="../review.html">每日复盘</a><a href="../diary.html">日记</a><a href="../blog.html">博客</a></nav></div></header>
+<div class="wrap">
+<h1>第 14 课 · TRPO 信赖域策略优化</h1>
+<p class="meta">TRPO 信赖域策略优化 · RL 算法每日精讲 · 2026 年 11 月 28 日 · 策略优化 · 高级 · 约 35 分钟</p>
+<p class="meta">前置知识：策略梯度、KL 散度</p>
+<div class="thesis">每次只在旧策略附近小步更新，用信赖域保证策略稳定提升。</div>
+<div class="lesson-video" style="background:#fff;border:1px solid #e3ded2;border-radius:12px;padding:1rem 1.1rem;margin:1.25rem 0;">
+<p style="margin:0;font-size:.88rem;color:#5b6472;">讲解视频 · TRPO 信赖域策略优化 · 35 分钟 · 制作中，完成后将更新到此处</p>
+</div>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">① 问题设定</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>在连续控制、机器人操作和需要稳定训练的策略优化任务中，直接沿策略梯度大步更新参数常常导致策略突变、性能崩溃甚至无法恢复。TRPO 要解决的核心问题是：如何在每一次更新中既尽可能提升期望回报 $J(\pi)$，又把新旧策略的差异限制在可控范围内，从而实现单调或近似单调的稳定改进。问题设定可表述为一个马尔可夫决策过程，智能体在状态 $s$ 下按策略 $\pi$ 选择动作 $a$，环境转移到下一状态并给出奖励 $r$，目标是最大化折扣累积回报 $G_t$。它适用于参数化随机策略 $\pi_\theta$、可用采样轨迹估计优势函数 $A(s, a)$、且对训练稳定性要求高于采样效率的场景，例如连续动作控制和精细策略微调。它不要求已知环境模型，只需能与环境交互采样，适合高维连续状态与动作空间，但每次迭代需要较多样本和较重的数值计算。输入包括当前策略参数 $\theta$、由旧策略 $\pi_{old}$ 采集的状态 $s$、动作 $a$ 与奖励 $r$ 构成的轨迹、折扣因子 $\gamma$、优势估计 $\hat{A}(s, a)$ 以及信赖域半径 $\delta$；输出是更新后的策略参数 $\theta_{new}$ 和对应的新策略 $\pi_{new}$，更新后策略在期望回报上更优，同时与旧策略的差异受到 $D_{KL}$ 约束。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">② 核心思想</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>用 $D_{KL}$ 约束新旧策略的距离，把更新限制在信赖域内，避免一次更新走得太远而破坏已有策略。</li>
+<li>以旧策略 $\pi_{old}$ 采集的数据估计优势函数 $A(s, a)$，并用重要性采样比 $\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$ 近似新策略的期望回报，从而在不重新采样的前提下评估候选更新。</li>
+<li>把带 $D_{KL}$ 约束的优化问题在旧策略附近做一阶与二阶近似，得到用梯度 $g$ 与费雪信息矩阵 $F$ 表示的二次型子问题，从而把非线性约束优化转化为可求解的形式。</li>
+<li>用共轭梯度法近似求解 $F^{-1}g$，避免显式构造和求逆高维矩阵 $F$，再按 $\sqrt{\frac{2\delta}{g^T F^{-1}g}}$ 的比例缩放搜索方向，使更新恰好落在信赖域边界附近。</li>
+<li>完成方向计算后做线搜索回退：从完整步长出发逐步缩小步长 $\alpha$，只接受同时满足 $D_{KL}$ 约束且使替代目标 $L(\theta)$ 真正提升的更新，否则继续回退以保证稳定性。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">③ 与已学方法对比</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p>与 REINFORCE 相比，TRPO 不再直接用蒙特卡洛回报 $G_t$ 做无约束梯度上升，而是引入 $D_{KL}$ 信赖域约束和优势估计 $A(s, a)$，显著减少了因大学习率导致策略崩溃的风险。与 Actor-Critic 和 A2C 相比，TRPO 保留了用价值函数 $V(s)$ 降低方差的思想，但把更新方式从一阶梯度步长改为带约束的二阶近似更新，稳定性更强。A2C 与 A3C 通过并行采样和较小步长缓解不稳定，仍缺乏严格的更新幅度保证；TRPO 则用近似单调改进的理论保证换取了更强的稳定性。代价是实现更复杂：每轮需要估计 $F$、运行共轭梯度求解和线搜索，计算量与实现难度明显高于 REINFORCE 和 A2C，且对超参数 $\delta$ 和采样量更敏感。与后来的 PPO 相比，TRPO 约束更精确但更重，PPO 用裁剪替代显式约束，换取了简单与高效。</p>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">④ 学习流程</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="agent-env" role="img" aria-label="智能体与环境交互循环"><svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrA" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6472"/></marker></defs><rect x="20" y="45" width="170" height="80" rx="12" fill="#d97706"/><text x="105" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">智能体 Agent</text><text x="105" y="103" text-anchor="middle" font-size="12" fill="#ffedd5">策略 π · 价值 V</text><rect x="450" y="45" width="170" height="80" rx="12" fill="#0f766e"/><text x="535" y="80" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">环境 Environment</text><text x="535" y="103" text-anchor="middle" font-size="12" fill="#ccfbf1">状态 s · 奖励 r</text><path d="M195,65 L445,65" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="55" text-anchor="middle" font-size="12" fill="#5b6472">动作 a</text><path d="M445,105 L195,105" stroke="#5b6472" stroke-width="2" marker-end="url(#arrA)"/><text x="320" y="125" text-anchor="middle" font-size="12" fill="#5b6472">观测 s′ · 奖励 r</text></svg></div>
+<ol class="flow">
+<li><span class="chip kind-observe">观察</span><b>初始化参数</b>初始化策略参数 $\theta$、价值参数 $\phi$，并设定信赖域半径 $\delta$、折扣因子 $\gamma$ 与回退系数 $\beta$，把当前策略记为旧策略 $\pi_{old}$，为本轮采样与更新做准备。</li>
+<li><span class="chip kind-decide">决策</span><b>旧策略选动作</b>在当前状态 $s$ 下按旧策略 $\pi_{old}$ 采样动作 $a$，即 $a \sim \pi_{old}(\cdot \mid s)$，该动作既用于与环境交互，也作为后续计算重要性采样比的分母样本。</li>
+<li><span class="chip kind-act">行动</span><b>执行动作采样</b>在环境中执行动作 $a$，沿轨迹 $\tau$ 连续采样，记录每一步的状态 $s$、动作 $a$、奖励 $r$ 与下一状态 $s'$，直至收集到一批完整轨迹。</li>
+<li><span class="chip kind-feedback">反馈</span><b>环境反馈回报</b>环境返回奖励 $r$ 与下一状态 $s'$，据此按折扣因子 $\gamma$ 计算折扣回报 $G_t$，并结合价值函数估计优势 $\hat{A}_t$，得到每一步动作相对平均水平的好坏。</li>
+<li><span class="chip kind-compute">计算</span><b>计算优势梯度</b>在旧策略数据上计算替代目标 $L(\theta)$ 在 $\theta_{old}$ 处的梯度 $g$，并计算 $D_{KL}$ 约束对应的费雪信息矩阵 $F$，为构造二次型子问题提供一阶与二阶信息。</li>
+<li><span class="chip kind-compute">计算</span><b>共轭梯度求解</b>用共轭梯度法近似求解 $x=F^{-1}g$，只用 $F$ 与向量的乘积而不显式求逆，再按 $\sqrt{\frac{2\delta}{g^T x}}$ 缩放得到搜索方向 $s=\sqrt{\frac{2\delta}{g^T x}}x$。</li>
+<li><span class="chip kind-update">更新</span><b>线搜索更新</b>从步长系数 $\alpha=1$ 出发试探候选参数 $\theta=\theta_{old}+\alpha s$，只有当 $D_{KL}(\pi_{old} \| \pi_\theta) \le \delta$ 且 $L(\theta)&gt;L(\theta_{old})$ 时接受更新，否则令 $\alpha \leftarrow \beta\alpha$ 继续回退，直到接受或达到最大回退次数。</li>
+<li><span class="chip kind-loop">循环</span><b>判断循环继续</b>把接受的 $\theta_{new}$ 记为下一轮的 $\theta_{old}$，并更新价值参数 $\phi$；若未达到总迭代次数则回到旧策略采样继续下一轮，否则结束训练并输出最终策略 $\pi_\theta$。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑤ 关键公式</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="formula-card">
+<h4>带信赖域约束的替代目标</h4>
+<div>$$\max_{\theta} \mathbb{E}_{s \sim \rho_{\pi_{old}}, a \sim \pi_{old}} \left[ \frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)} \hat{A}(s, a) \right] \quad \text{s.t.} \quad \mathbb{E}_{s \sim \rho_{\pi_{old}}} \left[ D_{KL}(\pi_{old}(\cdot \mid s) \| \pi_\theta(\cdot \mid s)) \right] \le \delta$$</div>
+<p>该公式把 TRPO 的目标写成在旧策略数据上最大化加权优势，同时用平均 $D_{KL}$ 不超过 $\delta$ 约束更新幅度；重要性采样比 $\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$ 让不重新采样也能评估 $\pi_\theta$，而 $D_{KL}$ 约束防止一次更新使 $\pi_\theta$ 远离 $\pi_{old}$ 而导致性能崩溃。</p>
+<ul>
+<li>$\theta$：新策略 $\pi_\theta$ 的参数</li>
+<li>$\pi_{old}$：采集数据的旧策略，其参数固定为 $\theta_{old}$</li>
+<li>$\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$：重要性采样比，用于把旧策略下的期望换算为新策略下的期望</li>
+<li>$\hat{A}(s, a)$：优势函数估计，表示在状态 $s$ 下动作 $a$ 相对平均水平的好坏</li>
+<li>$\delta$：信赖域半径，控制新旧策略允许的最大平均 $D_{KL}$ 距离</li>
+<li>$D_{KL}(\pi_{old}(\cdot \mid s) \| \pi_\theta(\cdot \mid s))$：在状态 $s$ 下旧策略与新策略之间的 $D_{KL}$ 散度</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>费雪信息矩阵</h4>
+<div>$$F = \mathbb{E}_{s \sim \rho_{\pi_{old}}, a \sim \pi_{old}} \left[ \nabla_\theta \log \pi_\theta(a \mid s) \nabla_\theta \log \pi_\theta(a \mid s)^T \right]_{\theta = \theta_{old}}$$</div>
+<p>在 $\theta_{old}$ 附近，$D_{KL}$ 的一阶项为零，二阶项由 $F$ 决定，因此 $F$ 刻画了参数空间中策略变化的局部曲率。$F$ 越大的方向，同样参数改动引起的策略变化越大，在信赖域优化中应走得越小；TRPO 只用 $F$ 与向量的乘积 $Fp$，而不显式构造 $F$。</p>
+<ul>
+<li>$F$：费雪信息矩阵，近似 $D_{KL}$ 在 $\theta_{old}$ 处的二阶曲率</li>
+<li>$\nabla_\theta \log \pi_\theta(a \mid s)$：策略对数概率关于参数 $\theta$ 的梯度，即得分函数</li>
+<li>$\rho_{\pi_{old}}$：旧策略下的状态访问分布</li>
+<li>$\theta_{old}$：旧策略参数，费雪信息矩阵在此处取值</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>二次型信赖域子问题</h4>
+<div>$$\max_{s} \; g^T s \quad \text{s.t.} \quad \frac{1}{2} s^T F s \le \delta$$</div>
+<p>把替代目标在 $\theta_{old}$ 处做一阶泰勒展开，把 $D_{KL}$ 做二阶泰勒展开，原来的非线性约束优化就化为这个二次型子问题。目标 $g^T s$ 希望沿梯度提升回报，约束 $\frac{1}{2}s^T F s \le \delta$ 则把更新限制在椭球形信赖域内，从而在局部近似可信的范围内求最优方向。</p>
+<ul>
+<li>$s$：参数更新向量，满足 $\theta_{new}=\theta_{old}+s$</li>
+<li>$g$：替代目标 $L(\theta)$ 在 $\theta_{old}$ 处的梯度</li>
+<li>$F$：费雪信息矩阵，定义 $D_{KL}$ 的二阶近似</li>
+<li>$\delta$：信赖域半径</li>
+<li>$\frac{1}{2} s^T F s$：$D_{KL}$ 的二阶泰勒近似，度量沿 $s$ 更新后的策略距离</li>
+</ul>
+</div>
+<div class="formula-card">
+<h4>自然梯度缩放步长</h4>
+<div>$$s = \sqrt{\frac{2\delta}{g^T F^{-1} g}} \, F^{-1} g$$</div>
+<p>二次型子问题的最优解与 $F^{-1}g$ 同向，系数由约束取等号决定，因此该公式把方向缩放到信赖域边界。直接求 $F^{-1}g$ 在高维时不可行，实际用共轭梯度法只通过 $F$ 与向量的乘积近似求解；得到 $s$ 后仍需线搜索检验，因为二次近似在远离 $\theta_{old}$ 时可能失真。</p>
+<ul>
+<li>$s$：最终搜索方向，沿该方向更新参数</li>
+<li>$F^{-1} g$：自然梯度方向，用 $F$ 的逆对普通梯度 $g$ 做曲率校正</li>
+<li>$g^T F^{-1} g$：自然梯度方向上的曲率加权范数，用于确定缩放比例</li>
+<li>$\delta$：信赖域半径</li>
+<li>$\sqrt{\frac{2\delta}{g^T F^{-1} g}}$：缩放系数，使更新恰好落在信赖域边界附近</li>
+</ul>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑥ 数学推导</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol class="mathnotes">
+<li>
+<p>第 1 步，从期望回报出发：目标是提升新策略 $\pi_\theta$ 的期望回报 $J(\pi_\theta)$，但每评估一个 $\pi_\theta$ 都重新采样代价太高，因此改用已采集的旧策略数据来估计它。</p>
+</li>
+<li>
+<p>第 2 步，引入重要性采样：对旧策略 $\pi_{old}$ 下的状态 $s$ 与动作 $a$，用比值 $\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$ 对优势 $\hat{A}(s, a)$ 加权，得到可在旧数据上计算的替代目标 $L(\theta)$。</p>
+<div>$$L(\theta)=\mathbb{E}_{s \sim \rho_{\pi_{old}}, a \sim \pi_{old}}\left[\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}\hat{A}(s, a)\right]$$</div>
+</li>
+<li>
+<p>第 3 步，说明近似成立的条件：当 $\pi_\theta$ 与 $\pi_{old}$ 相差很小时，$L(\theta)$ 接近真实回报改进；当二者相差很大时，重要性采样方差增大且近似失效，因此必须限制策略变化幅度。</p>
+</li>
+<li>
+<p>第 4 步，加入信赖域约束：用平均 $D_{KL}$ 度量新旧策略距离，要求它不超过半径 $\delta$，于是得到带约束的优化问题。</p>
+<div>$$\mathbb{E}_{s \sim \rho_{\pi_{old}}}\left[D_{KL}(\pi_{old}(\cdot \mid s) \parallel \pi_\theta(\cdot \mid s))\right] \le \delta$$</div>
+</li>
+<li>
+<p>第 5 步，在 $\theta_{old}$ 附近做泰勒展开：$L(\theta)$ 取一阶近似，$D_{KL}$ 在 $\theta_{old}$ 处取值为 $0$、一阶导数为 $0$，只保留二阶项，系数矩阵就是费雪信息矩阵 $F$。</p>
+</li>
+<li>
+<p>第 6 步，得到二次型子问题：令更新量为 $s=\theta-\theta_{old}$，目标近似为 $g^T s$，约束近似为 $\frac{1}{2}s^T F s \le \delta$，其中 $g$ 是 $L(\theta)$ 在 $\theta_{old}$ 处的梯度。</p>
+<div>$$\max_{s} g^T s \quad \text{s.t.} \quad \frac{1}{2}s^T F s \le \delta$$</div>
+</li>
+<li>
+<p>第 7 步，用拉格朗日方法求解：最优方向必与 $F^{-1}g$ 同向，令约束取等号可解出缩放系数，于是得到自然梯度形式的更新方向。</p>
+<div>$$s=\sqrt{\frac{2\delta}{g^T F^{-1}g}}F^{-1}g$$</div>
+</li>
+<li>
+<p>第 8 步，解释共轭梯度的作用：$F$ 的维数等于参数个数，直接求逆代价过高；共轭梯度法只反复计算 $Fp$ 形式的矩阵向量积，经过少量迭代即可近似得到 $x=F^{-1}g$，且 $F$ 本身不必显式构造。</p>
+</li>
+<li>
+<p>第 9 步，线搜索保证真实改进：由于以上都是局部近似，沿 $s$ 以步长系数 $\alpha=1$ 试探 $\theta=\theta_{old}+\alpha s$，只有同时满足 $D_{KL} \le \delta$ 与 $L(\theta)&gt;L(\theta_{old})$ 才接受，否则令 $\alpha$ 不断乘以回退系数 $\beta$ 再试。</p>
+</li>
+<li>
+<p>第 10 步，小数值例子：设一维参数，梯度 $g=0.4$，费雪信息 $F=2.0$，信赖域半径 $\delta=0.01$，则 $F^{-1}g=0.2$，$g^T F^{-1}g=0.08$。</p>
+</li>
+<li>
+<p>第 11 步，计算缩放步长：缩放系数为 $\sqrt{\frac{2\delta}{g^T F^{-1}g}}=\sqrt{\frac{0.02}{0.08}}=0.5$，于是 $s=0.5 \times 0.2=0.1$，即参数更新 $0.1$。</p>
+</li>
+<li>
+<p>第 12 步，检验近似距离：此时二阶近似的 $D_{KL}$ 约为 $\frac{1}{2}Fs^2=\frac{1}{2}\times 2.0 \times 0.1^2=0.01$，恰好等于 $\delta$，说明更新落在信赖域边界上；若真实 $D_{KL}$ 超过 $\delta$ 或 $L(\theta)$ 未提升，则把 $\alpha$ 缩小为 $0.5$ 再试，直到满足条件为止。</p>
+</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑦ 伪代码</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<div class="pseudo">
+<h4>初始化策略参数 $\theta$ 和价值函数参数 $\phi$</h4>
+<div class="step"><span class="stepnum">·</span> 设定信赖域半径 $\delta$、折扣因子 $\gamma$ 与回退系数 $\beta$</div>
+<div class="step"><span class="stepnum">·</span> 对每一轮迭代执行以下步骤：</div>
+<div class="step"><span class="stepnum">·</span> 使用旧策略 $\pi_{old}$ 采集一批轨迹 $\tau$</div>
+<div class="step"><span class="stepnum">·</span> 计算每一步的折扣回报 $G_t$ 和优势估计 $\hat{A}_t$</div>
+<div class="step"><span class="stepnum">·</span> 计算替代目标 $L(\theta)$ 在 $\theta_{old}$ 处的梯度 $g$</div>
+<div class="step"><span class="stepnum">·</span> 计算 $D_{KL}$ 约束对应的费雪信息矩阵 $F$</div>
+<div class="step"><span class="stepnum">·</span> 用共轭梯度法求解 $x = F^{-1}g$</div>
+<div class="step"><span class="stepnum">·</span> 按 $\sqrt{\frac{2\delta}{g^T x}}$ 缩放得到搜索方向 $s = \sqrt{\frac{2\delta}{g^T x}} x$</div>
+<div class="step"><span class="stepnum">·</span> 沿方向 $s$ 做线搜索，得到满足约束的新参数 $\theta_{new}$</div>
+<div class="step"><span class="stepnum">·</span> 令 $\theta \leftarrow \theta_{new}$，并更新价值函数参数 $\phi$</div>
+</div>
+<div class="pseudo">
+<h4>共轭梯度求解 $x = F^{-1}g$：</h4>
+<div class="step"><span class="stepnum">·</span> 初始化 $x_0 = 0$，残差 $r_0 = g$，方向 $p_0 = r_0$</div>
+<div class="step"><span class="stepnum">·</span> 对每次共轭梯度迭代计算 $F p_k$</div>
+<div class="step"><span class="stepnum">·</span> 更新步长 $\alpha_k$、解 $x_{k+1}$、残差 $r_{k+1}$ 与方向 $p_{k+1}$</div>
+<div class="step"><span class="stepnum">·</span> 达到迭代上限或残差 $r_k$ 足够小时停止，返回 $x$</div>
+</div>
+<div class="pseudo">
+<h4>线搜索回退检验：</h4>
+<div class="step"><span class="stepnum">·</span> 从步长系数 $\alpha = 1$ 开始尝试候选参数 $\theta = \theta_{old} + \alpha s$</div>
+<div class="step"><span class="stepnum">·</span> 计算 $D_{KL}(\pi_{old} \| \pi_\theta)$ 与替代目标 $L(\theta)$</div>
+<div class="step"><span class="stepnum">·</span> 若 $D_{KL}(\pi_{old} \| \pi_\theta) \le \delta$ 且 $L(\theta) &gt; L(\theta_{old})$，接受该更新</div>
+<div class="step"><span class="stepnum">·</span> 否则令 $\alpha \leftarrow \beta \alpha$，重复尝试直至接受或达到最大回退次数</div>
+</div>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑧ Python 代码（可运行）</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<pre class="code"><button class="copybtn">复制代码</button><span class="ln-col">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75</span><code><span class="tok-kw">import</span> gymnasium <span class="tok-kw">as</span> gym
+<span class="tok-kw">import</span> numpy <span class="tok-kw">as</span> np, torch, torch.nn <span class="tok-kw">as</span> nn
+torch.<span class="tok-fn">manual_seed</span>(<span class="tok-num">0</span>); np.random.<span class="tok-fn">seed</span>(<span class="tok-num">0</span>)
+env = gym.<span class="tok-fn">make</span>(<span class="tok-str">"CartPole-v1"</span>)
+S, A, H = <span class="tok-num">4</span>, <span class="tok-num">2</span>, <span class="tok-num">64</span>
+gamma, delta = <span class="tok-num">0.99</span>, <span class="tok-num">0.01</span>  <span class="tok-com"># $\gamma$ 折扣因子，$\delta$ 信赖域半径</span>
+<span class="tok-kw">class</span> <span class="tok-fn">Net</span>(nn.Module):  <span class="tok-com"># 策略与价值共用结构，参数 $\theta,\phi$ 分开</span>
+    <span class="tok-kw">def</span> <span class="tok-fn">__init__</span>(self, out):
+        <span class="tok-fn">super</span>().<span class="tok-fn">__init__</span>()
+        self.net = nn.<span class="tok-fn">Sequential</span>(nn.<span class="tok-fn">Linear</span>(S, H), nn.<span class="tok-fn">Tanh</span>(), nn.<span class="tok-fn">Linear</span>(H, H), nn.<span class="tok-fn">Tanh</span>(), nn.<span class="tok-fn">Linear</span>(H, out))
+    <span class="tok-kw">def</span> <span class="tok-fn">forward</span>(self, x):
+        <span class="tok-kw">return</span> self.<span class="tok-fn">net</span>(x)
+policy, value = <span class="tok-fn">Net</span>(A), <span class="tok-fn">Net</span>(<span class="tok-num">1</span>)
+vopt = torch.optim.<span class="tok-fn">Adam</span>(value.<span class="tok-fn">parameters</span>(), lr=<span class="tok-num">3</span>e-<span class="tok-num">3</span>)
+<span class="tok-kw">def</span> <span class="tok-fn">flat</span>(m): <span class="tok-kw">return</span> torch.<span class="tok-fn">cat</span>([p.<span class="tok-fn">detach</span>().<span class="tok-fn">view</span>(-<span class="tok-num">1</span>) <span class="tok-kw">for</span> p <span class="tok-kw">in</span> m.<span class="tok-fn">parameters</span>()])
+<span class="tok-kw">def</span> <span class="tok-fn">set_flat</span>(m, v):  <span class="tok-com"># 把一维向量写回网络，用于线搜索试探候选 $\theta$</span>
+    i = <span class="tok-num">0</span>
+    <span class="tok-kw">for</span> p <span class="tok-kw">in</span> m.<span class="tok-fn">parameters</span>():
+        n = p.<span class="tok-fn">numel</span>(); p.data.<span class="tok-fn">copy_</span>(v[i:i + n].<span class="tok-fn">view_as</span>(p)); i += n
+<span class="tok-kw">def</span> <span class="tok-fn">collect</span>(n=<span class="tok-num">2000</span>):
+    ss, aa, rr, vv, dd = [], [], [], [], []
+    s, _ = env.<span class="tok-fn">reset</span>(seed=<span class="tok-num">0</span>)
+    <span class="tok-kw">for</span> _ <span class="tok-kw">in</span> <span class="tok-bi">range</span>(n):  <span class="tok-com"># 始终用 $\pi_{old}$ 采样，更新前不改策略</span>
+        t = torch.<span class="tok-fn">tensor</span>(s, dtype=torch.float32)
+        a = torch.distributions.<span class="tok-fn">Categorical</span>(logits=<span class="tok-fn">policy</span>(t)).<span class="tok-fn">sample</span>()
+        ns, r, term, trunc, _ = env.<span class="tok-fn">step</span>(a.<span class="tok-fn">item</span>()); done = term <span class="tok-kw">or</span> trunc
+        ss.<span class="tok-fn">append</span>(s); aa.<span class="tok-fn">append</span>(a.<span class="tok-fn">item</span>()); rr.<span class="tok-fn">append</span>(r); vv.<span class="tok-fn">append</span>(<span class="tok-fn">value</span>(t).<span class="tok-fn">item</span>()); dd.<span class="tok-fn">append</span>(done)
+        s = env.<span class="tok-fn">reset</span>()[<span class="tok-num">0</span>] <span class="tok-kw">if</span> done <span class="tok-kw">else</span> ns
+    <span class="tok-kw">return</span> <span class="tok-fn">map</span>(np.array, (ss, aa, rr, vv, dd))
+<span class="tok-kw">def</span> <span class="tok-fn">logp_all</span>(states): <span class="tok-kw">return</span> torch.<span class="tok-fn">log_softmax</span>(<span class="tok-fn">policy</span>(states), dim=-<span class="tok-num">1</span>)
+<span class="tok-kw">def</span> <span class="tok-fn">surrogate</span>(states, actions, adv, old_logp):
+    logp = <span class="tok-fn">logp_all</span>(states).<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, actions[:, <span class="tok-kw">None</span>]).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)
+    ratio = torch.<span class="tok-fn">exp</span>(logp - old_logp)  <span class="tok-com"># 重要性采样比 $\frac{\pi_\theta}{\pi_{old}}$</span>
+    <span class="tok-kw">return</span> (ratio * adv).<span class="tok-fn">mean</span>()
+<span class="tok-kw">def</span> <span class="tok-fn">kl_div</span>(states, old_logp_all):
+    <span class="tok-kw">return</span> (old_logp_all.<span class="tok-fn">exp</span>() * (old_logp_all - <span class="tok-fn">logp_all</span>(states))).<span class="tok-bi">sum</span>(-<span class="tok-num">1</span>).<span class="tok-fn">mean</span>()
+<span class="tok-kw">def</span> <span class="tok-fn">fvp</span>(v, states, old_logp_all):  <span class="tok-com"># $Fv$：KL 的 Hessian-向量积，不显式构造 $F$</span>
+    kl = <span class="tok-fn">kl_div</span>(states, old_logp_all)
+    g = torch.<span class="tok-fn">cat</span>([x.<span class="tok-fn">view</span>(-<span class="tok-num">1</span>) <span class="tok-kw">for</span> x <span class="tok-kw">in</span> torch.autograd.<span class="tok-fn">grad</span>(kl, policy.<span class="tok-fn">parameters</span>(), create_graph=<span class="tok-kw">True</span>)])
+    <span class="tok-kw">return</span> torch.<span class="tok-fn">cat</span>([x.<span class="tok-fn">view</span>(-<span class="tok-num">1</span>) <span class="tok-kw">for</span> x <span class="tok-kw">in</span> torch.autograd.<span class="tok-fn">grad</span>((g * v).<span class="tok-bi">sum</span>(), policy.<span class="tok-fn">parameters</span>())])
+<span class="tok-kw">def</span> <span class="tok-fn">cg</span>(b, states, old_logp_all, iters=<span class="tok-num">10</span>):  <span class="tok-com"># 共轭梯度近似求解 $x=F^{-1}g$</span>
+    x, r, p = torch.<span class="tok-fn">zeros_like</span>(b), b.<span class="tok-fn">clone</span>(), b.<span class="tok-fn">clone</span>(); rs = (r * r).<span class="tok-bi">sum</span>()
+    <span class="tok-kw">for</span> _ <span class="tok-kw">in</span> <span class="tok-bi">range</span>(iters):
+        Ap = <span class="tok-fn">fvp</span>(p, states, old_logp_all) + <span class="tok-num">0.1</span> * p  <span class="tok-com"># 加阻尼使 $F$ 正定、数值稳定</span>
+        alpha = rs / (p * Ap).<span class="tok-bi">sum</span>().<span class="tok-fn">clamp</span>(<span class="tok-bi">min</span>=<span class="tok-num">1</span>e-<span class="tok-num">8</span>)
+        x, r = x + alpha * p, r - alpha * Ap; rs_new = (r * r).<span class="tok-bi">sum</span>()
+        <span class="tok-kw">if</span> rs_new &lt; <span class="tok-num">1</span>e-<span class="tok-num">10</span>: <span class="tok-kw">break</span>
+        p, rs = r + rs_new / rs * p, rs_new
+    <span class="tok-kw">return</span> x
+<span class="tok-kw">for</span> it <span class="tok-kw">in</span> <span class="tok-bi">range</span>(<span class="tok-num">30</span>):
+    ss, aa, rr, vv, dd = <span class="tok-fn">collect</span>()
+    ret = np.<span class="tok-fn">zeros_like</span>(rr, dtype=np.float32); G = <span class="tok-num">0.0</span>
+    <span class="tok-kw">for</span> t <span class="tok-kw">in</span> <span class="tok-bi">reversed</span>(<span class="tok-bi">range</span>(<span class="tok-bi">len</span>(rr))):  <span class="tok-com"># 折扣回报 $G_t$，回合结束处截断</span>
+        G = rr[t] + gamma * G * (<span class="tok-num">1</span> - dd[t]); ret[t] = G
+    adv = ret - vv; adv = (adv - adv.<span class="tok-fn">mean</span>()) / (adv.<span class="tok-fn">std</span>() + <span class="tok-num">1</span>e-<span class="tok-num">8</span>)  <span class="tok-com"># $\hat A_t$ 标准化降方差</span>
+    states = torch.<span class="tok-fn">tensor</span>(ss, dtype=torch.float32); actions = torch.<span class="tok-fn">tensor</span>(aa)
+    adv_t, ret_t = torch.<span class="tok-fn">tensor</span>(adv), torch.<span class="tok-fn">tensor</span>(ret)
+    old_logp_all = <span class="tok-fn">logp_all</span>(states).<span class="tok-fn">detach</span>()
+    old_logp = old_logp_all.<span class="tok-fn">gather</span>(<span class="tok-num">1</span>, actions[:, <span class="tok-kw">None</span>]).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>)
+    old_theta, old_loss = <span class="tok-fn">flat</span>(policy), <span class="tok-fn">surrogate</span>(states, actions, adv_t, old_logp)
+    g = torch.<span class="tok-fn">cat</span>([x.<span class="tok-fn">view</span>(-<span class="tok-num">1</span>) <span class="tok-kw">for</span> x <span class="tok-kw">in</span> torch.autograd.<span class="tok-fn">grad</span>(old_loss, policy.<span class="tok-fn">parameters</span>())])
+    x = <span class="tok-fn">cg</span>(g, states, old_logp_all)
+    step = torch.<span class="tok-fn">sqrt</span>(<span class="tok-num">2</span> * delta / (g @ x).<span class="tok-fn">clamp</span>(<span class="tok-bi">min</span>=<span class="tok-num">1</span>e-<span class="tok-num">8</span>)) * x  <span class="tok-com"># 缩放至信赖域边界 $\sqrt{2\delta/g^TF^{-1}g}$</span>
+    ok = <span class="tok-kw">False</span>
+    <span class="tok-kw">for</span> j <span class="tok-kw">in</span> <span class="tok-bi">range</span>(<span class="tok-num">10</span>):  <span class="tok-com"># 线搜索：$\alpha=1,0.5,0.25,\dots$ 逐步回退</span>
+        <span class="tok-fn">set_flat</span>(policy, old_theta + <span class="tok-num">0.5</span> ** j * step)
+        <span class="tok-kw">with</span> torch.<span class="tok-fn">no_grad</span>():
+            new_loss, new_kl = <span class="tok-fn">surrogate</span>(states, actions, adv_t, old_logp), <span class="tok-fn">kl_div</span>(states, old_logp_all)
+        <span class="tok-kw">if</span> new_kl &lt;= delta <span class="tok-kw">and</span> new_loss &gt; old_loss: ok = <span class="tok-kw">True</span>; <span class="tok-kw">break</span>
+    <span class="tok-kw">if</span> <span class="tok-kw">not</span> ok: <span class="tok-fn">set_flat</span>(policy, old_theta)  <span class="tok-com"># 无一满足则放弃本轮更新，保住旧策略</span>
+    <span class="tok-kw">for</span> _ <span class="tok-kw">in</span> <span class="tok-bi">range</span>(<span class="tok-num">5</span>):  <span class="tok-com"># 价值函数 $\phi$ 用均方误差拟合 $G_t$</span>
+        vopt.<span class="tok-fn">zero_grad</span>(); loss_v = ((<span class="tok-fn">value</span>(states).<span class="tok-fn">squeeze</span>(<span class="tok-num">1</span>) - ret_t) ** <span class="tok-num">2</span>).<span class="tok-fn">mean</span>()
+        loss_v.<span class="tok-fn">backward</span>(); vopt.<span class="tok-fn">step</span>()
+    <span class="tok-bi">print</span>(f<span class="tok-str">"iter {it}: mean_G={ret.mean():.1f} loss={old_loss.item():.3f}-&gt;{new_loss.item() if ok else old_loss.item():.3f} kl={new_kl.item():.4f} ok={ok}"</span>)
+</code></pre>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑨ 代码讲解</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>搭建环境与双网络：用 <code>gym.make</code> 创建 <code>CartPole-v1</code> 环境，状态维数 $S=4$、动作数 $A=2$、隐藏层 $H=64$；<code>policy</code> 与 <code>value</code> 共用 <code>Net</code> 结构但参数分开，分别表示策略 $\pi_\theta$ 与价值函数 $V_\phi$，并设定折扣因子 $\gamma=0.99$ 与信赖域半径 $\delta=0.01$。</li>
+<li>参数扁平化与旧策略采样：<code>flat</code> 把策略参数展成一维向量以便整体平移，<code>set_flat</code> 把候选向量写回网络用于线搜索试探；<code>collect</code> 每轮固定用 $\pi_{old}$ 采样 $2000$ 步，记录状态 $s$、动作 $a$、奖励 $r$、价值估计 $V(s)$ 与回合结束标志，并在回合结束时重置环境，更新前绝不改动采样策略。</li>
+<li>替代目标与 $D_{KL}$ 约束：<code>surrogate</code> 用 $\log \pi_\theta(a \mid s)-\log \pi_{old}(a \mid s)$ 的指数得到重要性采样比 $\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$，再与优势 $\hat A_t$ 相乘取均值得到 $L(\theta)$；<code>kl_div</code> 用旧策略分布加权计算新旧策略的平均 $D_{KL}$，它是后续约束与线搜索的判据。</li>
+<li>费雪信息矩阵向量积与共轭梯度：<code>fvp</code> 对 $D_{KL}$ 求两次梯度得到 $Fv$，即费雪信息矩阵 $F$ 与任意向量 $v$ 的乘积，全程不显式构造 $F$；<code>cg</code> 用 $10$ 次共轭梯度迭代近似求解 $x=F^{-1}g$，其中 $g$ 为 $L(\theta)$ 在 $\theta_{old}$ 处的梯度，计算中加入 $0.1$ 的阻尼项 $0.1p$ 使 $F$ 更接近正定、数值更稳定。</li>
+<li>缩放到信赖域边界与线搜索回退：按 $\sqrt{\frac{2\delta}{g^T F^{-1}g}}$ 缩放 $x$ 得到完整搜索步长，使二次近似下的 $D_{KL}$ 恰好约为 $\delta$；随后以 $\alpha=1, 0.5, 0.25, \dots$ 逐步回退试探，仅当新 $D_{KL}$ 满足 $D_{KL} \le \delta$ 且新 $L(\theta)$ 高于旧 $L(\theta)$ 时接受更新，$10$ 次试探均失败则恢复 $\theta_{old}$，放弃本轮策略更新。</li>
+<li>优势估计与价值函数更新：按 $G_t=r_t+\gamma G_{t+1}$ 从后向前递推折扣回报 $G_t$，回合结束处截断，再用 $\hat A_t=G_t-V(s_t)$ 并标准化得到优势估计；价值网络 $V_\phi$ 每轮用 $5$ 次全批量梯度步以均方误差拟合 $G_t$，为下一轮提供更准确的基线。</li>
+</ol>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑩ 超参数</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<table class="data"><tr><th>参数</th><th>常用取值</th><th>说明</th></tr>
+<tr><td>信赖域半径 $\delta$</td><td>$0.01$</td><td>控制每轮新旧策略允许的最大平均 $D_{KL}$；$\delta$ 过大易使更新冲出信赖域、策略崩坏，过小则学习极慢，常用范围为 $0.001$ 至 $0.01$，可先取 $0.01$ 再按 $D_{KL}$ 与回报曲线微调。</td></tr>
+<tr><td>折扣因子 $\gamma$</td><td>$0.99$</td><td>决定 $G_t$ 中未来奖励的权重，$\gamma$ 越接近 $1$ 越看重长期回报，但 $G_t$ 方差越大；对短回合任务取 $0.99$ 已足够，长时域任务可取 $0.995$。</td></tr>
+<tr><td>每轮采样步数 $n$</td><td>$2000$</td><td>每轮用 $\pi_{old}$ 采集的样本量，决定 $g$、$F$ 与 $\hat A_t$ 估计的噪声；$n$ 过小会使共轭梯度方向与 $D_{KL}$ 估计不稳，过大则每轮耗时过长，$2000$ 步是教学示例的折中值。</td></tr>
+<tr><td>共轭梯度迭代次数</td><td>$10$</td><td>近似求解 $x=F^{-1}g$ 的迭代上限；次数过少会使方向偏离自然梯度方向，过多则每次迭代都要计算一次 $Fv$、收益递减，$10$ 次在中小网络上通常足够，配合 $0.1$ 的阻尼使用。</td></tr>
+<tr><td>价值网络学习率 $\eta_v$</td><td>$3\times10^{-3}$</td><td>控制 $V_\phi$ 拟合 $G_t$ 的速度；学习率过大易使价值估计震荡、进而污染 $\hat A_t$，过小则基线滞后，示例中每轮对 $V_\phi$ 做 $5$ 次更新，可与策略更新解耦单独调试。</td></tr>
+</table>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑪ 常见坑</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ul>
+<li>不要在采集后、更新前改动策略：<code>collect</code> 必须全程使用 $\pi_{old}$，且计算 $\hat A_t$、$g$ 与 $D_{KL}$ 的旧对数概率要先用 <code>.detach()</code> 固定；若误用更新中的 $\pi_\theta$ 重新采样或让旧分布参与求导，重要性采样比 $\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$ 与 $L(\theta)$ 都会失去意义。</li>
+<li>共轭梯度求解失败先查 $Fv$ 与阻尼：<code>fvp</code> 必须对 $D_{KL}$ 开启二阶求导、保留计算图后再求梯度向量积，若忘记该设置会报梯度图已释放或得到零向量；若 $x=F^{-1}g$ 发散或出现非数值，先增大阻尼、打印 $(g \cdot x)$ 与分母是否接近 $0$，再检查 $D_{KL}$ 的计算是否正确。</li>
+<li>线搜索全失败是信号，不是直接调大 $\delta$：若 $10$ 次回退后仍无一满足 $D_{KL} \le \delta$ 且 $L(\theta)$ 提升，说明方向 $x$ 或 $g$ 的估计有问题，或 $\delta$ 与采样噪声不匹配；应先打印每步的 $D_{KL}$ 与 $L(\theta)$，确认 $g$ 是否为零、$\hat A_t$ 是否标准化，再考虑减小 $\delta$ 或增大采样步数 $n$，而不是放宽约束强行接受。</li>
+<li>优势与回报的截断、标准化要对齐回合边界：计算 $G_t$ 时必须在 <code>done</code> 为真处把下一状态的 $G_{t+1}$ 清零，否则跨回合的奖励会污染 $\hat A_t$；标准化时用 $\hat A_t$ 的均值与标准差，并在分母加 $10^{-8}$ 防止除零，调试时可先打印 $\hat A_t$ 的均值、标准差与 $G_t$ 的范围。</li>
+<li>价值更新与策略更新要分开调试：<code>value</code> 只用均方误差拟合 $G_t$、每轮更新 $5$ 次，若把它与策略放在同一优化器或学习率过高，$V_\phi$ 震荡会直接污染 $\hat A_t$；出现回报上升但 $D_{KL}$ 异常时，先固定策略、单独看价值损失是否稳定下降，再回头调 $\delta$ 与共轭梯度参数。</li>
+</ul>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">⑫ 练习题</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<p class="qa-q"><b>练习题 1</b> 在 TRPO 中，为什么不能直接对替代目标 $L(\theta)$ 做一步大的普通梯度上升？请结合重要性采样比 $\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$、平均 $D_{KL}$ 约束和 $L(\theta)$ 与真实期望回报 $J(\pi_\theta)$ 的关系解释信赖域的作用，并说明 TRPO 如何通过二阶近似、共轭梯度法和线搜索回退把这一思想落到实处。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>不能直接大步上升，根本原因在于 $L(\theta)$ 只是用旧策略数据构造的局部近似，而不是真实目标 $J(\pi_\theta)$ 本身。</p>
+<p>第一，$L(\theta)$ 的来源与适用范围。TRPO 希望提升 $J(\pi_\theta)$，但每换一个 $\pi_\theta$ 都重新采样代价太高，于是固定用 $\pi_{old}$ 采集的数据，并用重要性采样比 $\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$ 对优势 $\hat{A}(s, a)$ 加权，得到 $L(\theta)=\mathbb{E}_{s \sim \rho_{\pi_{old}}, a \sim \pi_{old}}\left[\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}\hat{A}(s, a)\right]$。当 $\pi_\theta$ 与 $\pi_{old}$ 很接近时，状态分布 $\rho_{\pi_{old}}$ 的变化可以忽略，$L(\theta)$ 能较好地近似真实回报改进；当二者相差很大时，重要性采样比会远离 $1$，方差增大，状态分布也已改变，$L(\theta)$ 的上升不再意味着 $J(\pi_\theta)$ 上升，甚至可能使策略崩坏。因此，必须先限制 $\pi_\theta$ 能离开 $\pi_{old}$ 多远，再在这个范围内最大化 $L(\theta)$。</p>
+<p>第二，信赖域约束用分布距离而不用参数距离。TRPO 要求平均 $D_{KL}$ 不超过半径 $\delta$，即 $\mathbb{E}_{s \sim \rho_{\pi_{old}}}\left[D_{KL}(\pi_{old}(\cdot \mid s) \parallel \pi_\theta(\cdot \mid s))\right] \le \delta$。参数空间的欧氏距离不能反映策略输出分布的变化：同一参数改变量在不同位置可能对应很小或很大的策略变化，而 $D_{KL}$ 直接度量在每个状态 $s$ 下动作分布的差异，因此是更合理的“走多远”的度量。$\delta$ 通常取很小的值，如 $0.01$，这就是信赖域：只相信 $L(\theta)$ 在该区域内的近似。</p>
+<p>第三，局部近似把约束优化变成可解的二次型问题。在 $\theta_{old}$ 附近，$L(\theta)$ 取一阶近似，$D_{KL}$ 在 $\theta_{old}$ 处为 $0$ 且一阶导数为 $0$，只保留二阶项，其系数矩阵为费雪信息矩阵 $F$。令更新量 $s=\theta-\theta_{old}$，$g$ 为 $L(\theta)$ 在 $\theta_{old}$ 处的梯度，则问题近似为 $\max_{s} g^T s \ \text{s.t.} \ \frac{1}{2}s^T F s \le \delta$。用拉格朗日方法可得最优方向与自然梯度 $F^{-1}g$ 同向，取约束等号得到 $s=\sqrt{\frac{2\delta}{g^T F^{-1}g}}F^{-1}g$。其中 $F^{-1}$ 起到按曲率重标度梯度的作用，平方根系数则保证更新恰好落在信赖域边界附近，而不是由任意学习率决定步长。</p>
+<p>第四，共轭梯度法避免显式求逆 $F$。$F$ 的维数等于参数个数，直接构造和求逆代价过高。共轭梯度法只反复计算 $Fv$ 形式的矩阵向量积，经过少量迭代即可近似求解 $x=F^{-1}g$，且 $F$ 本身不必显式构造；实际实现中常对 $F$ 加阻尼以保证正定和数值稳定。</p>
+<p>第五，线搜索回退是最后的安全检查。因为前面的泰勒展开和共轭梯度都只是近似，理论上的 $s$ 未必真正满足约束或提升目标，所以从 $\alpha=1$ 出发试探 $\theta=\theta_{old}+\alpha s$，只有同时满足 $D_{KL} \le \delta$ 与 $L(\theta)&gt;L(\theta_{old})$ 才接受，否则令 $\alpha$ 不断乘以回退系数 $\beta$ 再试。这一机制保证每一步都是“小而确实有效”的更新，避免一次大更新破坏已有策略，这正是 TRPO 相对于 REINFORCE 与 A2C 等普通策略梯度方法更稳定的关键。</p>
+<p>小例子：若一维参数下 $g=0.4$，$F=2.0$，$\delta=0.01$，则 $F^{-1}g=0.2$，$g^T F^{-1}g=0.08$，缩放系数为 $\sqrt{\frac{2\delta}{g^T F^{-1}g}}=\sqrt{\frac{0.02}{0.08}}=0.5$，故 $s=0.5 \times 0.2=0.1$。这说明更新大小不是由学习率随意决定，而是由 $g$、$F$ 与 $\delta$ 共同决定。</p>
+</div></details>
+<p class="qa-q"><b>练习题 2</b> 设在旧策略 $\pi_{old}$ 附近，已算得替代目标 $L(\theta)$ 在 $\theta_{old}$ 处的梯度为 $g$，费雪信息矩阵为 $F$，信赖域半径为 $\delta$。TRPO 把原问题近似为二次型子问题：目标为 $\max_{s} g^T s$，约束为 $\frac{1}{2}s^T F s \le \delta$，其中 $s=\theta-\theta_{old}$，其最优解为 $s=\sqrt{\frac{2\delta}{g^T F^{-1}g}}F^{-1}g$。请完成以下手算：</p>
+<p class="qa-q">（一）一维情形：设 $g=0.4$，$F=2.0$，$\delta=0.01$。依次计算 $F^{-1}g$，$g^T F^{-1}g$，缩放系数 $\sqrt{\frac{2\delta}{g^T F^{-1}g}}$ 和更新量 $s$，并验证 $\frac{1}{2}s^T F s$ 是否等于 $\delta$，同时计算一阶预测改进 $g^T s$。</p>
+<p class="qa-q">（二）二维情形：设 $g=[0.4, 0.2]^T$，$F$ 为对角矩阵，对角元依次为 $2$ 和 $4$，$\delta=0.01$。依次计算 $F^{-1}$，$F^{-1}g$，$g^T F^{-1}g$，缩放系数 $\sqrt{\frac{2\delta}{g^T F^{-1}g}}$ 和更新量 $s$，并验证 $\frac{1}{2}s^T F s$ 是否等于 $\delta$，同时计算一阶预测改进 $g^T s$，并比较 $s$ 的方向与 $g$ 的方向，说明自然梯度为什么会改变方向。</p>
+<p class="qa-q">（三）线搜索回退：对第二问得到的 $s$ 做线搜索，设回退系数为 $\beta=0.5$，从 $\alpha=1$ 开始试探。若 $\alpha=1$ 时实测平均 $D_{KL}=0.012$，$L(\theta)-L(\theta_{old})=0.05$；若 $\alpha=0.5$ 时实测平均 $D_{KL}=0.003$，$L(\theta)-L(\theta_{old})=0.02$。问应接受哪一个 $\alpha$，最终实际更新量 $\alpha s$ 是多少？为什么 $\alpha=1$ 时即使 $L(\theta)$ 的提升更大也不能接受？</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>先说明解的结构：$F^{-1}g$ 是自然梯度方向，$\sqrt{\frac{2\delta}{g^T F^{-1}g}}$ 是使二次近似下的平均 $D_{KL}$ 恰好取到 $\delta$ 的缩放系数，$g^T F^{-1}g$ 同时决定缩放系数和预测改进。</p>
+<p>（一）一维情形</p>
+<p>第一步，求自然梯度方向：$F^{-1}=\frac{1}{2}=0.5$，所以 $F^{-1}g=0.5 \times 0.4=0.2$。</p>
+<p>第二步，求二次型的值：$g^T F^{-1}g=0.4 \times 0.2=0.08$。</p>
+<p>第三步，求缩放系数：$\sqrt{\frac{2\delta}{g^T F^{-1}g}}=\sqrt{\frac{2 \times 0.01}{0.08}}=\sqrt{\frac{0.02}{0.08}}=\sqrt{0.25}=0.5$。</p>
+<p>第四步，求更新量：$s=\sqrt{\frac{2\delta}{g^T F^{-1}g}}F^{-1}g=0.5 \times 0.2=0.1$。</p>
+<p>验证信赖域约束：$\frac{1}{2}s^T F s=\frac{1}{2} \times 0.1 \times 2.0 \times 0.1=0.01=\delta$，恰好落在信赖域边界上。</p>
+<p>计算一阶预测改进：$g^T s=0.4 \times 0.1=0.04$，也可以由 $\sqrt{2 \times 0.01 \times 0.08}=\sqrt{0.0016}=0.04$ 得到，二者一致。</p>
+<p>（二）二维情形</p>
+<p>第一步，求 $F$ 的逆：因为 $F$ 的对角元为 $2$ 和 $4$，非对角元为 $0$，所以 $F^{-1}$ 为对角矩阵，对角元为 $0.5$ 和 $0.25$。</p>
+<p>第二步，求自然梯度方向：$F^{-1}g=[0.5 \times 0.4, 0.25 \times 0.2]^T=[0.2, 0.05]^T$。</p>
+<p>第三步，求二次型的值：$g^T F^{-1}g=0.4 \times 0.2+0.2 \times 0.05=0.08+0.01=0.09$。</p>
+<p>第四步，求缩放系数：$\sqrt{\frac{2\delta}{g^T F^{-1}g}}=\sqrt{\frac{2 \times 0.01}{0.09}}=\sqrt{\frac{0.02}{0.09}}=\sqrt{\frac{2}{9}}=\frac{\sqrt{2}}{3}\approx 0.4714$。</p>
+<p>第五步，求更新量：$s=\frac{\sqrt{2}}{3} \times [0.2, 0.05]^T\approx[0.4714 \times 0.2, 0.4714 \times 0.05]^T=[0.0943, 0.0236]^T$。</p>
+<p>验证信赖域约束：记 $c=\sqrt{\frac{2\delta}{g^T F^{-1}g}}$，则 $s=cF^{-1}g$，于是 $\frac{1}{2}s^T F s=\frac{1}{2} \times c^2 \times g^T F^{-1}g=\delta$；数值上 $\frac{1}{2}s^T F s\approx\frac{1}{2} \times (2 \times 0.0943^2+4 \times 0.0236^2)\approx0.01=\delta$。</p>
+<p>计算一阶预测改进：$g^T s=0.4 \times 0.0943+0.2 \times 0.0236=0.0377+0.0047=0.0424$，更精确的值为 $0.04243$，也可以由 $\sqrt{2 \times 0.01 \times 0.09}=\sqrt{0.0018}\approx0.0424$ 得到。</p>
+<p>比较方向：$g$ 的第二分量与第一分量之比为 $\frac{0.2}{0.4}=0.5$，而 $s$ 的第二分量与第一分量之比为 $\frac{0.0236}{0.0943}\approx0.25$，$F^{-1}g$ 的相应比值也为 $\frac{0.05}{0.2}=0.25$。因为 $F$ 的第二个对角元 $4$ 大于第一个对角元 $2$，即第二个方向的曲率更大，$D_{KL}$ 对第二个方向的变化更敏感，所以自然梯度把第二个方向压得更小；普通梯度 $g$ 没有考虑这种曲率差异，若沿 $g$ 走同样远的 $D_{KL}$ 距离，会在第二个方向上走得过远。</p>
+<p>（三）线搜索回退</p>
+<p>接受条件是同时满足 $D_{KL} \le \delta$ 和 $L(\theta)&gt;L(\theta_{old})$，即 $L(\theta)-L(\theta_{old})&gt;0$。</p>
+<p>当 $\alpha=1$ 时，$D_{KL}=0.012$，而 $\delta=0.01$，所以 $D_{KL}&gt;\delta$，违反信赖域约束，虽然 $L(\theta)-L(\theta_{old})=0.05&gt;0$，仍应拒绝。</p>
+<p>当 $\alpha=0.5$ 时，$D_{KL}=0.003$，而 $\delta=0.01$，所以 $D_{KL}\le\delta$，且 $L(\theta)-L(\theta_{old})=0.02&gt;0$，两个条件同时满足，应接受。</p>
+<p>最终实际更新量为 $\alpha s\approx0.5 \times [0.0943, 0.0236]^T=[0.0471, 0.0118]^T$，即 $\theta=\theta_{old}+[0.0471, 0.0118]^T$。</p>
+<p>为什么 $\alpha=1$ 不能接受：$L(\theta)$ 是在 $\pi_{old}$ 采集的数据上用重要性采样比 $\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$ 构造的替代目标，只有当 $\pi_\theta$ 与 $\pi_{old}$ 很接近、$D_{KL}$ 很小时，它才接近真实期望回报 $J(\pi_\theta)$ 的改进；一旦 $D_{KL}&gt;\delta$，重要性采样方差增大、局部二阶近似失效，$L(\theta)$ 的提升 $0.05$ 不能保证真实回报真正提升，反而可能破坏已有策略。线搜索宁可接受提升较小但安全的 $0.02$，也要保证更新留在信赖域内，这正是 TRPO 稳定性的来源。回退过程为 $\alpha=1$ 失败后乘以 $\beta=0.5$ 得到 $\alpha=0.5$ 再试，成功后即停止，不必继续缩小。</p>
+</div></details>
+<p class="qa-q"><b>练习题 3</b> 基于本课给出的 TRPO 代码，只改变信赖域半径 $\delta$，做一组对照实验，并解释实验现象与理论的关系。</p>
+<p class="qa-q">本课代码中与 $\delta$ 有关的关键一行是：
+</p>
+<pre class="code"><code>gamma, delta = 0.99, 0.01  # $\gamma$ 折扣因子，$\delta$ 信赖域半径</code></pre>
+<p class="qa-q">
+其中 $\gamma$ 为折扣因子，$\delta$ 会同时进入自然梯度步长的缩放系数 $\sqrt{\frac{2\delta}{g^T F^{-1}g}}$ 和线搜索的接受条件 $\mathbb{E}_{s \sim \rho_{\pi_{old}}}[D_{KL}(\pi_{old}(\cdot \mid s) \parallel \pi_\theta(\cdot \mid s))] \le \delta$，而 $\pi_{old}$、$\pi_\theta$、$g$、$F$、$L(\theta)$ 的含义与本课推导一致。</p>
+<p class="qa-q">任务：
+（1）保持其他超参数与随机种子不变，只把上面这一行分别改成 $\delta=0.1$ 和 $\delta=0.001$ 两种情形，在相同训练轮数下各完整训练一次，并与原代码 $\delta=0.01$ 的情形对照。
+（2）记录并比较三种情形下每轮的平均回报曲线、回报是否出现大幅波动或骤降、训练到同一轮数时的回报高低，以及线搜索是否更频繁地回退。
+（3）结合缩放系数 $\sqrt{\frac{2\delta}{g^T F^{-1}g}}$、约束 $\frac{1}{2}s^T F s \le \delta$、替代目标 $L(\theta)$ 与真实期望回报 $J(\pi_\theta)$ 的关系，以及重要性采样比 $\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$，解释为什么 $\delta$ 变大不等于学得更快、为什么 $\delta$ 变小也不等于一定更好，并说明 $\delta=0.01$ 在本课代码中是一个怎样的折中。</p>
+<p class="qa-q">要求：说明改了哪几行、改成什么；不要改动 <code>collect</code>、<code>surrogate</code>、<code>kl_div</code>、<code>fvp</code>、<code>cg</code> 等函数的内部实现，也不要同时改动 $\gamma$、共轭梯度迭代次数、阻尼系数或每次采集步数，否则无法把现象归因于 $\delta$。</p>
+<details class="qa"><summary>查看参考答案</summary><div class="ans">
+<p>**改动位置与代码**</p>
+<p>只改 $1$ 行，即参数定义行，其余代码一律不动：</p>
+<p>原代码：
+</p>
+<pre class="code"><code>gamma, delta = 0.99, 0.01  # $\gamma$ 折扣因子，$\delta$ 信赖域半径</code></pre>
+<p>情形 $A$，放大信赖域：
+</p>
+<pre class="code"><code>gamma, delta = 0.99, 0.1  # $\gamma$ 折扣因子，$\delta$ 信赖域半径</code></pre>
+<p>情形 $B$，缩小信赖域：
+</p>
+<pre class="code"><code>gamma, delta = 0.99, 0.001  # $\gamma$ 折扣因子，$\delta$ 信赖域半径</code></pre>
+<p>$\gamma$ 保持 $0.99$ 不变，<code>cg</code> 的迭代次数、阻尼系数、每次采集步数等也不变。</p>
+<p>只改这一行就足以改变步长，是因为 $\delta$ 同时出现在两个地方：一是自然梯度方向的缩放系数 $\sqrt{\frac{2\delta}{g^T F^{-1}g}}$，二是线搜索的接受条件 $\mathbb{E}_{s \sim \rho_{\pi_{old}}}[D_{KL}(\pi_{old}(\cdot \mid s) \parallel \pi_\theta(\cdot \mid s))] \le \delta$。方向 $F^{-1}g$ 本身与 $\delta$ 无关，共轭梯度求出的 $x=F^{-1}g$ 也不变，因此本实验只改变步长大小，不改变方向，从而把现象归因于 $\delta$。</p>
+<p>**理论预测：步长与 $\sqrt{\delta}$ 成正比**</p>
+<p>固定同一轮的 $g$ 与 $F$，记 $q=g^T F^{-1}g$，则更新量为 $s=\sqrt{\frac{2\delta}{q}}F^{-1}g$，且有 $\frac{1}{2}s^T F s=\delta$，一阶预测改进为 $g^T s=\sqrt{2\delta q}$。可见 $s$ 的长度与 $\sqrt{\delta}$ 成正比。</p>
+<p>与 $\delta=0.01$ 相比：</p>
+<p>- 当 $\delta=0.1$ 时，$\sqrt{\frac{0.1}{0.01}}=\sqrt{10}\approx 3.16$，完整步长约为原来的 $3.16$ 倍，边界上的平均 $D_{KL}$ 约为 $0.1$，一阶预测改进也约为原来的 $3.16$ 倍。
+- 当 $\delta=0.001$ 时，$\sqrt{\frac{0.001}{0.01}}=\sqrt{0.1}\approx 0.32$，完整步长约为原来的 $0.32$ 倍，边界上的平均 $D_{KL}$ 约为 $0.001$，一阶预测改进也约为原来的 $0.32$ 倍。</p>
+<p>**预期现象**</p>
+<p>- $\delta=0.01$：回报比较平稳地上升，平均 $D_{KL}$ 接近 $0.01$，$\alpha=1$ 的完整步长多数能被接受，线搜索偶尔回退，训练曲线波动较小。
+- $\delta=0.1$：初期回报可能上升更快，但曲线波动明显增大，可能出现回报骤降甚至学坏后难以恢复；平均 $D_{KL}$ 接近 $0.1$，重要性采样比 $\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$ 偏离 $1$ 更远，线搜索更频繁地回退，$\alpha$ 常小于 $1$，实际步长并不总是理论值的 $3.16$ 倍。
+- $\delta=0.001$：曲线最平稳，几乎不出现骤降，平均 $D_{KL}$ 接近 $0.001$，$\alpha=1$ 几乎总能被接受；但在相同训练轮数下回报明显低于 $\delta=0.01$ 的情形，学习速度显著变慢。</p>
+<p>由于单次运行有随机性，具体回报数值会有波动，应比较整体趋势与波动程度，而不是某一个具体数值。</p>
+<p>**为什么线搜索救不了过大的 $\delta$**</p>
+<p>线搜索只检查 $D_{KL}\le \delta$ 与 $L(\theta)&gt;L(\theta_{old})$，它并不能保证 $J(\pi_\theta)&gt;J(\pi_{old})$。当 $\delta$ 较大时，一是 $L(\theta)$ 与 $D_{KL}$ 的一阶与二阶近似只在 $\theta_{old}$ 附近准确，步长越大，高阶误差越大，真实 $D_{KL}$ 可能超过二次近似预测的 $\delta$，真实回报改进也可能小于 $L(\theta)$ 预测的改进；二是重要性采样比 $\frac{\pi_\theta(a \mid s)}{\pi_{old}(a \mid s)}$ 偏离 $1$ 越远，方差越大，$\hat{A}(s, a)$ 的加权估计越不可靠；三是即使某一步被接受，策略已经走远，下一轮用新 $\pi_{old}$ 采集的数据分布也随之改变，错误会被放大，表现为回报先升后降或反复震荡。线搜索只能在 $\delta$ 内部回退 $\alpha$，不能把 $\delta$ 本身变小，因此不能从根本上消除大信赖域带来的近似失效。</p>
+<p>**为什么过小的 $\delta$ 也不好**</p>
+<p>当 $\delta=0.001$ 时，近似非常准确，$L(\theta)$ 与 $J(\pi_\theta)$ 的差距很小，$D_{KL}$ 也很小，更新几乎不会破坏已有策略，但每步只能移动约为原来 $0.32$ 倍的距离。要达到与 $\delta=0.01$ 相同的总位移，大约需要 $3.16$ 倍的轮数与采样量，样本效率明显下降。在固定训练轮数下，它看起来更稳定，但学得更慢，这正是信赖域半径需要在稳定与效率之间折中。</p>
+<p>**结论**</p>
+<p>$\delta=0.01$ 是稳定与效率的折中：步长足够大，能在有限轮数内学会任务，又足够小，使 $L(\theta)$ 的近似与 $D_{KL}$ 的二次近似基本成立，线搜索也较少需要大幅回退。调大 $\delta$ 不能只看一阶预测改进变大，调小 $\delta$ 也不能只看曲线更平稳，关键是看在相同采样预算下最终回报与稳定性是否同时变好。</p>
+</div></details>
+</div></details>
+<details class="sec" open><summary class="sec-head"><span class="sec-title">参考文献</span><span class="sec-toggle"></span></summary><div class="sec-body">
+<ol>
+<li>Schulman et al. 2015, Trust Region Policy Optimization, arXiv:1502.05477</li>
+<li>Sutton &amp; Barto 2018, Reinforcement Learning: An Introduction, 第13章 策略梯度方法</li>
+<li>Schulman et al. 2017, Proximal Policy Optimization Algorithms, arXiv:1707.06347</li>
+</ol>
+</div></details>
+<div class="pager">
+<a href="lesson-13.html">← 上一课：A2C 与 A3C</a>
+<a href="../rl.html">← 返回 RL 精讲目录</a>
+<span>第 15 课（即将更新）</span>
+</div>
+<footer>内容每天早上约 08:00 自动更新 · <a href="https://github.com/Jocehi">GitHub</a></footer>
+</div>
+<script src="../assets/effects.js?v=b3736fd"></script>
+<script src="../assets/detail-rail.js?v=b3736fd"></script>
+<script src="../assets/search-index.js?v=8b3bc7c"></script>
+<script src="../assets/sub-effects.js?v=c053103"></script>
+</body>
+</html>
